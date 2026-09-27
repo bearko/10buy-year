@@ -41,7 +41,11 @@ export function renderHud(s) {
   const mission = currentMission(s);
   const rows = [
     h('div', { class: 'hud-row top' },
-      h('div', { class: 'date' }, h('b', {}, weekLabel(Math.min(s.week, TOTAL_WEEKS - 1))), h('small', {}, ` 残り${weeksLeft}週`)),
+      h('div', { class: 'date' },
+        h('b', {}, weekLabel(Math.min(s.week, TOTAL_WEEKS - 1))),
+        h('small', {}, ` 残り${weeksLeft}週`),
+        h('span', { class: 'chip stage', title: `${st.name}：${st.goal}` }, `Stage${st.id}`),
+      ),
       h('div', { class: `mood ${MOOD_CLASS[s.mood]}`, title: 'やる気' }, `やる気: ${MOOD_LABELS[s.mood]}`),
     ),
     h('div', { class: 'hud-row money' },
@@ -52,26 +56,46 @@ export function renderHud(s) {
     h('div', { class: 'hud-row bars' },
       staminaBar(s),
       h('div', { class: 'chips' },
-        h('span', { class: 'chip stage', title: st.goal }, `ステージ${st.id} ${st.name}`),
         h('span', { class: 'chip', title: 'セラー評価' }, `評価 ${Math.round(s.rating)}`),
         h('span', { class: `chip ${s.hate >= 50 ? 'warn' : ''}`, title: '炎上度' }, `炎上 ${Math.round(s.hate)}`),
+      ),
+    ),
+    s.sick > 0 || s.banWeeks > 0 || s.delinquency > 0
+      ? h('div', { class: 'hud-row chips warn-row' },
         s.sick > 0 ? h('span', { class: 'chip warn' }, '体調不良') : null,
         s.banWeeks > 0 ? h('span', { class: 'chip warn' }, `プンシー停止${s.banWeeks}週`) : null,
         s.delinquency > 0 ? h('span', { class: 'chip warn' }, `滞納${s.delinquency}`) : null,
-      ),
-    ),
+      )
+      : null,
     mission ? h('div', { class: 'hud-mission' }, h('b', {}, `目標：${mission.title}`), h('small', {}, mission.hint)) : null,
     s.week % 4 === 3 && s.debt > 0 ? h('div', { class: 'hud-alert' }, `今週末は返済日！ 最低 ${yenFmt(Math.min(MIN_PAYMENT, s.debt))}${s.card.due ? ` ＋カード ${yenFmt(s.card.due)}` : ''}`) : null,
   ];
   el.append(...rows.filter(Boolean));
 }
 
+// ニュース。はみ出すときは横にスクロールさせる（同じ内容なら描き直さない）
+let lastTicker = '';
 export function renderTicker(s) {
-  const el = clear($('#news-ticker'));
-  if (!s.news?.length) return;
-  const item = s.news[0];
-  el.append(h('span', { class: `news ${item.kind}` }, item.text));
-  if (s.news.length > 1) el.append(h('small', {}, ` ほか${s.news.length - 1}件（相場画面で確認）`));
+  const el = $('#news-ticker');
+  const item = s.news?.[0];
+  const key = item ? `${item.text}|${s.news.length}` : '';
+  if (key === lastTicker) return;
+  lastTicker = key;
+  clear(el);
+  el.classList.remove('scroll');
+  if (!item) return;
+  const inner = h('div', { class: 'ticker-inner' },
+    h('span', { class: `news ${item.kind}` }, item.text),
+    s.news.length > 1 ? h('small', {}, ` ほか${s.news.length - 1}件`) : null,
+  );
+  el.append(inner);
+  requestAnimationFrame(() => {
+    const over = inner.scrollWidth - el.clientWidth;
+    if (over <= 4) return;
+    el.style.setProperty('--dist', `${-over - 16}px`);
+    el.style.setProperty('--dur', `${Math.max(6, (over + 16) / 30 + 3)}s`);
+    el.classList.add('scroll');
+  });
 }
 
 // ステージ右側の経験点パネル。予告中は増える量、獲得時は光らせる
