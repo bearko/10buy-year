@@ -292,8 +292,8 @@ export function openTree(s, onChange) {
             h('span', { class: `rank r${rankOf(lv)}` }, rankOf(lv)),
             h('div', { class: 'ab-main' }, h('b', {}, `${a.name} ${lv}`), h('div', { class: 'bar' }, h('i', { style: { width: `${lv}%` } })), h('small', {}, a.desc)),
             h('div', { class: 'ab-btns' },
-              h('button', { class: 'tree-btn mini', disabled: !ok, onclick: () => { raiseAbility(s, a.id, 1); changed(); } }, '+1'),
-              h('button', { class: 'tree-btn mini', disabled: !ok, onclick: () => { raiseAbility(s, a.id, 5); changed(); } }, '+5'),
+              h('button', { class: 'tree-btn mini', disabled: !ok, onclick: () => { if (raiseAbility(s, a.id, 1)) playSe('levelup'); changed(); } }, '+1'),
+              h('button', { class: 'tree-btn mini', disabled: !ok, onclick: () => { if (raiseAbility(s, a.id, 5)) playSe('levelup'); changed(); } }, '+5'),
               h('small', { class: 'cost-row' }, ...costText(cost)),
             ),
           );
@@ -329,13 +329,16 @@ export function openTree(s, onChange) {
       const before = new Set(TREE_NODES.filter((n) => nodeVisible(s, n.id)).map((n) => n.id));
       const lvBefore = routeLevel(s, sk.route);
       if (!learnSkill(s, sk.id)) return;
-      playSe('hint');
+      playSe('unlock');
       toast(`「${sk.name}」を解放！ ${sk.desc}`, 'good');
       const fresh = new Map();
       let i = 0;
       for (const n of TREE_NODES) if (nodeVisible(s, n.id) && !before.has(n.id)) fresh.set(n.id, i++);
       fresh.set(sk.id, 0);
-      if (sk.route && routeLevel(s, sk.route) > lvBefore) toast(`${ROUTE_MAP[sk.route].name}の熟練度が Lv${routeLevel(s, sk.route)} に！`, 'good');
+      if (sk.route && routeLevel(s, sk.route) > lvBefore) {
+        playSe('levelup');
+        toast(`${ROUTE_MAP[sk.route].name}の熟練度が Lv${routeLevel(s, sk.route)} に！`, 'good');
+      }
       for (const id of fresh.keys()) seen.add(id);
       renderAll(fresh);
       onChange?.();

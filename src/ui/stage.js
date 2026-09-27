@@ -73,19 +73,24 @@ function speakerLabel(who) {
   return c.title ? `${c.name}（${c.title}）` : c.name;
 }
 
-// クリック／キーで進むまで待つ（オート中は少しだけ見せて進む）
+// 画面のどこをタップしても進む。ボタン・選択肢・モーダル・ツリーなど、それ自体を操作する場所は除く
+const OWN_CONTROLS = 'button, a, input, select, textarea, #choices, #modal-root, .modal, .tree-screen';
+const isAdvanceTap = (e) => !(e.target instanceof Element && e.target.closest(OWN_CONTROLS));
+
+// タップ／キーで進むまで待つ（オート中は少しだけ見せて進む）
 function waitAdvance() {
   if (autoMode) return new Promise((r) => setTimeout(r, 180));
+  const since = performance.now();
   return new Promise((resolve) => {
-    const box = $('#message');
     const done = (e) => {
       if (e.type === 'keydown' && !['Enter', ' ', 'z', 'Z'].includes(e.key)) return;
+      if (e.type === 'click' && (!isAdvanceTap(e) || e.timeStamp < since)) return;
       if (e.type === 'keydown') e.preventDefault();
-      box.removeEventListener('click', done);
+      document.removeEventListener('click', done);
       window.removeEventListener('keydown', done);
       resolve();
     };
-    box.addEventListener('click', done);
+    document.addEventListener('click', done);
     window.addEventListener('keydown', done);
   });
 }
@@ -114,16 +119,17 @@ async function typewrite(text) {
     return;
   }
   let skip = false;
-  const onSkip = () => {
-    skip = true;
+  const since = performance.now();
+  const onSkip = (e) => {
+    if (isAdvanceTap(e) && e.timeStamp >= since) skip = true;
   };
-  $('#message').addEventListener('click', onSkip, { once: true });
+  document.addEventListener('click', onSkip);
   for (let i = 0; i < text.length; i++) {
     if (skip) break;
     el.textContent = text.slice(0, i + 1);
     await new Promise((r) => setTimeout(r, textSpeed));
   }
-  $('#message').removeEventListener('click', onSkip);
+  document.removeEventListener('click', onSkip);
   el.textContent = text;
   await new Promise((r) => setTimeout(r, 60));
 }

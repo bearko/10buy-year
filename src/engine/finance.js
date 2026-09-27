@@ -112,7 +112,7 @@ export function debtFreeSteps(s) {
   s.debt = 0;
   setFlag(s, 'debtFree', s.week);
   return [
-    sfx('win'),
+    sfx('clear'),
     talk('chris', 'か、完済…！ 借金、ゼロになった！！', 'cheer'),
     talk('mine', 'おめでとう、クリス！ ……でも、ここで終わり？ 残りの期間でどこまで稼げるか、見せてちょうだい。', 'banzai'),
     info('完済！', ['借金をすべて返し終えた', '以降は最終資産を積み上げよう'], 'good'),

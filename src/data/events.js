@@ -317,7 +317,7 @@ export const EVENTS = [
       const lines = [narr('深夜3時。気づけば布団の中で相場チェックと抽選結果メールの確認を繰り返していた。'), info('寝不足', ['体力 -10'], 'bad')];
       if (s.flags.midnight + Math.floor((s.flags.nightWork || 0) / 40) >= 3 && !hasSkill(s, 'insomnia')) {
         giveSkill(s, 'insomnia');
-        lines.push(info('マイナス能力', ['「寝不足」がついてしまった…'], 'bad'));
+        lines.push(sfx('debuff'), info('マイナス能力', ['「寝不足」がついてしまった…'], 'bad'));
       }
       return lines;
     },
@@ -329,7 +329,7 @@ export const EVENTS = [
     cond: (s) => s.stats.soldUnits >= 25 && !hasSkill(s, 'pack_master'),
     play: (s) => {
       giveSkill(s, 'tendon');
-      return [talk('chris', 'いてて…。梱包テープを切りすぎて手首が…。', 'sad'), talk('mine', '腱鞘炎ね。梱包の手際を上げないと、体がもたないわよ。', 'teary'), info('マイナス能力', ['「腱鞘炎」がついた（発送の体力消費1.5倍）'], 'bad')];
+      return [talk('chris', 'いてて…。梱包テープを切りすぎて手首が…。', 'sad'), talk('mine', '腱鞘炎ね。梱包の手際を上げないと、体がもたないわよ。', 'teary'), sfx('debuff'), info('マイナス能力', ['「腱鞘炎」がついた（発送の体力消費1.5倍）'], 'bad')];
     },
   },
   {
@@ -1062,7 +1062,7 @@ export const EVENTS = [
       return [
         talk('chris', '車で一日5店舗、県をまたいで300km…。腰が…腰がぁ…。', 'wail'),
         talk('mine', 'ガソリン代と高速代も馬鹿にならないのよ。店舗だけに頼ると、体力の限界がくるわ。', 'arms'),
-        info('マイナス能力', ['「腰痛」がついた（店舗せどりの体力消費1.3倍）'], 'bad'),
+        sfx('debuff'), info('マイナス能力', ['「腰痛」がついた（店舗せどりの体力消費1.3倍）'], 'bad'),
       ];
     },
   },

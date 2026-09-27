@@ -92,7 +92,9 @@
   ],
   "bgm": [
     "pve.mp3",
-    "land.mp3"
+    "land.mp3",
+    "pvp.mp3",
+    "raid.mp3"
   ],
   "se": {
     "Actions/open_treasure.mp3": "sale.mp3",
@@ -101,6 +103,13 @@
     "Actions/production.mp3": "buy.mp3",
     "Actions/cp-mining-complete.mp3": "coin.mp3",
     "Jingles/win.mp3": "win.mp3",
-    "Jingles/lose.mp3": "lose.mp3"
+    "Jingles/lose.mp3": "lose.mp3",
+    "Actions/tooldev.mp3": "unlock.mp3",
+    "Battle/4_buff.mp3": "levelup.mp3",
+    "Battle/3_heal_resurrection.mp3": "heal.mp3",
+    "Battle/1_single_damage.mp3": "damage.mp3",
+    "Battle/5_debuff_status_effect.mp3": "debuff.mp3",
+    "Jingles/knight.mp3": "stageup.mp3",
+    "clear.wav": "clear.wav"
   }
 }
