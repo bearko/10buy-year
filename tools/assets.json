@@ -1,0 +1,30 @@
+{
+  "_comment": "ゲームで使うマイクリアセットの一覧。tools/import_assets.py がこの一覧を見て mycryptoheroes リポジトリから assets/ へコピーします。",
+  "heroes": [1005, 3003, 3043, 2012, 2029, 3008, 3013, 4011, 2025, 5001, 2007, 4002, 10004, 4014, 5008, 4008],
+  "extensions": [1031, 1111, 1058, 1016, 1008, 4031, 4016, 3112, 5531, 5075, 5058, 4008, 5016, 4069, 5509, 1126, 5127, 3055, 2125, 5111],
+  "enemies": [161, 101, 398, 410, 423, 1190],
+  "backgrounds": {
+    "home": 1004,
+    "store": 1023,
+    "online": 2105,
+    "queue": 1041,
+    "event": 1051,
+    "park": 1056,
+    "danger": 1060,
+    "warehouse": 1046,
+    "title": 1030,
+    "study": 1039
+  },
+  "icons": ["gum.png", "cp.png", "ce.png", "mch_icon.png"],
+  "battle_icons": ["Parameters/hp.png", "Buffs/buf_agi.png", "Buffs/dbf_agi.png", "StatusEffects/sleep.png", "StatusEffects/confused.png"],
+  "bgm": ["pve.mp3", "land.mp3"],
+  "se": {
+    "Actions/open_treasure.mp3": "sale.mp3",
+    "Actions/crash.mp3": "trouble.mp3",
+    "Actions/insp.mp3": "hint.mp3",
+    "Actions/production.mp3": "buy.mp3",
+    "Actions/cp-mining-complete.mp3": "coin.mp3",
+    "Jingles/win.mp3": "win.mp3",
+    "Jingles/lose.mp3": "lose.mp3"
+  }
+}
