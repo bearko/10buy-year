@@ -119,7 +119,7 @@ export function salesModal(s, step) {
       );
     }
     for (const x of step.auctionsUnsold) {
-      body.append(h('div', { class: 'card row muted' }, itemIcon(x.pid), h('div', { class: 'grow' }, `${productOf(x.pid).name}（クリオク）…${x.bidders ? '最低落札価格に届かず' : '入札なし'}で流札`)));
+      body.append(h('div', { class: 'card row muted' }, itemIcon(x.pid), h('div', { class: 'grow' }, `${productOf(x.pid).name}（ミィーム）…${x.bidders ? '最低落札価格に届かず' : '入札なし'}で流札`)));
     }
     if (step.sold.length) {
       body.append(
@@ -144,7 +144,7 @@ export function inventoryModal(s, onChange) {
         h('span', {}, `出品枠 ${listedUnits(s).length}/${cap}`),
         h('span', {}, `部屋 ${spaceUsed(s)}/${ROOM_CAPACITY}`),
         h('span', {}, `在庫 ${s.inventory.length}個`),
-        s.banWeeks > 0 ? h('span', { class: 'neg' }, `メルクリ停止中（あと${s.banWeeks}週）`) : null,
+        s.banWeeks > 0 ? h('span', { class: 'neg' }, `プンシー停止中（あと${s.banWeeks}週）`) : null,
       ),
       h('p', { class: 'note' }, '出品した商品は週末に売れるか判定される。相場より高すぎると売れず、安すぎると損。売上金は翌週に入金される。'),
     );

@@ -5,8 +5,8 @@ import { addCash, hasSkill, record, yen } from './effects.js';
 
 export const ROOM_CAPACITY = 30;
 export const PLATFORMS = {
-  merc: { id: 'merc', name: 'メルクリ', desc: 'フリマアプリ。手数料10%。値付け次第ですぐ売れるが、値下げ交渉とトラブルが多い' },
-  auc: { id: 'auc', name: 'クリオク', desc: 'オークション。手数料10%。1週間で落札。コレクター品は競り上がりやすいが、入札ゼロもある' },
+  merc: { id: 'merc', name: 'プンシー', desc: 'フリマアプリ。手数料10%。値付け次第ですぐ売れるが、値下げ交渉とトラブルが多い' },
+  auc: { id: 'auc', name: 'ミィーム', desc: 'オークション。手数料10%。1週間で落札。コレクター品は競り上がりやすいが、入札ゼロもある' },
 };
 
 export function feeRate(s) {

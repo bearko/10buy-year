@@ -31,7 +31,7 @@ export function resolveSales(s) {
     if (!units.length) continue;
     const market = priceOf(s, p.id);
 
-    // メルクリ：買い手の人数（上限）を決め、安い出品から順に判定
+    // プンシー：買い手の人数（上限）を決め、安い出品から順に判定
     const merc = units.filter((u) => u.listing.platform === 'merc').sort((a, b) => a.listing.price - b.listing.price);
     let buyers = poisson(s, demandOf(s, p) * rf * boost * (s.banWeeks > 0 ? 0 : 1));
     for (const u of merc) {
@@ -45,7 +45,7 @@ export function resolveSales(s) {
       }
     }
 
-    // クリオク：入札者数で落札価格が決まる。最低落札価格に届かなければ流れる
+    // ミィーム：入札者数で落札価格が決まる。最低落札価格に届かなければ流れる
     for (const u of units.filter((x) => x.listing.platform === 'auc')) {
       const collectBonus = p.kind === 'collect' || p.kind === 'luxury' ? 1.6 : 1;
       const bidders = poisson(s, demandOf(s, p) * 1.1 * collectBonus * rf);

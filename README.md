@@ -12,11 +12,20 @@ My Crypto Heroes（マイクリ）のヒーロー・エクステンション・�
 ビルドは不要です。静的ファイルをそのままサーバーで配信してください（ES Modules を使うため `file://` では動きません）。
 
 ```bash
-npm start            # = python3 -m http.server 8000
+npm run dev          # = python3 -m http.server 8000
 # → http://localhost:8000 を開く
 ```
 
-GitHub Pages で公開する場合は、リポジトリの Settings → Pages で「Deploy from a branch」を選び、ブランチのルートを指定するだけで動きます。
+### Vercel で公開する
+
+ビルド不要の静的サイトとしてそのまま動きます（設定は `vercel.json`）。
+
+1. Vercel の「Add New… → Project」でこのリポジトリをインポートする
+2. Framework Preset は「Other」のまま（`vercel.json` で `framework: null`・ビルドなし・ルート配信を指定済み）
+3. Deploy を押す。以降は push するたびに自動でデプロイされ、ブランチごとにプレビューURLが発行される
+
+CLI の場合はリポジトリのルートで `npx vercel`（本番は `npx vercel --prod`）。
+`test/`・`tools/`・`.github/` は `.vercelignore` でデプロイ対象から外しています。
 
 ### 基本ルール
 
@@ -77,6 +86,6 @@ npm run assets       # ../mycryptoheroes からアセットを取り込み直す
 - ヒーロー・エクステンション・エネミー画像、背景、BGM・SE：My Crypto Heroes（MCH Co., Ltd.）。[MCH デザインガイドライン](https://medium.com/mycryptoheroes/mch-design-guideline-ja-99ff0970ccdc)に基づく非営利の二次創作として使用しています。背景は MCH Co., Ltd. の許諾範囲で管理されている素材です。
 - クリスくん／マインちゃん：ドット絵 こじもこ
 - マイクリくん：原画 こはるさん／ドット絵 こじもこさん
-- 作中のプラットフォーム（メルクリ・クリオク・アマクリ）、商品、出来事はすべてフィクションです。法律・手数料の数値はゲーム用に簡略化しています。
+- 作中のプラットフォーム（プンシー＝OpenSea、ミィーム＝miime のパロディ、アマクリ）、商品、出来事はすべてフィクションです。法律・手数料の数値はゲーム用に簡略化しています。
 
 一般公開の前に、転売という題材についてマイクリ運営へ確認することを推奨しています（[ロードマップ](docs/03_roadmap.md)参照）。
