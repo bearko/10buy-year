@@ -68,7 +68,7 @@ export function createGame(seed = (Date.now() ^ (Math.random() * 1e9)) >>> 0) {
     stats: {
       revenue: 0, fees: 0, shipping: 0, cogs: 0, spent: 0, expenses: 0, refunds: 0, interest: 0, repaid: 0, taxPaid: 0,
       soldUnits: 0, boughtUnits: 0, purchases: 0, purchasedSold: 0, scarceBought: 0, troubles: 0, alcoholSold: 0,
-      bestSale: null, firstFlip: null, byPid: {},
+      bestSale: null, firstFlip: null, byPid: {}, storeTrips: 0, pointsEarned: 0, usedSold: 0, selfShipped: 0,
     },
   };
   initMarket(s);

@@ -17,7 +17,8 @@ import { $, clear, h, yenFmt } from './ui/dom.js';
 import { renderHud, renderTicker } from './ui/hud.js';
 import { openModal, toast } from './ui/modal.js';
 import { choose, hidePartner, isAuto, say, setAuto, setBackground, setMessage, setTextSpeed, showChris, showInfo } from './ui/stage.js';
-import { bizModal, menuModal, treeModal } from './ui/status.js';
+import { bizModal, menuModal } from './ui/status.js';
+import { openTree } from './ui/tree.js';
 import { inventoryModal, marketModal, offersModal, salesModal } from './ui/trade.js';
 
 const AUTO_WEEKS = 4;
@@ -201,7 +202,7 @@ function renderTabs() {
   const tabs = [
     { label: '在庫', open: () => inventoryModal(state, refresh), badge: unlisted ? `${unlisted}` : '' },
     { label: '相場', open: () => marketModal(state), badge: state.news.length ? `${state.news.length}` : '', lock: !hasSkill(state, 'eye_market') && 'スキルツリー「相場チェック」で解放' },
-    { label: 'ツリー', open: () => treeModal(state, refresh), lock: !tutorialDone(state) && 'チュートリアルを終えると開ける' },
+    { label: 'ツリー', open: () => openTree(state, refresh), lock: !tutorialDone(state) && 'チュートリアルを終えると開ける' },
     { label: '経営', open: () => bizModal(state, refresh, playSteps) },
     { label: 'メニュー', open: () => menuModal({ s: state, onTitle: toTitle, onRestart: restart, speed: () => speed, onSpeed: setSpeed, onChange: refresh }) },
   ];

@@ -3,6 +3,7 @@ import { PRODUCTS, productOf } from '../data/products.js';
 import { chance, gauss, hashNoise, randInt, randRange } from './rng.js';
 import { clamp, hasSkill } from './effects.js';
 import { woy, yearOf } from './calendar.js';
+import { perk } from './perks.js';
 
 const PRODUCT_INDEX = Object.fromEntries(PRODUCTS.map((p, i) => [p.id, i]));
 
@@ -212,7 +213,7 @@ export function estimateError(s) {
   if (hasSkill(s, 'eye_market')) amp *= 0.75;
   if (hasSkill(s, 'eye_ai')) amp *= 0.7;
   if (hasSkill(s, 'crowd_madness')) amp *= 0.5;
-  return amp;
+  return amp * perk(s, 'estErr');
 }
 
 export function estimateAt(s, pid, week, truePrice) {

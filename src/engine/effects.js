@@ -1,5 +1,6 @@
 // ゲーム状態を変更する小さなヘルパー群。イベントスクリプトから呼ばれる。
 import { chance } from './rng.js';
+import { perk } from './perks.js';
 
 export const MOOD_LABELS = ['絶不調', '不調', '普通', '好調', '絶好調'];
 export const MOOD_MULT = [0.6, 0.8, 1.0, 1.2, 1.4];
@@ -41,7 +42,7 @@ export function addHate(s, n) {
 
 // 経験点を加算する。やる気補正をかけるかどうかは呼び出し側で選ぶ。
 export function addExp(s, gains, { mood = false } = {}) {
-  const mult = mood ? MOOD_MULT[s.mood] : 1;
+  const mult = mood ? MOOD_MULT[s.mood] * perk(s, 'expGain') : 1;
   const applied = {};
   for (const [k, v] of Object.entries(gains)) {
     const n = Math.round(v * mult);

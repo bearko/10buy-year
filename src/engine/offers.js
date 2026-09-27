@@ -4,6 +4,7 @@ import { chance, pick, randInt, randRange, weightedPick } from './rng.js';
 import { flag, hasSkill } from './effects.js';
 import { beforeRelease, estimate, estimateUpcoming, inBoom, inPreSale, isReleased, isRestockWeek, priceOf, roundPrice } from './market.js';
 import { woy, yearOf } from './calendar.js';
+import { perk } from './perks.js';
 
 let oidSeq = 1;
 const byKind = (kind) => PRODUCTS.filter((p) => p.kind === kind);
@@ -14,7 +15,8 @@ function makeOffer(s, pid, fields) {
   const offer = { oid: oidSeq++, pid, maxQty: 1, points: 0, fakeRate: 0, ...fields };
   offer.est = offer.upcoming ? estimateUpcoming(s, pid) : estimate(s, pid);
   // 目利きが高いと、偽物が混じっていそうなオファーに気づける
-  offer.warn = offer.fakeRate >= 0.25 && chance(s, 0.1 + s.abilities.eye / 100 + (hasSkill(s, 'eye_fake') ? 0.3 : 0));
+  const detect = 0.1 + s.abilities.eye / 100 + (hasSkill(s, 'eye_fake') ? 0.3 : 0) + perk(s, 'fakeDetect');
+  offer.warn = (offer.fakeRate >= 0.25 || (perk(s, 'fakeDetect') >= 1 && offer.fakeRate >= 0.05)) && chance(s, detect);
   offer.fakeNote = product.fakeNote;
   return offer;
 }
@@ -34,7 +36,8 @@ export function storeOffers(s) {
   if (hasSkill(s, 'ino_map')) n += 2;
   if (hasSkill(s, 'tenka')) n += 1;
   if (hasSkill(s, 'eye_ai')) n += 2;
-  const discountBoost = (s.mods?.storeDiscount ?? 0) + (hasSkill(s, 'bargain') ? 0.05 : 0);
+  n += perk(s, 'storeOffers');
+  const discountBoost = (s.mods?.storeDiscount ?? 0) + (hasSkill(s, 'bargain') ? 0.05 : 0) + perk(s, 'storeDiscount');
 
   const gens = [
     {
@@ -97,7 +100,7 @@ export function storeOffers(s) {
         return makeOffer(s, p.id, {
           source: 'used',
           label: 'リサイクルショップの中古品',
-          price: roundPrice(mp * randRange(s, 0.3, 0.6)),
+          price: roundPrice(mp * randRange(s, 0.3, 0.6) * perk(s, 'usedPrice')),
           maxQty: 1,
           fakeRate: product.fakeRisk * 0.35,
         });
@@ -121,9 +124,9 @@ function firstWagon(s) {
 
 // ---- 電脳せどり ----
 export function onlineOffers(s) {
-  const n = 4 + Math.floor(s.abilities.buy / 35) + (hasSkill(s, 'eye_ai') ? 2 : 0);
+  const n = 4 + Math.floor(s.abilities.buy / 35) + (hasSkill(s, 'eye_ai') ? 2 : 0) + perk(s, 'onlineOffers');
   const lottery = hasSkill(s, 'src_lottery');
-  const pointBoost = (s.mods?.onlinePoints ?? 1) * (1 + (hasSkill(s, 'poikatsu') ? 0.4 : 0));
+  const pointBoost = (s.mods?.onlinePoints ?? 1) * (1 + (hasSkill(s, 'poikatsu') ? 0.4 : 0)) * perk(s, 'pointsMult');
   const upcoming = lottery ? byKind('hype').filter((p) => beforeRelease(s, p)) : [];
   const restocked = lottery ? byKind('hype').filter((p) => isReleased(s, p) && (isRestockWeek(s, p.id) || chance(s, 0.08))) : [];
   const gens = [
@@ -232,6 +235,7 @@ export function lotteryWinRate(s, product) {
   let r = product.odds * (1 + s.abilities.buy / 100);
   if (hasSkill(s, 'lottery_nose')) r *= 1.3;
   if (flag(s, 'lotteryPenalty')) r *= 0.6;
+  r *= perk(s, 'lotteryMult');
   return Math.min(0.8, r);
 }
 
@@ -255,7 +259,7 @@ export function auctionOffers(s) {
     make: () => makeOffer(s, p.id, {
       source: 'auction',
       label: '業者オークションで落札できる',
-      price: roundPrice(priceOf(s, p.id) * randRange(s, 0.5, 0.72)),
+      price: roundPrice(priceOf(s, p.id) * randRange(s, 0.5, 0.72) * perk(s, 'usedPrice')),
       maxQty: p.retail >= 100000 ? 1 : randInt(s, 2, 8),
       fakeRate: p.fakeRisk * 0.05,
     }),

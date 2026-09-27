@@ -17,6 +17,7 @@ import { applyShock, inBoom, isReleased, priceOf } from '../engine/market.js';
 import { addUnits, overCapacity } from '../engine/inventory.js';
 import { fiscalIncome, MIN_PAYMENT, taxFor } from '../engine/finance.js';
 import { choice, gain, info, narr, sfx, talk } from '../engine/steps.js';
+import { perk } from '../engine/perks.js';
 
 const hold = (s, pid) => s.inventory.filter((u) => u.pid === pid && u.arrive <= s.week);
 const profit = (s) => s.stats.revenue - s.stats.fees - s.stats.shipping - s.stats.cogs;
@@ -182,6 +183,7 @@ export const EVENTS = [
       const income = Math.max(0, fiscalIncome(s));
       let tax = taxFor(s, income);
       if (hasSkill(s, 'ledger')) tax = Math.round(tax * 0.7);
+      tax = Math.round(tax * perk(s, 'taxMult'));
       const kind = s.corp ? '法人税など（決算）' : '所得税・住民税';
       const lines = [
         talk('mine', s.corp ? '決算の季節よ。会社の利益にも税金がかかるわ。' : 'そろそろ確定申告の季節よ。転売の利益も立派な所得。申告しないと大変なことになるわ。', 'pointer'),

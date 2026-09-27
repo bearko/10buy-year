@@ -5,6 +5,7 @@ import { addHate, addRating, addStamina, hasSkill } from './effects.js';
 import { demandOf, roundPrice, unitPrice } from './market.js';
 import { platformFee, removeUnit } from './inventory.js';
 import { addExpense, addHours, recordSale } from './kpi.js';
+import { perk } from './perks.js';
 
 export const OUTSOURCE_SHIP_FEE = 400;
 
@@ -13,6 +14,7 @@ export function sellChance(s, ratio) {
   let center = 1.06 + s.abilities.list / 1000;
   if (hasSkill(s, 'photogenic')) center += 0.05;
   if (hasSkill(s, 'doyou')) center += 0.12;
+  center += perk(s, 'sellCenter');
   return 1 / (1 + Math.exp((ratio - center) / 0.07));
 }
 
@@ -46,7 +48,7 @@ export function resolveSales(s) {
   for (const p of PRODUCTS) {
     const units = s.inventory.filter((u) => u.pid === p.id && u.listing);
     if (!units.length) continue;
-    const d = demandOf(s, p);
+    const d = demandOf(s, p) * perk(s, 'buyers');
 
     // プンシー（フリマ）
     const shops = hasSkill(s, 'ch_shops') ? 1.3 : 1;
@@ -83,7 +85,7 @@ export function shipStaminaMult(s) {
   let m = 1 - s.abilities.pack / 200;
   if (hasSkill(s, 'pack_master')) m *= 0.5;
   if (hasSkill(s, 'tendon')) m *= 1.5;
-  return m;
+  return m * perk(s, 'shipStamina');
 }
 
 // 売れた商品の発送。体力が足りなければ発送遅延になる。倉庫（アマクリ）と外注は体力を使わない。
@@ -102,6 +104,7 @@ export function shipAll(s, out) {
       if (s.stamina >= cost && s.sick <= 0) {
         addStamina(s, -cost);
         addHours(s, 0.4);
+        s.stats.selfShipped = (s.stats.selfShipped || 0) + 1;
         out.staminaUsed += cost;
       } else {
         out.delayed++;
@@ -111,7 +114,7 @@ export function shipAll(s, out) {
     }
     finalizeSale(s, sale, out);
   }
-  if (outsourced) addExpense(s, outsourced * OUTSOURCE_SHIP_FEE, `外注：梱包・発送 ${outsourced}件`);
+  if (outsourced) addExpense(s, outsourced * OUTSOURCE_SHIP_FEE * perk(s, 'outShipFee'), `外注：梱包・発送 ${outsourced}件`);
   out.outsourced = outsourced;
 }
 
@@ -134,6 +137,7 @@ export function finalizeSale(s, sale, out) {
   st.shipping += sale.ship;
   st.cogs += u.cost;
   st.soldUnits++;
+  if (product.used && !u.home) st.usedSold = (st.usedSold || 0) + 1;
   if (!u.home) {
     st.purchasedSold++;
     if (!st.firstFlip) st.firstFlip = { pid: sale.pid, price: sale.price, cost: u.cost, platform: sale.platform };
@@ -166,6 +170,7 @@ function rollTrouble(s, sale) {
   if (hasSkill(s, 'quick_reply')) rate *= 0.85;
   if (s.rating < 30) rate *= 1.3;
   if (sale.platform === 'ama') rate *= 0.5;
+  rate *= perk(s, 'trouble');
   if (sale.delayed) rate += 0.15;
   if (!chance(s, rate)) return null;
   const expensive = sale.price >= 30000;
