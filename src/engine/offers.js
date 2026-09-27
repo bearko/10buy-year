@@ -5,6 +5,7 @@ import { flag, hasSkill } from './effects.js';
 import { beforeRelease, estimate, estimateUpcoming, inBoom, inPreSale, isReleased, isRestockWeek, priceOf, roundPrice } from './market.js';
 import { woy, yearOf } from './calendar.js';
 import { perk } from './perks.js';
+import { buildListing } from './listing.js';
 
 let oidSeq = 1;
 const byKind = (kind) => PRODUCTS.filter((p) => p.kind === kind);
@@ -14,10 +15,10 @@ function makeOffer(s, pid, fields) {
   const product = productOf(pid);
   const offer = { oid: oidSeq++, pid, maxQty: 1, points: 0, fakeRate: 0, ...fields };
   offer.est = offer.upcoming ? estimateUpcoming(s, pid) : estimate(s, pid);
-  // 目利きが高いと、偽物が混じっていそうなオファーに気づける
-  const detect = 0.1 + s.abilities.eye / 100 + (hasSkill(s, 'eye_fake') ? 0.3 : 0) + perk(s, 'fakeDetect');
-  offer.warn = (offer.fakeRate >= 0.25 || (perk(s, 'fakeDetect') >= 1 && offer.fakeRate >= 0.05)) && chance(s, detect);
-  offer.fakeNote = product.fakeNote;
+  // 偽物かどうかは出品の時点で決まっている。高額品ほど「巧妙な偽物」が多い
+  offer.fake = offer.fakeRate > 0 && chance(s, offer.fakeRate);
+  offer.clever = offer.fake && chance(s, product.retail >= 100000 ? 0.45 : 0.3);
+  offer.listing = buildListing(s, offer);
   return offer;
 }
 

@@ -18,7 +18,8 @@ import { openModal, toast } from './ui/modal.js';
 import { choose, hidePartner, isAuto, say, setAuto, setBackground, setMessage, setTextSpeed, showChris, showInfo } from './ui/stage.js';
 import { bizModal, menuModal } from './ui/status.js';
 import { openTree } from './ui/tree.js';
-import { inventoryModal, marketModal, offersModal, salesModal } from './ui/trade.js';
+import { offersModal } from './ui/shop.js';
+import { inventoryModal, marketModal, salesModal } from './ui/trade.js';
 
 const AUTO_WEEKS = 4;
 let state = null;

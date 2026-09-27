@@ -1,9 +1,9 @@
 // 仕入れ・販売まわりの画面（オファー、週の売上、在庫と出品、相場）
-import { productImage, productOf, shippingCost, SIZE_INFO } from '../data/products.js';
+import { productImage, productOf, shippingCost } from '../data/products.js';
 import { weekLabel, yearOf } from '../engine/calendar.js';
 import { flag, hasSkill } from '../engine/effects.js';
 import {
-  activeUnits, buy, buybackQuote, capacity, cardAvailable, groupInventory, hardCapacity, listedUnits, listingCap, listUnits, platformFee, platformsFor, PLATFORMS, sellToBuyer, spaceUsed, unlistUnits,
+  activeUnits, buybackQuote, capacity, groupInventory, hardCapacity, listedUnits, listingCap, listUnits, platformFee, platformsFor, PLATFORMS, sellToBuyer, spaceUsed, unlistUnits,
 } from '../engine/inventory.js';
 import { confidenceLabel, estimateAt, estimateUnit, isReleased, roundPrice, visibleProducts } from '../engine/market.js';
 import { openLotteries } from '../engine/offers.js';
@@ -33,84 +33,6 @@ function editionTag(s, u) {
   const cur = s.market[u.pid].edition;
   if (cur && u.edition < cur) return h('span', { class: 'tag bad' }, `${u.edition}年目モデル（旧型）`);
   return yearOf(s.week) > 1 ? h('span', { class: 'tag' }, `${u.edition}年目モデル`) : null;
-}
-
-// ---------------- 仕入れ（オファー） ----------------
-export function offersModal(s, step, onChange) {
-  const qty = new Map(step.offers.map((o) => [o.oid, o.minQty || 1]));
-  const modal = openModal(step.title || '仕入れ', (body, api) => {
-    body.append(
-      h('div', { class: 'wallet' },
-        h('span', {}, `現金 ${yenFmt(s.cash)}`),
-        h('span', {}, `カード残枠 ${yenFmt(cardAvailable(s))}`),
-        s.points ? h('span', {}, `${s.points.toLocaleString()}pt`) : null,
-        h('span', { class: spaceUsed(s) > capacity(s) ? 'neg' : '' }, `置き場 ${spaceUsed(s)}/${capacity(s)}`),
-      ),
-      step.note ? h('p', { class: 'note' }, step.note) : null,
-      canCalc(s) ? null : h('p', { class: 'note' }, '手数料10%＋送料が引かれる'),
-    );
-    if (step.autoBought?.length) body.append(h('div', { class: 'news-list' }, h('div', { class: 'sub' }, '外注が自動で仕入れた'), ...step.autoBought.map((m) => h('div', { class: 'news up' }, m))));
-    if (!step.offers.length) body.append(h('p', { class: 'empty' }, '目ぼしい商品は見つからなかった…'));
-    for (const o of step.offers) {
-      const p = productOf(o.pid);
-      const minQ = o.minQty || 1;
-      const q = Math.max(minQ, Math.min(qty.get(o.oid), Math.max(1, o.maxQty)));
-      const profit = expectedProfit(s, o.pid, o.est, o.price) + Math.round(o.price * (o.points || 0));
-      const soldOut = o.maxQty < minQ;
-      body.append(
-        h('div', { class: `card offer ${soldOut ? 'done' : ''}` },
-          itemIcon(o.pid),
-          h('div', { class: 'grow' },
-            h('div', { class: 'name' }, p.name, h('small', {}, ` ${p.genre}`)),
-            h('div', { class: 'tags' },
-              h('span', { class: 'tag src' }, o.label),
-              h('span', { class: 'tag' }, KIND_LABEL[p.kind]),
-              h('span', { class: 'tag' }, `サイズ${SIZE_INFO[p.size].label}`),
-              o.points ? h('span', { class: 'tag good' }, `${Math.round(o.points * 100)}%pt還元`) : null,
-              o.upcoming ? h('span', { class: 'tag' }, '発売前（予想相場）') : null,
-              o.arriveWeek > s.week ? h('span', { class: 'tag' }, `${weekLabel(o.arriveWeek)}着`) : null,
-              o.minQty ? h('span', { class: 'tag' }, `最低${o.minQty}個`) : null,
-              p.used && !flag(s, 'license') ? h('span', { class: 'tag bad' }, '要古物商') : null,
-              p.alcohol && flag(s, 'noAlcohol') ? h('span', { class: 'tag bad' }, '酒類：出品不可') : null,
-            ),
-            h('div', { class: 'nums' },
-              h('span', {}, `仕入れ ${yenFmt(o.price)}`),
-              h('span', {}, `${estLabel(s)} ${yenFmt(o.est)}`, h('small', {}, `（確度${confidenceLabel(s)}）`)),
-              profitText(s, profit),
-            ),
-            o.warn ? h('div', { class: 'warn' }, `⚠ なんだか怪しい…${o.fakeNote ? `（${o.fakeNote}？）` : '（偽物かも）'}`) : null,
-            soldOut
-              ? h('div', { class: 'done-label' }, '購入済み')
-              : h('div', { class: 'buy-row' },
-                o.maxQty > minQ
-                  ? h('div', { class: 'stepper' },
-                    h('button', { class: 'btn small', onclick: () => { qty.set(o.oid, Math.max(minQ, q - (o.minQty ? 10 : 1))); api.refresh(); } }, '−'),
-                    h('span', {}, `${q}個`),
-                    h('button', { class: 'btn small', onclick: () => { qty.set(o.oid, Math.min(o.maxQty, q + (o.minQty ? 10 : 1))); api.refresh(); } }, '＋'),
-                  )
-                  : h('span', { class: 'qty1' }, `${q}個`),
-                h('button', { class: 'btn buy', onclick: () => doBuy(o, q, 'cash', api) }, `現金 ${yenFmt(o.price * q)}`),
-                h('button', { class: 'btn buy card', onclick: () => doBuy(o, q, 'card', api) }, 'カード'),
-              ),
-          ),
-        ),
-      );
-    }
-  }, { closeLabel: '仕入れを終える' });
-
-  function doBuy(o, q, method, api) {
-    const p = productOf(o.pid);
-    if (p.used && !flag(s, 'license')) {
-      toast('中古品の仕入れには古物商許可が必要だ', 'bad');
-      return;
-    }
-    const res = buy(s, o, q, method);
-    toast(res.msg, res.ok ? 'good' : 'bad');
-    if (res.ok) playSe('buy');
-    api.refresh();
-    onChange?.();
-  }
-  return modal.closed;
 }
 
 // ---------------- 今週の売上 ----------------

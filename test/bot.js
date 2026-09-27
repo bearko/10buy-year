@@ -1,4 +1,5 @@
 // テスト・バランス調整用のヘッドレス自動プレイ。UI なしで10年（480週）を通しで遊ぶ。
+import { suspicion } from '../src/engine/listing.js';
 import { createGame } from '../src/engine/state.js';
 import { startWeek, endWeek } from '../src/engine/turn.js';
 import { performCommand, availableCommands, availableNightCommands } from '../src/engine/commands.js';
@@ -45,7 +46,7 @@ export const smartPolicy = {
       const est = process.env.ORACLE ? priceOf(s, o.pid) : o.est;
       const net = est * (1 - feeRate(s)) - shippingCost(p) + o.price * (o.points || 0);
       const margin = net - o.price;
-      if (o.warn) continue;
+      if (suspicion(s, o) >= 4) continue; // ふつうのプレイヤー並み：手がかりがそろったときだけ避ける
       if (p.used && !s.flags.license) continue;
       if (p.alcohol && s.flags.noAlcohol) continue;
       if (margin < Math.max(300, o.price * 0.1)) continue;

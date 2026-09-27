@@ -63,14 +63,14 @@ export const SKILLS = [
   // ---- 古物・目利き ----
   { id: 'eye_market', route: 'vintage', parent: 'src_home', depth: 1, lane: 0, kind: 'unlock', name: '相場チェック', desc: '「相場」画面が解放。売り切れ価格を調べる習慣で、推定相場の誤差が25%減る', cost: { info: 15 }, icon: I('int.png') },
   { id: 'license', route: 'vintage', parent: 'eye_market', depth: 2, lane: 0, kind: 'unlock', name: '古物商許可の取り方', desc: '「古物商許可を申請」が解放。中古を仕入れて売るなら必須', cost: { info: 15 }, icon: E(1016) },
-  { id: 'eye_fake', route: 'vintage', parent: 'eye_market', depth: 2, lane: 1, kind: 'perk', name: '真贋の知識', desc: '偽物が混じっていそうな仕入れ候補に気づきやすくなる', cost: { info: 40, mind: 20 }, icon: I('confused.png') },
+  { id: 'eye_fake', route: 'vintage', parent: 'eye_market', depth: 2, lane: 1, kind: 'perk', name: '真贋の知識', desc: '刻印・縫製・シュリンクなどの細部をもう1か所見られて、見誤りにくくなる', cost: { info: 40, mind: 20 }, icon: I('confused.png') },
   { id: 'crowd_madness', route: 'vintage', parent: 'eye_market', depth: 2, lane: -1, kind: 'gold', hero: 'newton', name: '群衆の狂気', desc: '相場推定の誤差が半分に。ブームの天井を察知できる', cost: { info: 80, mind: 50 }, icon: H(3043) },
   { id: 'src_used', route: 'vintage', parent: 'license', depth: 3, lane: 0, kind: 'unlock', name: 'リサイクルショップ・古本', desc: '店舗せどりで中古品・古本が仕入れられる（古物商許可が必要）', cost: { act: 20, info: 10 }, flag: 'license', icon: E(1008) },
   { id: 'serial_memo', route: 'vintage', parent: 'eye_fake', depth: 3, lane: 1, kind: 'perk', name: 'シリアル控え', desc: '発送前に写真とシリアルを記録。すり替え詐欺を撃退できる', cost: { tech: 25, info: 25 }, icon: E(1003) },
   { id: 'src_flea', route: 'vintage', parent: 'src_used', depth: 4, lane: -1, kind: 'unlock', name: 'フリマ仕入れ', desc: '電脳せどりで、フリマの相場より安い出品を仕入れられる（電脳せどりが必要）', cost: { info: 35, tech: 10 }, req: ['src_online'], icon: E(1112) },
   { id: 'src_auction', route: 'vintage', parent: 'src_used', depth: 4, lane: 0, kind: 'unlock', name: '業者オークション', desc: '「業者オークション」が解放。古物商だけが入れる市場。真贋リスクが低い（会費 月1万円）', cost: { info: 80, social: 40 }, stage: 3, monthly: 10000, icon: E(4069) },
   { id: 'rec_appraiser', route: 'vintage', parent: 'serial_memo', depth: 4, lane: 1, kind: 'record', name: '古物の目', desc: '推定相場の誤差-10%', record: { key: 'usedSold', target: 30, label: '中古・コレクター品を売った数' }, icon: E(4008) },
-  { id: 'cap_vintage', route: 'vintage', parent: 'src_auction', depth: 5, lane: 0, kind: 'capstone', name: '鑑定士', desc: '偽物が混じった仕入れ候補を必ず見抜く。中古・業者オークションの仕入れ値-8%', cost: { info: 150, mind: 80 }, icon: E(5509) },
+  { id: 'cap_vintage', route: 'vintage', parent: 'src_auction', depth: 5, lane: 0, kind: 'capstone', name: '鑑定士', desc: '鑑定眼：仕入れ候補の真贋がひと目で分かる。中古・業者オークションの仕入れ値-8%', cost: { info: 150, mind: 80 }, icon: E(5509) },
 
   // ---- 販路・出品 ----
   { id: 'ch_miime', route: 'sales', parent: 'src_home', depth: 1, lane: 0, kind: 'starter', name: 'ミィーム', desc: 'オークション。手数料10%。コレクター品は競り上がりやすい', cost: { tech: 15, info: 10 }, icon: E(1111) },

@@ -95,7 +95,7 @@ export function buy(s, offer, qty, method = 'cash') {
   for (let i = 0; i < qty; i++) {
     s.inventory.push(newUnit(s, offer.pid, offer.price, {
       arrive: offer.arriveWeek ?? s.week,
-      fake: offer.fakeRate > 0 && chance(s, offer.fakeRate),
+      fake: offer.fake ?? (offer.fakeRate > 0 && chance(s, offer.fakeRate)),
       stolen: !!offer.stolen,
       ...(offer.edition ? { edition: offer.edition } : {}),
     }));
