@@ -41,3 +41,31 @@ export function toast(text, tone = '') {
     setTimeout(() => el.remove(), 300);
   }, 1800);
 }
+
+// ゲーム内の確認ダイアログ。dontAsk を渡すと「次回から表示しない」チェックを出す
+export function confirmBox({ title, lines = [], okLabel = 'OK', cancelLabel = 'やめる', danger = false, dontAsk = false }) {
+  return new Promise((resolve) => {
+    let skip = false;
+    const finish = (ok) => {
+      root.remove();
+      window.removeEventListener('keydown', onKey);
+      resolve({ ok, dontAsk: skip });
+    };
+    const onKey = (e) => {
+      if (e.key === 'Escape') finish(false);
+    };
+    const root = h('div', { class: 'confirm-backdrop' },
+      h('div', { class: 'confirm', role: 'alertdialog', 'aria-label': title },
+        h('div', { class: 'confirm-title' }, title),
+        ...lines.map((l) => h('p', {}, l)),
+        dontAsk ? h('label', { class: 'confirm-skip' }, h('input', { type: 'checkbox', onchange: (e) => { skip = e.target.checked; } }), '次回から表示しない') : null,
+        h('div', { class: 'confirm-btns' },
+          h('button', { class: 'btn', onclick: () => finish(false) }, cancelLabel),
+          h('button', { class: `btn ${danger ? 'danger-fill' : 'primary'}`, onclick: () => finish(true) }, okLabel),
+        ),
+      ),
+    );
+    window.addEventListener('keydown', onKey);
+    $('#modal-root').append(root);
+  });
+}

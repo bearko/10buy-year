@@ -596,6 +596,38 @@ body.loot-show #side { display: none !important; }
 .inv-sub .feel { color: var(--muted); }
 .inv-range { width: 100%; accent-color: var(--gold); height: 28px; }
 .card.inv .buy-row { margin-top: 6px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.card.inv .buy-row .btn { padding: 8px 4px; font-size: 13px; white-space: nowrap; }
+.card.inv .buy-row .btn { min-width: 0; overflow: hidden; text-overflow: ellipsis; padding: 8px 2px; font-size: 12px; white-space: nowrap; }
 .card.inv .buy-row .btn.small { grid-column: 1 / -1; }
 .card.inv .btn:disabled { opacity: 0.45; cursor: default; }
+
+/* 確認ダイアログ */
+.confirm-backdrop { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; background: #000b; padding: 16px; }
+.confirm { width: min(360px, 100%); background: var(--bg); border: 2px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.confirm-title { color: var(--gold); font-size: 16px; margin-bottom: 6px; }
+.confirm p { margin: 4px 0; font-size: 14px; }
+.confirm-skip { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 13px; color: var(--muted); cursor: pointer; }
+.confirm-skip input, .inv-opt input { width: 18px; height: 18px; accent-color: var(--gold); }
+.confirm-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+.btn.danger-fill { background: #b8323b; border-color: #e35a63; color: #fff; font-weight: bold; }
+
+/* 一括操作（写真アプリの複数選択風） */
+.inv-opts { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 0 0 8px; }
+.inv-opt { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); cursor: pointer; }
+.inv-sel-btn { font: inherit; font-size: 12px; padding: 4px 12px; border-radius: 99px; border: 1px solid var(--info); background: none; color: var(--info); cursor: pointer; }
+.inv-sel-btn.on { background: var(--info); color: #06243a; }
+.inv-icon { position: relative; flex: none; }
+.sel-dot { position: absolute; left: -6px; top: -6px; width: 24px; height: 24px; border-radius: 99px; border: 2px solid #fffc; background: #0008; color: transparent; font-size: 13px; line-height: 1; cursor: pointer; display: grid; place-items: center; padding: 0; }
+.card.inv:not(.selecting) .sel-dot { opacity: 0.55; }
+.sel-dot.on { background: #3b82f6; border-color: #fff; color: #fff; }
+.card.inv { user-select: none; -webkit-user-select: none; transition: transform 0.12s, border-color 0.12s; }
+.card.inv.selecting { cursor: pointer; }
+.card.inv.selected { border-color: #3b82f6; background: #172a52; transform: scale(0.98); }
+.bulk-bar { position: sticky; bottom: -10px; z-index: 3; margin: 8px -12px -10px; padding: 10px 12px 12px; background: #0b1224f5; border-top: 2px solid #3b82f6; }
+.bulk-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.bulk-head b { flex: 1; }
+.bulk-x { width: 30px; height: 30px; border-radius: 99px; border: none; background: #fff2; color: #fff; font-size: 18px; cursor: pointer; }
+.bulk-all { font: inherit; font-size: 12px; background: none; border: 1px solid var(--line); color: var(--text); border-radius: 99px; padding: 4px 10px; cursor: pointer; }
+.bulk-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.bulk-btns .btn { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 8px 4px; font-size: 13px; white-space: nowrap; }
+.bulk-btns .btn small { font-size: 12px; opacity: 0.9; }
+.bulk-btns .btn:disabled { opacity: 0.45; }
