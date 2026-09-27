@@ -532,3 +532,7 @@ body.auto #message::after { content: 'オート進行中'; position: absolute; t
 .buy-bar .bb-cash { flex: 1; background: #e8413c; border-color: #e8413c; color: #fff; font-weight: 700; padding: 12px; }
 .buy-bar .bb-card { background: #fff; }
 .sold-out { flex: 1; text-align: center; padding: 12px; background: #bbb; color: #fff; border-radius: 8px; font-weight: 700; }
+
+/* チュートリアルの誘導：目標のパネルの上で指さしが跳ねる */
+.tnode.guide::after { content: '▼'; position: absolute; left: 50%; top: -30px; transform: translateX(-50%); color: #facc15; font-size: 20px; text-shadow: 0 0 8px #facc15aa; animation: guide-bounce 0.8s ease-in-out infinite; pointer-events: none; }
+@keyframes guide-bounce { 50% { transform: translate(-50%, -6px); } }

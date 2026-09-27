@@ -2,7 +2,7 @@
 import { CAPSTONE_NEED, ROUTES, ROUTE_MAP, ROUTE_LEVELS, SKILL_MAP, SKILLS, TREE_NODES, nodePos } from '../data/skills.js';
 import {
   ABILITIES, ABILITY_MAX, abilityCost, canAfford, EXP_NAME, EXP_TYPES, isOffRoute, learnSkill, nodeBlockers, nodeLv, nodeState, nodeVisible,
-  raiseAbility, rankOf, recordValue, skillCost,
+  claimableNodes, raiseAbility, rankOf, recordValue, skillCost,
 } from '../engine/abilities.js';
 import { mainRoutes, routeCounts, routeLevel, routePerkText } from '../engine/perks.js';
 import { playSe } from './audio.js';
@@ -27,7 +27,7 @@ function levelText(s, sk) {
   return owns(s, sk.id) ? '1/1' : '0/1';
 }
 
-export function openTree(s, onChange) {
+export function openTree(s, onChange, { focus = null } = {}) {
   return new Promise((resolve) => {
     let selected = null;
     let panel = null; // 'abilities' | 'red'
@@ -192,7 +192,7 @@ export function openTree(s, onChange) {
         }
         inner.push(hiddenGold ? h('span', { class: 'tnode-q' }, '？') : h('img', { src: sk.icon, alt: '', draggable: 'false' }));
         const btn = h('button', {
-          class: `tnode k-${sk.kind} ${cls} ${selected === sk.id ? 'sel' : ''} ${fresh.has(sk.id) ? 'pop' : ''}`,
+          class: `tnode k-${sk.kind} ${cls} ${selected === sk.id ? 'sel' : ''} ${fresh.has(sk.id) ? 'pop' : ''} ${sk.id === focus && !owns(s, sk.id) ? 'guide' : ''}`,
           style: { left: `${p.x}px`, top: `${p.y}px`, '--c': color, animationDelay: fresh.has(sk.id) ? `${fresh.get(sk.id) * 110 + 380}ms` : null },
           'data-id': sk.id,
           'aria-label': sk.name,
@@ -230,7 +230,7 @@ export function openTree(s, onChange) {
           class: `tree-btn gold ${free ? 'free' : ''}`,
           disabled: !afford,
           onclick: () => unlock(sk),
-        }, free ? '無料で解放' : sk.kind === 'repeat' && nodeLv(s, sk.id) > 0 ? '強化する' : '解放する', free ? null : h('span', { class: 'cost-row' }, ...costText(cost)));
+        }, free ? '条件達成！ 解放する' : sk.kind === 'repeat' && nodeLv(s, sk.id) > 0 ? '強化する' : '解放する', free ? null : h('span', { class: 'cost-row' }, ...costText(cost)));
       } else action = h('button', { class: 'tree-btn', disabled: true }, 'まだ解放できない');
       add(
         h('div', { class: 'sheet-top' },
@@ -256,7 +256,7 @@ export function openTree(s, onChange) {
 
     function renderIdle() {
       const counts = routeCounts(s);
-      const claimable = TREE_NODES.filter((n) => nodeVisible(s, n.id) && nodeState(s, n.id) === 'available' && (n.kind === 'record' || canAfford(s, skillCost(s, n.id))));
+      const claimable = claimableNodes(s);
       const nextRecord = TREE_NODES.filter((n) => n.kind === 'record' && !owns(s, n.id))
         .map((n) => ({ n, v: recordValue(s, n.record.key) / n.record.target }))
         .sort((a, b) => b.v - a.v)[0];
@@ -330,7 +330,7 @@ export function openTree(s, onChange) {
       const lvBefore = routeLevel(s, sk.route);
       if (!learnSkill(s, sk.id)) return;
       playSe('unlock');
-      toast(`「${sk.name}」を解放！ ${sk.desc}`, 'good');
+      toast(`「${sk.name}」を解放！`, 'good');
       const fresh = new Map();
       let i = 0;
       for (const n of TREE_NODES) if (nodeVisible(s, n.id) && !before.has(n.id)) fresh.set(n.id, i++);
@@ -413,6 +413,9 @@ export function openTree(s, onChange) {
     }
 
     renderAll();
-    requestAnimationFrame(() => centerOn('src_home'));
+    // チュートリアルの誘導：目標のパネルを選んだ状態で開く
+    const guide = focus && !owns(s, focus) && nodeVisible(s, focus) ? focus : null;
+    if (guide) requestAnimationFrame(() => select(guide, true));
+    else requestAnimationFrame(() => centerOn('src_home'));
   });
 }
