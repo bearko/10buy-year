@@ -11,22 +11,33 @@ import { addUnits, overCapacity } from './inventory.js';
 import { drawEvents } from './events.js';
 import { bg, choice, gain, info, narr, offers, talk } from './steps.js';
 
+const E = (id) => `assets/extensions/${id}.png`;
+const I = (name) => `assets/icons/${name}`;
+
+// 行動カードの分類。トップ画面には分類だけを並べ、タップで中身を開く
+export const GROUPS = [
+  { id: 'buy', name: '仕入れ', icon: I('gum.png') },
+  { id: 'sell', name: '出品', icon: E(1003) },
+  { id: 'out', name: '外出', icon: E(1031) },
+  { id: 'rest', name: '休む', icon: I('sleep.png') },
+];
+
 // node: その行動を解放するスキルツリーのノード / hours: 作業時間（時間単価の計算に使う）
 export const COMMANDS = [
-  { id: 'home_search', node: 'src_home', name: '家の中を探す', desc: '押し入れやクローゼットから、売れそうな不用品を探す', stamina: 5, exp: { info: 4, tech: 3 }, hours: 3, bg: 'home' },
-  { id: 'store', node: 'src_store', name: '店舗せどり', desc: '近所の店を回って、ワゴンや値札ミスの掘り出し物を探す', stamina: 15, exp: { act: 12, info: 5, social: 2 }, hours: 10, bg: 'store' },
-  { id: 'online', node: 'src_online', name: '電脳せどり', desc: '通販のポイント還元・予約・フリマの安値を探す', stamina: 8, exp: { info: 13, tech: 4 }, hours: 5, bg: 'online' },
-  { id: 'lottery', node: 'src_lottery', name: '抽選に応募', desc: '受付中の限定品の抽選にまとめて応募する（結果は翌週）', stamina: 5, exp: { info: 6, mind: 6 }, hours: 2, bg: 'online' },
-  { id: 'queue', node: 'src_queue', name: '行列に並ぶ', desc: '発売日・再販日に早朝から並ぶ。キツいが確実性は高い', stamina: 28, exp: { act: 15, mind: 10 }, hours: 8, bg: 'queue' },
-  { id: 'auction', node: 'src_auction', name: '業者オークション', desc: '古物商だけの市場で、中古・コレクター品を相場の5〜7割で仕入れる', stamina: 10, exp: { info: 10, social: 8 }, hours: 6, bg: 'event' },
-  { id: 'wholesale', node: 'src_wholesale', name: '問屋と商談', desc: '定番品をロット単位で卸値仕入れ。数が多いぶん販路と在庫スペースが要る', stamina: 8, exp: { social: 14, info: 6 }, hours: 5, bg: 'event' },
-  { id: 'listing', name: '撮影・出品作業', desc: '写真を撮り直し説明文を磨く。今週の売れ行きが1.25倍に', stamina: 12, exp: { tech: 14, info: 4 }, hours: 6, bg: 'home' },
-  { id: 'meetup', node: 'net_meetup', name: '物販交流会', desc: 'せどり仲間と情報交換（参加費3,000円）', stamina: 10, exp: { social: 14, info: 6 }, cost: 3000, hours: 4, bg: 'event' },
-  { id: 'study', name: '勉強する', desc: '本や動画で相場・法律・税金を学ぶ', stamina: 4, exp: { info: 9, mind: 7, tech: 2 }, hours: 3, bg: 'study' },
-  { id: 'parttime', name: '日雇いバイト', desc: '倉庫で働いて確実に稼ぐ（+22,000円）', stamina: 25, exp: { act: 4, mind: 5 }, pay: 22000, hours: 0, bg: 'warehouse' },
-  { id: 'play', name: '気晴らし', desc: '公園や喫茶店でリフレッシュ（8,000円）。やる気と体力が回復', stamina: -15, exp: { mind: 3 }, cost: 8000, hours: 0, bg: 'park' },
-  { id: 'rest', name: '休む', desc: '一日中寝る。体力が大きく回復する', stamina: 0, heal: 45, exp: {}, hours: 0, bg: 'home' },
-  { id: 'license', node: 'license', name: '古物商許可を申請', desc: '警察署で申請（19,000円）。約6週間で許可が下りる', stamina: 8, exp: { info: 5, mind: 3 }, cost: 19000, hours: 3, bg: 'study' },
+  { id: 'home_search', group: 'buy', icon: E(1059), node: 'src_home', name: '家の中を探す', desc: '押し入れから売れそうな物を探す', stamina: 5, exp: { info: 4, tech: 3 }, hours: 3, bg: 'home' },
+  { id: 'store', group: 'buy', icon: E(2125), node: 'src_store', name: '店舗せどり', desc: 'ワゴンや値札ミスの掘り出し物を探す', stamina: 15, exp: { act: 12, info: 5, social: 2 }, hours: 10, bg: 'store' },
+  { id: 'online', group: 'buy', icon: E(5075), node: 'src_online', name: '電脳せどり', desc: 'ポイント還元・予約・フリマの安値', stamina: 8, exp: { info: 13, tech: 4 }, hours: 5, bg: 'online' },
+  { id: 'lottery', group: 'buy', icon: E(1016), node: 'src_lottery', name: '抽選に応募', desc: '限定品の抽選。結果は翌週', stamina: 5, exp: { info: 6, mind: 6 }, hours: 2, bg: 'online' },
+  { id: 'queue', group: 'buy', icon: E(5531), node: 'src_queue', name: '行列に並ぶ', desc: '発売日に始発で並ぶ', stamina: 28, exp: { act: 15, mind: 10 }, hours: 8, bg: 'queue' },
+  { id: 'auction', group: 'buy', icon: E(5509), node: 'src_auction', name: '業者オークション', desc: '古物商だけの市場。相場の5〜7割', stamina: 10, exp: { info: 10, social: 8 }, hours: 6, bg: 'event' },
+  { id: 'wholesale', group: 'buy', icon: E(1058), node: 'src_wholesale', name: '問屋と商談', desc: '定番品をロットで卸値仕入れ', stamina: 8, exp: { social: 14, info: 6 }, hours: 5, bg: 'event' },
+  { id: 'listing', group: 'sell', icon: I('buf_agi.png'), name: '撮影・出品作業', desc: '今週の売れ行き1.25倍', stamina: 12, exp: { tech: 14, info: 4 }, hours: 6, bg: 'home' },
+  { id: 'meetup', group: 'out', icon: E(3112), node: 'net_meetup', name: '物販交流会', desc: 'せどり仲間と情報交換', stamina: 10, exp: { social: 14, info: 6 }, cost: 3000, hours: 4, bg: 'event' },
+  { id: 'study', group: 'out', icon: E(4008), name: '図書館で勉強', desc: '相場・法律・税金を学ぶ', stamina: 4, exp: { info: 9, mind: 7, tech: 2 }, hours: 3, bg: 'study' },
+  { id: 'parttime', group: 'out', icon: I('phy.png'), name: '日雇いバイト', desc: '倉庫で働いて確実に稼ぐ', stamina: 25, exp: { act: 4, mind: 5 }, pay: 22000, hours: 0, bg: 'warehouse' },
+  { id: 'play', group: 'out', icon: E(3055), name: '気晴らし', desc: 'やる気と体力が回復', stamina: -15, exp: { mind: 3 }, cost: 8000, hours: 0, bg: 'park' },
+  { id: 'rest', group: 'rest', icon: I('sleep.png'), name: '休む', desc: '一日中寝る', stamina: 0, heal: 45, exp: {}, hours: 0, bg: 'home' },
+  { id: 'license', group: 'out', icon: E(4016), node: 'license', name: '古物商許可を申請', desc: '警察署へ。許可まで約6週間', stamina: 8, exp: { info: 5, mind: 3 }, cost: 19000, hours: 3, bg: 'study' },
 ];
 export const COMMAND_MAP = Object.fromEntries(COMMANDS.map((c) => [c.id, c]));
 
@@ -57,6 +68,19 @@ export function staminaCost(s, cmd) {
   if (cmd.id === 'store' && hasSkill(s, 'backpain')) cost = Math.round(cost * 1.3);
   if (cmd.id === 'store') cost = Math.round(cost * perk(s, 'storeStamina'));
   return cost;
+}
+
+export function restHeal(s) {
+  let heal = COMMAND_MAP.rest.heal;
+  if (hasSkill(s, 'insomnia')) heal *= 0.6;
+  if (overCapacity(s)) heal *= 0.5;
+  return Math.round(heal);
+}
+
+// 行動したときの体力・所持金の増減（画面の予告表示に使う）
+export function commandPreview(s, cmd, { night = false } = {}) {
+  const stamina = cmd.heal ? restHeal(s) : -(staminaCost(s, cmd) + (night ? NIGHT_EXTRA_STAMINA : 0));
+  return { stamina, cash: (cmd.pay || 0) - (cmd.cost || 0), risk: sickRisk(s, cmd) };
 }
 
 // 体調不良率（体力が低いまま重い行動をすると上がる）
@@ -124,7 +148,7 @@ const HANDLERS = {
     const list = storeOffers(s);
     return [
       talk('chris', pick(s, ['よし、今日は駅前から郊外まで5店舗回るぞ！', 'ワゴンの奥に宝が眠ってる…はず！', '値札の貼り替え日を狙って来たんだ。']), 'guts'),
-      offers(list, '店舗で見つけた商品', '推定相場と仕入れ値の差が利益の目安。手数料10%と送料も忘れずに'),
+      offers(list, '店舗で見つけた商品'),
     ];
   },
   online(s) {
@@ -189,20 +213,20 @@ const HANDLERS = {
   auction(s) {
     return [
       narr('会員証を見せて、業者オークションの会場に入った。プロの目利きが静かに札を入れていく。'),
-      offers(auctionOffers(s), '業者オークションの出品物', '真贋チェック済みの出品が多い。ただし相場の5〜7割なので、手数料と送料を引いて利益が出るかよく見て'),
+      offers(auctionOffers(s), '業者オークションの出品物', '真贋チェック済みが多い'),
     ];
   },
   wholesale(s) {
     return [
       narr('問屋の担当者と商談。「ロットでまとめていただけるなら、この掛け率で出せます」'),
-      offers(wholesaleOffers(s), '問屋の卸値リスト', '最低ロットは20個。売り切れる販路と在庫スペースがあるか確認して'),
+      offers(wholesaleOffers(s), '問屋の卸値リスト', '最低ロット20個'),
     ];
   },
   listing(s) {
     s.listBoost = true;
     return [
       talk('chris', pick(s, ['自然光で撮り直して、箱の角まで写す！', '説明文に「喫煙者・ペットなし」「即日発送」…と。', 'ハッシュタグもつけて検索に引っかかるように！']), 'guts'),
-      info('出品作業', ['今週は出品中の商品が売れやすい（1.25倍）', '在庫画面で出品しておくのを忘れずに']),
+      info('出品作業', ['今週の売れ行き×1.25']),
     ];
   },
   meetup(s) {
@@ -220,10 +244,7 @@ const HANDLERS = {
     return [narr(pick(s, ['公園でぼーっとした。スマホの通知はオフにした。', '喫茶店で、相場のことを考えずにコーヒーを飲んだ。'])), info('リフレッシュ', ['体力 +15', d ? 'やる気が上がった' : ''], 'good')];
   },
   rest(s) {
-    let heal = COMMAND_MAP.rest.heal;
-    if (hasSkill(s, 'insomnia')) heal *= 0.6;
-    if (overCapacity(s)) heal *= 0.5;
-    heal = Math.round(heal);
+    const heal = restHeal(s);
     addStamina(s, heal);
     const lines = [narr(s.sick > 0 ? '布団から出られない…。' : 'ぐっすり眠った。'), info('休養', [`体力 +${heal}`], 'good')];
     if (s.sick > 0) s.sick--;

@@ -262,7 +262,6 @@ export function openTree(s, onChange) {
         .sort((a, b) => b.v - a.v)[0];
       const main = mainRoutes(s)[0];
       add(
-        h('p', { class: 'sheet-hint' }, 'パネルをタップすると詳細。ドラッグで移動、ピンチ／ホイールで拡大縮小。'),
         claimable.length
           ? h('button', { class: 'sheet-go ok', onclick: () => select(claimable[0].id, true) }, `▶ 解放できます：${claimable[0].name}${claimable.length > 1 ? ` ほか${claimable.length - 1}` : ''}（タップで移動）`)
           : nextRecord

@@ -47,7 +47,7 @@ export function offersModal(s, step, onChange) {
         h('span', { class: spaceUsed(s) > capacity(s) ? 'neg' : '' }, `置き場 ${spaceUsed(s)}/${capacity(s)}`),
       ),
       step.note ? h('p', { class: 'note' }, step.note) : null,
-      canCalc(s) ? null : h('p', { class: 'note' }, '（利益の計算はまだ感覚頼み。手数料10%と送料が引かれることを忘れずに）'),
+      canCalc(s) ? null : h('p', { class: 'note' }, '手数料10%＋送料が引かれる'),
     );
     if (step.autoBought?.length) body.append(h('div', { class: 'news-list' }, h('div', { class: 'sub' }, '外注が自動で仕入れた'), ...step.autoBought.map((m) => h('div', { class: 'news up' }, m))));
     if (!step.offers.length) body.append(h('p', { class: 'empty' }, '目ぼしい商品は見つからなかった…'));
@@ -166,7 +166,7 @@ export function inventoryModal(s, onChange) {
         s.banWeeks > 0 ? h('span', { class: 'neg' }, `プンシー停止中（あと${s.banWeeks}週）`) : null,
         s.amaBan > 0 ? h('span', { class: 'neg' }, `アマクリ停止中（あと${s.amaBan}週）`) : null,
       ),
-      h('p', { class: 'note' }, '出品した商品は週末に売れるか判定される。相場より高すぎると売れず、安すぎると損。売上金は翌週に入金。売れない物は「買取に出す」ですぐ現金にできる（相場の半分以下）。'),
+      h('p', { class: 'note' }, '週末に売れるか判定。売上金は翌週に入金'),
     );
     const groups = groupInventory(s);
     if (!groups.length) body.append(h('p', { class: 'empty' }, s.stats.purchases ? '在庫はない。仕入れに行こう。' : '在庫はない。「家の中を探す」で不用品を探そう。'));
@@ -305,7 +305,7 @@ export function marketModal(s) {
     }
     const lots = hasSkill(s, 'src_lottery') ? openLotteries(s) : [];
     if (lots.length) body.append(h('p', { class: 'note' }, `抽選受付中：${lots.map((p) => `「${p.name}」`).join('')}`));
-    body.append(h('p', { class: 'note' }, `推定相場の確度：${confidenceLabel(s)}（目利きを上げると正確になる）`));
+    body.append(h('p', { class: 'note' }, `推定相場の確度：${confidenceLabel(s)}`));
     for (const p of visibleProducts(s).filter((x) => x.kind !== 'home')) {
       const m = s.market[p.id];
       const n = m.hist.length;
