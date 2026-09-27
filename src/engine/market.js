@@ -1,0 +1,198 @@
+// 相場シミュレーション。商品ごとに「定価に対する倍率（premium）」を持ち、毎週動かす。
+import { PRODUCTS, productOf } from '../data/products.js';
+import { chance, gauss, hashNoise, randInt, randRange } from './rng.js';
+import { clamp, hasSkill } from './effects.js';
+
+const PRODUCT_INDEX = Object.fromEntries(PRODUCTS.map((p, i) => [p.id, i]));
+
+export function initMarket(s) {
+  s.market = {};
+  for (const p of PRODUCTS) {
+    const m = { p: p.kind === 'hype' ? p.peak : p.base ?? 1, hist: [], restockWeek: -1, restocks: 0 };
+    if (p.kind === 'hype') m.floor = p.floor;
+    if (p.kind === 'perishable') m.p = p.premium;
+    if (p.kind === 'seasonal') m.p = p.base;
+    if (p.kind === 'boom') {
+      m.boomStart = randInt(s, p.boomFrom, p.boomTo);
+      m.phase = 'calm';
+    }
+    s.market[p.id] = m;
+  }
+  for (const p of PRODUCTS) s.market[p.id].hist.push(priceOf(s, p.id));
+}
+
+export const priceOf = (s, pid) => Math.round(productOf(pid).retail * s.market[pid].p);
+
+export function isReleased(s, product, week = s.week) {
+  if (product.kind === 'hype' || product.kind === 'seasonal') return week >= product.release;
+  return true;
+}
+
+export function isAnnounced(s, product, week = s.week) {
+  if (product.kind === 'hype') return week >= product.release - 4;
+  if (product.kind === 'seasonal') return week >= product.release - 2;
+  if (product.kind === 'perishable') return product.eventWeeks.some((w) => w - 2 <= week && week <= w + 1);
+  return true;
+}
+
+export const isRestockWeek = (s, pid) => s.market[pid].restockWeek === s.week;
+export const inBoom = (s, pid) => s.market[pid]?.phase === 'boom';
+
+// 相場ショック（テレビ紹介・再販発表など）。news に積んで返す。
+export function applyShock(s, pid, mult, text, news) {
+  const m = s.market[pid];
+  m.p = clamp(m.p * mult, 0.2, 12);
+  if (news && text) news.push({ pid, text, kind: mult >= 1 ? 'up' : 'down' });
+}
+
+// 週の頭に呼ぶ。相場を1週分進めて、発生したニュースを返す。
+export function updateMarket(s) {
+  const news = [];
+  const w = s.week;
+  for (const p of PRODUCTS) {
+    const m = s.market[p.id];
+    switch (p.kind) {
+      case 'staple':
+        m.p = clamp(m.p + (p.base - m.p) * 0.3 + gauss(s) * 0.025, 0.8, 1.25);
+        break;
+      case 'collect':
+        m.p = clamp(m.p * (1 + p.drift + gauss(s) * 0.02), 0.6, 3);
+        break;
+      case 'luxury':
+        m.p = clamp(m.p + (p.base - m.p) * 0.2 + gauss(s) * 0.02, 1.2, 1.9);
+        break;
+      case 'perishable':
+        m.p = clamp(p.premium + gauss(s) * 0.08, 1.4, 2.4);
+        if (p.eventWeeks.includes(w)) news.push({ pid: p.id, text: `百貨店の催事に「${p.name}」が今週だけ出店！行列必至`, kind: 'event' });
+        else if (p.eventWeeks.includes(w + 2)) news.push({ pid: p.id, text: `再来週、催事で「${p.name}」が限定販売されるらしい`, kind: 'info' });
+        break;
+      case 'hype':
+        updateHype(s, p, m, news);
+        break;
+      case 'seasonal':
+        updateSeasonal(s, p, m, news);
+        break;
+      case 'boom':
+        updateBoom(s, p, m, news);
+        break;
+      default:
+        break;
+    }
+  }
+  for (const p of PRODUCTS) {
+    const m = s.market[p.id];
+    m.hist.push(priceOf(s, p.id));
+    if (m.hist.length > 12) m.hist.shift();
+  }
+  return news;
+}
+
+function updateHype(s, p, m, news) {
+  const w = s.week;
+  if (w === p.release - 4) news.push({ pid: p.id, text: `【発表】${p.genre}「${p.name}」が${p.release - w}週後に発売決定！抽選・予約受付スタート`, kind: 'info' });
+  if (w < p.release) {
+    m.p = p.peak * (1 + gauss(s) * 0.03);
+    return;
+  }
+  if (w === p.release) {
+    m.p = p.peak * randRange(s, 0.95, 1.08);
+    news.push({ pid: p.id, text: `【本日発売】「${p.name}」発売日。店頭には早朝から長蛇の列`, kind: 'event' });
+    return;
+  }
+  m.p += (m.floor - m.p) * p.decay + gauss(s) * 0.04 * m.p;
+  if (chance(s, p.restock)) {
+    m.restockWeek = w;
+    m.restocks++;
+    m.floor = Math.max(0.85, m.floor * 0.85);
+    applyShock(s, p.id, 0.72, `【再販決定】メーカーが「${p.name}」の再販を発表。相場が急落中…`, news);
+  }
+  m.p = clamp(m.p, 0.6, 6);
+}
+
+function updateSeasonal(s, p, m, news) {
+  const w = s.week;
+  if (w < p.release) {
+    m.p = p.base;
+    return;
+  }
+  if (w === p.release) news.push({ pid: p.id, text: `季節限定「${p.name}」の販売が始まった`, kind: 'info' });
+  if (w <= p.peakWeek) {
+    const t = (w - p.release) / Math.max(1, p.peakWeek - p.release);
+    m.p = p.base + (p.peak - p.base) * Math.pow(t, 1.5) + gauss(s) * 0.03;
+  } else {
+    if (w === p.peakWeek + 1) news.push({ pid: p.id, text: `シーズンが終わり「${p.name}」の需要が蒸発。在庫を抱えた人の悲鳴が…`, kind: 'down' });
+    m.p = Math.max(p.after, m.p * 0.6);
+  }
+}
+
+function updateBoom(s, p, m, news) {
+  const w = s.week;
+  if (m.phase === 'calm' && w >= m.boomStart) {
+    m.phase = 'boom';
+    m.boomWeeks = 0;
+    news.push({ pid: p.id, text: `【バズ】海外セレブがSNSで「${p.name}」を紹介！品薄で相場が急騰中`, kind: 'up' });
+  }
+  if (m.phase === 'calm' && w === m.boomStart - 2) {
+    news.push({ pid: p.id, text: `海外のSNSで「${p.name}」の開封動画がじわじわ再生数を伸ばしているらしい…`, kind: 'info' });
+  }
+  if (m.phase === 'calm') {
+    m.p = clamp(p.base + gauss(s) * 0.03, 0.8, 1.05);
+  } else if (m.phase === 'boom') {
+    m.boomWeeks++;
+    m.p = Math.min(p.peak, m.p * randRange(s, 1.35, 1.6));
+    if (m.boomWeeks >= 5) {
+      m.phase = 'crash';
+      news.push({ pid: p.id, text: `「${p.name}」ブームに陰り？ パチモン流通と大量再入荷で相場が崩壊`, kind: 'down' });
+    } else if (m.boomWeeks === 4 && hasSkill(s, 'crowd_madness')) {
+      news.push({ pid: p.id, text: `（群衆の狂気）「${p.name}」…熱狂が天井に近い気がする。そろそろ逃げ時か`, kind: 'info' });
+    }
+  } else {
+    m.p = Math.max(0.65, m.p * 0.55);
+  }
+}
+
+// ---- 需要 ----
+export function demandOf(s, product) {
+  const m = s.market[product.id];
+  let d = product.demand * (s.mods?.demand ?? 1);
+  if (product.kind === 'seasonal') {
+    if (s.week < product.release) d = 0;
+    else if (s.week > product.peakWeek) d *= 0.4;
+  }
+  if (product.kind === 'boom' && m.phase === 'boom') d *= 1.8;
+  if (product.kind === 'boom' && m.phase === 'crash') d *= 0.6;
+  if (product.kind === 'hype' && m.p > 2) d *= 1.2;
+  return d;
+}
+
+// ---- 相場の推定（プレイヤーが見る値）----
+export function estimateError(s) {
+  let amp = 0.32 * (1 - s.abilities.eye / 115);
+  if (hasSkill(s, 'crowd_madness')) amp *= 0.5;
+  return amp;
+}
+
+export function estimateAt(s, pid, week, truePrice) {
+  const amp = estimateError(s);
+  const noise = (hashNoise(s.seed, week, PRODUCT_INDEX[pid]) * 2 - 1) * amp;
+  const bias = hasSkill(s, 'optimist') ? 0.1 : 0;
+  return roundPrice(truePrice * (1 + noise + bias));
+}
+
+export const estimate = (s, pid) => estimateAt(s, pid, s.week, priceOf(s, pid));
+
+export function roundPrice(v) {
+  if (v >= 100000) return Math.round(v / 1000) * 1000;
+  if (v >= 10000) return Math.round(v / 100) * 100;
+  return Math.max(10, Math.round(v / 10) * 10);
+}
+
+export function confidenceLabel(s) {
+  const e = estimateError(s);
+  if (e <= 0.08) return '高';
+  if (e <= 0.18) return '中';
+  return '低';
+}
+
+// 相場画面に並べる商品（発表済み・流通中のもの）
+export const visibleProducts = (s) => PRODUCTS.filter((p) => isAnnounced(s, p));
