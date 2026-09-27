@@ -10,7 +10,7 @@ export const EXP_TYPES = [
 ];
 export const EXP_NAME = Object.fromEntries(EXP_TYPES.map((e) => [e.id, e.name]));
 
-// 基礎能力。どの経験点を使って上げるかはパワプロの「筋力・敏捷…」と同じ考え方。
+// 基礎能力。行動で貯めた経験点（情報・行動・技術・対人・精神）を組み合わせて上げる。
 export const ABILITIES = [
   { id: 'eye', name: '目利き', desc: '相場を読む精度と、偽物に気づく力', weights: { info: 1, mind: 0.5 } },
   { id: 'buy', name: '仕入れ', desc: '掘り出し物を見つける力。抽選・行列にも効く', weights: { act: 1, info: 0.5 } },
@@ -61,33 +61,73 @@ export function raiseAbility(s, abilityId, times = 1) {
   return done;
 }
 
-// コツのレベルに応じて特殊能力の習得コストが下がる（Lv1:-20% … Lv5:-60%）。
+// ---------------- スキルツリー ----------------
+export const nodeLv = (s, id) => (s.nodeLv?.[id] || 0);
+
+// 解放コスト。金ノードはコツLvで安くなり、repeat ノードはレベルごとに高くなる。
 export function skillCost(s, skillId) {
   const sk = SKILL_MAP[skillId];
-  const hint = s.hints[skillId] || 0;
-  const rate = sk.kind === 'red' ? 1 : 1 - Math.min(0.6, hint * 0.12 + (hint > 0 ? 0.08 : 0));
+  let rate = 1;
+  if (sk.kind === 'gold' || sk.kind === 'perk') {
+    const hint = s.hints[skillId] || 0;
+    rate = 1 - Math.min(0.6, hint * 0.12 + (hint > 0 ? 0.08 : 0));
+  }
+  if (sk.kind === 'repeat') rate = 1 + nodeLv(s, skillId);
   const cost = {};
-  for (const [k, v] of Object.entries(sk.cost)) cost[k] = Math.ceil(v * rate);
+  for (const [k, v] of Object.entries(sk.cost || {})) cost[k] = Math.ceil(v * rate);
   return cost;
 }
 
-// 習得できる（ボタンを出してよい）特殊能力の一覧
+// 解放できない理由の一覧（空なら解放できる状態）
+export function nodeBlockers(s, skillId) {
+  const sk = SKILL_MAP[skillId];
+  const out = [];
+  for (const r of sk.req || []) if (!s.skills.includes(r)) out.push(`「${SKILL_MAP[r].name}」が必要`);
+  if (sk.stage && s.stage < sk.stage) out.push(`ステージ${sk.stage}から`);
+  if (sk.flag && !s.flags[sk.flag]) out.push(sk.flag === 'license' ? '古物商許可が必要' : '条件未達');
+  if (sk.kind === 'gold' && !(s.hints[skillId] > 0)) out.push('偉人からコツを教わる必要がある');
+  return out;
+}
+
+export function nodeState(s, skillId) {
+  const sk = SKILL_MAP[skillId];
+  if (sk.kind === 'repeat') {
+    if (nodeLv(s, skillId) >= sk.max) return 'owned';
+  } else if (s.skills.includes(skillId)) {
+    return sk.kind === 'red' ? 'red' : 'owned';
+  }
+  if (sk.kind === 'red') return 'none';
+  return nodeBlockers(s, skillId).length ? 'locked' : 'available';
+}
+
+// 旧API互換：習得できる（ボタンを出してよい）もの
 export function learnableSkills(s) {
-  return SKILLS.filter((sk) => {
-    if (sk.kind === 'red') return s.skills.includes(sk.id);
-    if (s.skills.includes(sk.id)) return false;
-    if (sk.kind === 'gold') return (s.hints[sk.id] || 0) > 0;
-    return true;
-  });
+  return SKILLS.filter((sk) => ['available', 'red'].includes(nodeState(s, sk.id)));
+}
+
+// イベントやチュートリアルで無料で解放する
+export function grantSkill(s, skillId) {
+  const sk = SKILL_MAP[skillId];
+  if (sk.kind === 'repeat') {
+    s.nodeLv[skillId] = Math.min(sk.max, nodeLv(s, skillId) + 1);
+    return;
+  }
+  giveSkill(s, skillId);
 }
 
 export function learnSkill(s, skillId) {
   const sk = SKILL_MAP[skillId];
+  const state = nodeState(s, skillId);
+  if (state !== 'available' && state !== 'red') return false;
   const cost = skillCost(s, skillId);
   if (!canAfford(s, cost)) return false;
-  if (sk.kind === 'gold' && !(s.hints[skillId] > 0)) return false;
   pay(s, cost);
   if (sk.kind === 'red') removeSkill(s, skillId);
-  else giveSkill(s, skillId);
+  else grantSkill(s, skillId);
   return true;
+}
+
+// 所有ノードの月額維持費
+export function monthlyNodeFees(s) {
+  return SKILLS.filter((sk) => sk.monthly && s.skills.includes(sk.id)).map((sk) => ({ name: sk.name, amount: sk.monthly }));
 }

@@ -1,40 +1,63 @@
-// 週に1回選ぶ「行動」。パワプロのサクセスの練習メニューにあたる。
+// 週に1〜2回選ぶ「行動」。育成シミュレーションの「練習メニュー」にあたる。
 import { productOf } from '../data/products.js';
-import { chance, pick } from './rng.js';
+import { chance, pick, randInt } from './rng.js';
 import { addCash, addExp, addHate, addMood, addStamina, clamp, flag, hasSkill, setFlag, yen } from './effects.js';
-import { lotteryEntries, lotteryWinRate, onlineOffers, openLotteries, queueOffer, queueSuccessRate, queueTargets, storeOffers } from './offers.js';
+import { auctionOffers, lotteryEntries, lotteryWinRate, onlineOffers, openLotteries, queueOffer, queueSuccessRate, queueTargets, storeOffers, wholesaleOffers } from './offers.js';
+import { addExpense, addHours } from './kpi.js';
+import { woy } from './calendar.js';
 import { inBoom, priceOf } from './market.js';
-import { ROOM_CAPACITY, spaceUsed } from './inventory.js';
+import { addUnits, overCapacity } from './inventory.js';
 import { drawEvents } from './events.js';
 import { bg, choice, gain, info, narr, offers, talk } from './steps.js';
 
+// node: その行動を解放するスキルツリーのノード / hours: 作業時間（時間単価の計算に使う）
 export const COMMANDS = [
-  { id: 'store', name: '店舗せどり', desc: '近所の店を回って、ワゴンや値札ミスの掘り出し物を探す', stamina: 15, exp: { act: 12, info: 5, social: 2 }, bg: 'store' },
-  { id: 'online', name: '電脳せどり', desc: '通販のポイント還元・予約・フリマの安値を探す', stamina: 8, exp: { info: 13, tech: 4 }, bg: 'online' },
-  { id: 'lottery', name: '抽選に応募', desc: '受付中の限定品の抽選にまとめて応募する（結果は翌週）', stamina: 5, exp: { info: 6, mind: 6 }, bg: 'online' },
-  { id: 'queue', name: '行列に並ぶ', desc: '発売日・再販日に早朝から並ぶ。キツいが確実性は高い', stamina: 28, exp: { act: 15, mind: 10 }, bg: 'queue' },
-  { id: 'listing', name: '撮影・出品作業', desc: '写真を撮り直し説明文を磨く。今週の売れ行きが1.25倍に', stamina: 12, exp: { tech: 14, info: 4 }, bg: 'home' },
-  { id: 'meetup', name: '物販交流会', desc: 'せどり仲間と情報交換（参加費3,000円）', stamina: 10, exp: { social: 14, info: 6 }, cost: 3000, bg: 'event' },
-  { id: 'study', name: '勉強する', desc: '本や動画で相場・法律・税金を学ぶ', stamina: 4, exp: { info: 9, mind: 7, tech: 2 }, bg: 'study' },
-  { id: 'parttime', name: '日雇いバイト', desc: '倉庫で働いて確実に稼ぐ（+22,000円）', stamina: 25, exp: { act: 4, mind: 5 }, pay: 22000, bg: 'warehouse' },
-  { id: 'play', name: '気晴らし', desc: '公園や喫茶店でリフレッシュ（8,000円）。やる気と体力が回復', stamina: -15, exp: { mind: 3 }, cost: 8000, bg: 'park' },
-  { id: 'rest', name: '休む', desc: '一日中寝る。体力が大きく回復する', stamina: 0, heal: 45, exp: {}, bg: 'home' },
-  { id: 'license', name: '古物商許可を申請', desc: '警察署で申請（19,000円）。約6週間で中古品の仕入れが解禁', stamina: 8, exp: { info: 5, mind: 3 }, cost: 19000, bg: 'study' },
+  { id: 'home_search', node: 'src_home', name: '家の中を探す', desc: '押し入れやクローゼットから、売れそうな不用品を探す', stamina: 5, exp: { info: 4, tech: 3 }, hours: 3, bg: 'home' },
+  { id: 'store', node: 'src_store', name: '店舗せどり', desc: '近所の店を回って、ワゴンや値札ミスの掘り出し物を探す', stamina: 15, exp: { act: 12, info: 5, social: 2 }, hours: 10, bg: 'store' },
+  { id: 'online', node: 'src_online', name: '電脳せどり', desc: '通販のポイント還元・予約・フリマの安値を探す', stamina: 8, exp: { info: 13, tech: 4 }, hours: 5, bg: 'online' },
+  { id: 'lottery', node: 'src_lottery', name: '抽選に応募', desc: '受付中の限定品の抽選にまとめて応募する（結果は翌週）', stamina: 5, exp: { info: 6, mind: 6 }, hours: 2, bg: 'online' },
+  { id: 'queue', node: 'src_queue', name: '行列に並ぶ', desc: '発売日・再販日に早朝から並ぶ。キツいが確実性は高い', stamina: 28, exp: { act: 15, mind: 10 }, hours: 8, bg: 'queue' },
+  { id: 'auction', node: 'src_auction', name: '業者オークション', desc: '古物商だけの市場で、中古・コレクター品を相場の5〜7割で仕入れる', stamina: 10, exp: { info: 10, social: 8 }, hours: 6, bg: 'event' },
+  { id: 'wholesale', node: 'src_wholesale', name: '問屋と商談', desc: '定番品をロット単位で卸値仕入れ。数が多いぶん販路と在庫スペースが要る', stamina: 8, exp: { social: 14, info: 6 }, hours: 5, bg: 'event' },
+  { id: 'listing', name: '撮影・出品作業', desc: '写真を撮り直し説明文を磨く。今週の売れ行きが1.25倍に', stamina: 12, exp: { tech: 14, info: 4 }, hours: 6, bg: 'home' },
+  { id: 'meetup', node: 'net_meetup', name: '物販交流会', desc: 'せどり仲間と情報交換（参加費3,000円）', stamina: 10, exp: { social: 14, info: 6 }, cost: 3000, hours: 4, bg: 'event' },
+  { id: 'study', name: '勉強する', desc: '本や動画で相場・法律・税金を学ぶ', stamina: 4, exp: { info: 9, mind: 7, tech: 2 }, hours: 3, bg: 'study' },
+  { id: 'parttime', name: '日雇いバイト', desc: '倉庫で働いて確実に稼ぐ（+22,000円）', stamina: 25, exp: { act: 4, mind: 5 }, pay: 22000, hours: 0, bg: 'warehouse' },
+  { id: 'play', name: '気晴らし', desc: '公園や喫茶店でリフレッシュ（8,000円）。やる気と体力が回復', stamina: -15, exp: { mind: 3 }, cost: 8000, hours: 0, bg: 'park' },
+  { id: 'rest', name: '休む', desc: '一日中寝る。体力が大きく回復する', stamina: 0, heal: 45, exp: {}, hours: 0, bg: 'home' },
+  { id: 'license', node: 'license', name: '古物商許可を申請', desc: '警察署で申請（19,000円）。約6週間で許可が下りる', stamina: 8, exp: { info: 5, mind: 3 }, cost: 19000, hours: 3, bg: 'study' },
 ];
 export const COMMAND_MAP = Object.fromEntries(COMMANDS.map((c) => [c.id, c]));
 
+// 夜の作業（ステージ2から）：軽い作業だけできる。睡眠を削るので体力を余計に使う
+export const NIGHT_COMMANDS = ['online', 'lottery', 'listing', 'study'];
+export const NIGHT_EXTRA_STAMINA = 5;
+export const hasNightSlot = (s) => s.stage >= 2;
+
+export function availableNightCommands(s) {
+  if (s.sick > 0) return [];
+  return availableCommands(s).filter((c) => NIGHT_COMMANDS.includes(c.id));
+}
+
 export function availableCommands(s) {
   if (s.sick > 0) return [COMMAND_MAP.rest];
-  return COMMANDS.filter((c) => c.id !== 'license' || (!flag(s, 'license') && flag(s, 'licensePending') === undefined));
+  return COMMANDS.filter((c) => {
+    if (c.node && !hasSkill(s, c.node)) return false;
+    if (c.id === 'license') return !flag(s, 'license') && flag(s, 'licensePending') === undefined;
+    if (c.id === 'home_search') return s.homePool.length > 0;
+    if (c.id === 'parttime') return !s.fulltime;
+    return true;
+  });
 }
 
 export function staminaCost(s, cmd) {
   let cost = cmd.stamina;
   if (cmd.id === 'store' && hasSkill(s, 'ino_map')) cost = Math.round(cost * 0.7);
+  if (cmd.id === 'store' && hasSkill(s, 'backpain')) cost = Math.round(cost * 1.3);
   return cost;
 }
 
-// 体調不良率（パワプロのケガ率）
+// 体調不良率（体力が低いまま重い行動をすると上がる）
 export function sickRisk(s, cmd) {
   const cost = staminaCost(s, cmd);
   if (cost < 10) return 0;
@@ -42,15 +65,23 @@ export function sickRisk(s, cmd) {
   return clamp((25 - after) * 2.4, 0, 70) / 100;
 }
 
-export function performCommand(s, cmdId) {
+export function performCommand(s, cmdId, { night = false } = {}) {
   const cmd = COMMAND_MAP[cmdId];
   const steps = [bg(cmd.bg)];
   if (cmd.cost && s.cash < cmd.cost) return [talk('chris', `お金が足りない…（${yen(cmd.cost)}必要）`, 'sad')];
+  if (night) {
+    steps.push(narr('夜。家族が寝静まったあと、もうひと仕事。'));
+    s.flags.nightWork = (s.flags.nightWork || 0) + 1;
+  }
 
-  const cost = staminaCost(s, cmd);
+  const cost = staminaCost(s, cmd) + (night ? NIGHT_EXTRA_STAMINA : 0);
   const risk = sickRisk(s, cmd);
   addStamina(s, -cost);
-  if (cmd.cost) addCash(s, -cmd.cost, cmd.name);
+  if (cmd.cost) {
+    if (['meetup', 'license'].includes(cmdId)) addExpense(s, cmd.cost, cmd.name);
+    else addCash(s, -cmd.cost, cmd.name);
+  }
+  addHours(s, cmd.hours || 0);
   s.lastCommand = cmdId;
 
   if (risk > 0 && chance(s, risk)) {
@@ -70,7 +101,23 @@ export function performCommand(s, cmdId) {
 }
 
 const HANDLERS = {
+  home_search(s) {
+    const n = Math.min(s.homePool.length, randInt(s, 1, 3));
+    const found = [];
+    for (let i = 0; i < n; i++) {
+      const idx = randInt(s, 0, s.homePool.length - 1);
+      const pid = s.homePool.splice(idx, 1)[0];
+      addUnits(s, pid, 1, 0, { home: true });
+      found.push(productOf(pid));
+    }
+    return [
+      narr(pick(s, ['押し入れの奥から段ボールを引っ張り出した。', 'クローゼットの上の棚を探ってみた。', '実家から送られてきたまま開けていない箱を開けた。'])),
+      talk('chris', `${found.map((p) => `「${p.genre}」`).join('、')}が出てきた。売れるかな？`, 'sparkle'),
+      info('不用品が見つかった', [...found.map((p) => `${p.genre}（${p.name}）`), s.homePool.length ? `まだ何か眠っていそうだ` : 'もう売れそうな物はなさそうだ']),
+    ];
+  },
   store(s) {
+    s.flags.didStore = true;
     const list = storeOffers(s);
     return [
       talk('chris', pick(s, ['よし、今日は駅前から郊外まで5店舗回るぞ！', 'ワゴンの奥に宝が眠ってる…はず！', '値札の貼り替え日を狙って来たんだ。']), 'guts'),
@@ -136,6 +183,18 @@ const HANDLERS = {
     }
     return steps;
   },
+  auction(s) {
+    return [
+      narr('会員証を見せて、業者オークションの会場に入った。プロの目利きが静かに札を入れていく。'),
+      offers(auctionOffers(s), '業者オークションの出品物', '真贋チェック済みの出品が多い。ただし相場の5〜7割なので、手数料と送料を引いて利益が出るかよく見て'),
+    ];
+  },
+  wholesale(s) {
+    return [
+      narr('問屋の担当者と商談。「ロットでまとめていただけるなら、この掛け率で出せます」'),
+      offers(wholesaleOffers(s), '問屋の卸値リスト', '最低ロットは20個。売り切れる販路と在庫スペースがあるか確認して'),
+    ];
+  },
   listing(s) {
     s.listBoost = true;
     return [
@@ -160,7 +219,7 @@ const HANDLERS = {
   rest(s) {
     let heal = COMMAND_MAP.rest.heal;
     if (hasSkill(s, 'insomnia')) heal *= 0.6;
-    if (spaceUsed(s) > ROOM_CAPACITY) heal *= 0.5;
+    if (overCapacity(s)) heal *= 0.5;
     heal = Math.round(heal);
     addStamina(s, heal);
     const lines = [narr(s.sick > 0 ? '布団から出られない…。' : 'ぐっすり眠った。'), info('休養', [`体力 +${heal}`], 'good')];
@@ -180,7 +239,7 @@ const HANDLERS = {
 function forecastLine(s) {
   const cands = Object.keys(s.market).filter((pid) => {
     const p = productOf(pid);
-    return p.kind === 'hype' && s.week > p.release;
+    return p.kind === 'hype' && s.market[pid].edition > 0 && woy(s.week) !== p.release;
   });
   if (!cands.length || !chance(s, 0.4 + s.abilities.eye / 200)) return null;
   const pid = pick(s, cands);

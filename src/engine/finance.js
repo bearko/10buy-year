@@ -1,6 +1,10 @@
 // 月末の支払い（カードの引き落とし・借金の返済）
-import { addCash, addMood, hasSkill, record, setFlag, yen } from './effects.js';
+import { addCash, addHate, addMood, hasSkill, record, setFlag, yen } from './effects.js';
 import { info, sfx, talk } from './steps.js';
+import { monthlyNodeFees } from './abilities.js';
+import { addExpense, closeMonth, inventoryStats } from './kpi.js';
+import { checkPromotion, CORP_SOCIAL, LIVING_COST } from './career.js';
+import { yearOf } from './calendar.js';
 
 export const MIN_PAYMENT = 30000;
 export const MONTHLY_INTEREST = 0.15 / 12;
@@ -8,6 +12,21 @@ export const MAX_DELINQUENCY = 3;
 
 export function monthEnd(s) {
   const steps = [];
+
+  // 0) 事業の固定費・副収入・生活費、今月の記録を締める
+  const fees = monthlyNodeFees(s);
+  for (const f of fees) addExpense(s, f.amount, f.name);
+  if (s.corp) addExpense(s, CORP_SOCIAL, '社会保険料');
+  const passive = passiveIncome(s);
+  if (passive.total) {
+    s.cash += passive.total;
+    s.cur.passive += passive.total;
+    record(s, `事業収入（${passive.names.join('・')}）`, passive.total);
+    if (hasSkill(s, 'div_consult')) addHate(s, 4);
+  }
+  if (s.fulltime) addCash(s, -LIVING_COST, '生活費（家賃・食費・国保・年金）');
+  const rec = closeMonth(s);
+  steps.push(monthReport(s, rec, fees, passive));
 
   // 1) カードの引き落とし（先月利用分）
   const due = s.card.due;
@@ -52,6 +71,7 @@ export function monthEnd(s) {
     if (s.cash >= pay) {
       addCash(s, -pay, '月末返済');
       s.debt -= pay;
+      s.delinquency = 0; // 払えれば滞納カウントはリセット（3か月連続の滞納で債務整理）
       s.stats.repaid += pay;
       steps.push(sfx('coin'), info('月末返済', [`${yen(pay)} を返済した`, `残りの借金: ${yen(s.debt)}`], 'good'));
     } else {
@@ -62,12 +82,20 @@ export function monthEnd(s) {
         sfx('lose'),
         talk('collector', `ご返済が確認できておりません。至急 ${yen(pay)} をお支払いください。（遅延損害金 5,000円）`),
         talk('chris', '払えなかった…。', 'wail'),
-        info('滞納', [`滞納 ${s.delinquency} / ${MAX_DELINQUENCY} 回`, s.delinquency >= MAX_DELINQUENCY - 1 ? '次に滞納したら債務整理になる！' : ''], 'bad'),
+        info('滞納', [`連続滞納 ${s.delinquency} / ${MAX_DELINQUENCY} か月`, s.delinquency >= MAX_DELINQUENCY - 1 ? '次に滞納したら債務整理になる！' : ''], 'bad'),
       );
       if (s.delinquency >= MAX_DELINQUENCY) s.over = 'bankrupt';
     }
   }
   if (s.debt <= 0 && !s.flags.debtFree) steps.push(...debtFreeSteps(s));
+  if (s.cash < -300000 && s.debt <= 0) {
+    // 完済後でも、資金ショートが大きければカードローンで補填する
+    s.debt += -s.cash;
+    record(s, '資金ショート → カードローンで補填', 0);
+    steps.push(talk('mine', '現金が大きくマイナスよ…。足りない分はカードローンで借りたことにするわ。', 'teary'));
+    s.cash = 0;
+  }
+  steps.push(...checkPromotion(s));
   return steps;
 }
 
@@ -89,4 +117,65 @@ export function debtFreeSteps(s) {
     talk('mine', 'おめでとう、クリス！ ……でも、ここで終わり？ 残りの期間でどこまで稼げるか、見せてちょうだい。', 'banzai'),
     info('完済！', ['借金をすべて返し終えた', '以降は最終資産を積み上げよう'], 'good'),
   ];
+}
+
+// ステージ5の多角化ノードによる毎月の収入
+export function passiveIncome(s) {
+  const names = [];
+  let total = 0;
+  if (hasSkill(s, 'div_brand')) {
+    total += 300000 + Math.round(s.rating * 6000);
+    names.push('自社ブランド');
+  }
+  if (hasSkill(s, 'div_buyback')) {
+    total += 200000 + Math.round(inventoryStats(s).cost * 0.05);
+    names.push('買取事業');
+  }
+  if (hasSkill(s, 'div_consult')) {
+    total += 250000;
+    names.push('情報発信');
+  }
+  return { total, names };
+}
+
+// 月の締めのレポート
+function monthReport(s, rec, fees, passive) {
+  const lines = [`純利益 ${yen(rec.net)}（売上 ${yen(rec.revenue)}・${rec.sold}個）`];
+  const feeTotal = fees.reduce((a, f) => a + f.amount, 0) + (s.corp ? CORP_SOCIAL : 0);
+  if (feeTotal) lines.push(`固定費 ${yen(feeTotal)}`);
+  if (passive.total) lines.push(`事業収入 ${yen(passive.total)}`);
+  if (s.fulltime) lines.push(`生活費 ${yen(LIVING_COST)}`);
+  return info(`${rec.month}月の締め`, lines, rec.net >= 0 ? 'good' : 'bad');
+}
+
+// ---------------- 税金 ----------------
+// 個人：所得税＋住民税をざっくり累進で。法人：実効税率25%＋均等割7万円（ゲーム用の簡略化）
+const BRACKETS = [
+  [1950000, 0.15],
+  [3300000, 0.2],
+  [6950000, 0.3],
+  [9000000, 0.33],
+  [18000000, 0.43],
+  [Infinity, 0.5],
+];
+
+export function taxFor(s, income) {
+  if (s.corp) return income > 0 ? Math.round(income * 0.25) + 70000 : 70000;
+  const taxable = Math.max(0, income - 580000);
+  let tax = 0;
+  let prev = 0;
+  for (const [limit, rate] of BRACKETS) {
+    const slice = Math.min(taxable, limit) - prev;
+    if (slice <= 0) break;
+    tax += slice * rate;
+    prev = limit;
+  }
+  return Math.round(tax);
+}
+
+// 今年度（4月〜）の事業所得
+export function fiscalIncome(s) {
+  const y = yearOf(s.week);
+  const months = s.monthly.filter((m) => m.year === y);
+  return months.reduce((a, m) => a + m.net, 0) + (s.cur.salesProfit - s.cur.expenses + s.cur.passive);
 }

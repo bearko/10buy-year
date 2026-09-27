@@ -118,7 +118,7 @@ export function troubleSteps(s, trouble) {
             label: '返品を受け付ける',
             sub: '送料は自腹',
             run: () => {
-              cancelSale(s, sale);
+              cancelSale(s, sale, { restored: true });
               s.cash -= sale.ship;
               restoreUnit(s, sale);
               addRating(s, 1);
@@ -151,6 +151,8 @@ export function troubleSteps(s, trouble) {
       s.stats.revenue -= sale.price;
       s.stats.fees -= sale.fee;
       s.stats.shipping -= sale.ship;
+      s.cur.revenue -= sale.price;
+      s.cur.salesProfit -= sale.profit;
       restoreUnit(s, sale);
       return [
         talk('ghost', '（購入ボタンだけ押して、支払いをしないまま消えた）'),
@@ -159,7 +161,7 @@ export function troubleSteps(s, trouble) {
       ];
     }
     case 'damage': {
-      cancelSale(s, sale);
+      cancelSale(s, sale, { restored: true });
       restoreUnit(s, sale, { damaged: true });
       addExp(s, { tech: 5 });
       return [
@@ -172,6 +174,18 @@ export function troubleSteps(s, trouble) {
     }
     case 'fake': {
       cancelSale(s, sale);
+      if (sale.platform === 'ama') {
+        s.amaBan = 8;
+        addRating(s, -5);
+        addMood(s, -1);
+        return [
+          sfx('trouble'),
+          talk('collector', `【アマクリ】「${name}」について購入者から真贋の申告がありました。仕入れ先の請求書を提出してください。`),
+          talk('chris', '請求書…？ 出所があやしい仕入れだから、出せない…！', 'wail'),
+          talk('mine', '大手ECの真贋調査は厳しいの。正規の請求書が出せないと出品停止よ。', 'arms'),
+          info('アマクリ出品停止', ['8週間アマクリで販売できない'], 'bad'),
+        ];
+      }
       addRating(s, -15);
       addHate(s, 10);
       addMood(s, -1);

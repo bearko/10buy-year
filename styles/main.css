@@ -138,10 +138,11 @@ h1 small { display: block; font-size: 16px; text-shadow: none; color: var(--gold
 .cmd .exps { display: flex; flex-wrap: wrap; gap: 2px; }
 .cmd .x { font-style: normal; font-size: 10px; padding: 0 3px; border-radius: 3px; background: #0006; }
 .x.info { color: #7cc7ff; } .x.act { color: #ff9f6b; } .x.tech { color: #c9a6ff; } .x.social { color: #6be58f; } .x.mind { color: #ffe066; }
-.cmd .risk { position: absolute; top: 4px; right: 6px; font-size: 11px; color: var(--warn); }
+.cmd .risk { position: absolute; bottom: 4px; right: 6px; font-size: 11px; color: var(--warn); }
 .cmd.danger { border-color: #8a2b35; }
 .cmd.danger .risk { color: var(--bad); }
 body.busy #commands, body.busy #tabs { opacity: 0.45; pointer-events: none; }
+#message { position: relative; }
 
 /* ---------- タブ ---------- */
 #tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; padding: 8px 8px 0; }
@@ -245,3 +246,40 @@ body.busy #commands, body.busy #tabs { opacity: 0.45; pointer-events: none; }
 .rank.huge { width: 88px; height: 88px; font-size: 64px; border: 3px solid currentColor; }
 .rank-label { font-size: 20px; color: var(--gold); }
 .ending .ledger-grid, .ending .ledger-row { text-align: left; }
+
+/* ---------- v2: 10年キャリア・スキルツリー・KPI ---------- */
+.hud-mission { margin-top: 5px; background: #1d3a2a; border: 1px solid #3d7a55; color: #d9ffe6; font-size: 12px; padding: 4px 8px; border-radius: 6px; display: flex; flex-direction: column; }
+.hud-mission b { color: #8bf0b0; }
+.chip.stage { background: #3a2f10; color: var(--gold); }
+.debt.clear { color: var(--good); }
+.cmd-header { grid-column: 1 / -1; font-size: 12px; color: var(--gold); }
+.cmd.sleep { border-style: dashed; }
+.cmd.auto { border-color: var(--info); background: #16304a; }
+body.auto #message { border-color: var(--info); }
+body.auto #message::after { content: 'オート進行中'; position: absolute; top: 4px; right: 10px; font-size: 11px; color: var(--info); }
+.tab.locked { opacity: 0.55; }
+.muted { color: var(--muted); }
+.sub.small { font-size: 12px; margin-top: 4px; }
+
+.branch-tabs { position: sticky; top: -10px; background: var(--bg); padding: 6px 0; z-index: 1; }
+.card.root { border-color: var(--gold); }
+.card.node { position: relative; align-items: center; }
+.card.node.owned { border-color: #3d7a55; background: #16261d; }
+.card.node.locked { opacity: 0.6; }
+.card.node.gold { border-color: #d4a017; }
+.card.node.red { border-color: var(--bad); }
+.branch-line { position: absolute; left: -12px; top: 10px; color: var(--muted); }
+.badge-kind { color: var(--info); }
+.owned-mark { color: var(--good); font-size: 18px; padding: 0 6px; }
+
+.stage-box { background: var(--panel); border: 1px solid var(--gold); border-radius: var(--radius); padding: 8px 10px; }
+.stage-steps { display: flex; gap: 4px; margin-bottom: 6px; }
+.stage-steps .st { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; background: #0006; font-size: 12px; color: var(--muted); }
+.stage-steps .st.done { background: #3d7a55; color: #fff; }
+.stage-steps .st.on { background: var(--gold); color: #221a00; font-weight: bold; }
+.kpi-table { display: grid; gap: 2px; }
+.kpi-row { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 6px; font-size: 13px; padding: 3px 4px; border-bottom: 1px dotted #ffffff14; }
+.kpi-row b { text-align: right; }
+.kpi-row.head { color: var(--muted); font-size: 11px; }
+.kpi-row.head span:not(:first-child) { text-align: right; }
+.kpi-row.locked { grid-template-columns: 1fr 2fr; color: var(--muted); }

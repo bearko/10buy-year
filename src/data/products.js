@@ -11,11 +11,18 @@ import { weekAt } from '../engine/calendar.js';
 //   perishable 限定スイーツ。催事の週にしか手に入らず、賞味期限がある
 //   boom       謎のブーム。突然バズって暴騰し、ある日突然終わる
 //   luxury     高級品。正規店でまれに定価で買える
+//   home       家にある不用品。仕入れはできず「家の中を探す」で見つかる（自分の物なので許可不要）
 // size: S/M/L（送料・梱包の手間・部屋の占有スペースに影響）
 // used: true の商品は中古でしか流通しない（仕入れには古物商許可が必要）
 // fakeRisk: 怪しいルートで仕入れたときに偽物をつかむ基本確率
 
 export const PRODUCTS = [
+  { id: 'old_hat', name: 'ハット', genre: '着なくなった帽子', ext: 1059, kind: 'home', retail: 2400, size: 'M', demand: 1.3, base: 1.0, used: true, fakeRisk: 0 },
+  { id: 'gift_glass', name: 'グラス', genre: '引き出物のグラス', ext: 1075, kind: 'home', retail: 3000, size: 'M', demand: 1.2, base: 1.0, used: true, fakeRisk: 0 },
+  { id: 'old_figure', name: 'モンシロちゃん', genre: '昔集めたフィギュア', ext: 1112, kind: 'home', retail: 5200, size: 'S', demand: 1.1, base: 1.0, used: true, fakeRisk: 0 },
+  { id: 'fountain_pen', name: 'ノービスペン', genre: 'もらいものの万年筆', ext: 1003, kind: 'home', retail: 7800, size: 'S', demand: 0.9, base: 1.0, used: true, fakeRisk: 0 },
+  { id: 'old_violin', name: 'ヴァイオリン', genre: '子どもの頃のヴァイオリン', ext: 1069, kind: 'home', retail: 14000, size: 'L', demand: 0.6, base: 1.0, used: true, fakeRisk: 0 },
+
   { id: 'boots', name: 'ブーツ', genre: '定番スニーカー', ext: 1031, kind: 'staple', retail: 12000, size: 'M', demand: 3.0, base: 1.05, fakeRisk: 0.2 },
   { id: 'pocket_watch', name: '懐中時計', genre: '定番ウォッチ', ext: 1111, kind: 'staple', retail: 26000, size: 'S', demand: 1.8, base: 0.98, fakeRisk: 0.3 },
   { id: 'sake', name: 'サケ', genre: '地酒', ext: 1058, kind: 'staple', retail: 3300, size: 'M', demand: 2.0, base: 1.0, alcohol: true, fakeRisk: 0 },

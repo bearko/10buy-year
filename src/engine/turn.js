@@ -1,6 +1,6 @@
-// 1週間の進行。startWeek → (プレイヤーの行動) → endWeek → week+1 → startWeek …
+// 1週間の進行。startWeek →（行動 × actionsPerWeek）→ endWeek → 次の週 …
 import { productOf } from '../data/products.js';
-import { TOTAL_WEEKS, isMonthEnd, weekLabel } from './calendar.js';
+import { TOTAL_WEEKS, isMonthEnd, isYearEnd, weekLabel, woy, yearOf } from './calendar.js';
 import { addHate, addStamina, flag, record, setFlag, yen } from './effects.js';
 import { updateMarket } from './market.js';
 import { drawEvents } from './events.js';
@@ -9,14 +9,20 @@ import { resolveLotteries } from './commands.js';
 import { lotteryOffer } from './offers.js';
 import { resolveSales } from './sales.js';
 import { negotiationSteps, troubleSteps } from '../data/troubles.js';
-import { ROOM_CAPACITY, spaceUsed } from './inventory.js';
+import { overCapacity } from './inventory.js';
+import { autoList, autoReprice } from './automation.js';
+import { stageOf, yearStart } from './career.js';
+import { sumNet } from './kpi.js';
 import { info, offers, sfx, talk } from './steps.js';
 
 export function startWeek(s) {
   const steps = [];
   s.mods = { demand: 1, onlinePoints: 1, storeDiscount: 0, queueExtra: [] };
   s.listBoost = false;
+  s.actionsLeft = s.actionsPerWeek;
+  s.nightLeft = s.stage >= 2 ? 1 : 0;
   if (s.week > 0) s.news = updateMarket(s);
+  if (s.week > 0 && woy(s.week) === 0) steps.push(...yearStart(s, yearOf(s.week)));
 
   // 売上金の入金
   const arrived = s.pending.filter((p) => p.week <= s.week);
@@ -44,14 +50,19 @@ export function startWeek(s) {
   if (pendingLicense !== undefined && s.week >= pendingLicense) {
     delete s.flags.licensePending;
     setFlag(s, 'license');
-    steps.push(sfx('hint'), talk('mine', '古物商許可が下りたわ！ これで中古品やフリマからの仕入れができるわよ。', 'banzai'), info('古物商許可', ['中古品（古本・楽器・ジュエリー等）とフリマ仕入れが解禁された'], 'good'));
+    steps.push(sfx('hint'), talk('mine', '古物商許可が下りたわ！ スキルツリーの「リサイクルショップ・古本」を解放すれば、中古品を仕入れられるわよ。', 'banzai'), info('古物商許可', ['中古品を仕入れて売れるようになった（スキルツリーで仕入れ先を解放）'], 'good'));
   }
 
-  if (s.banWeeks > 0) {
-    s.inventory.forEach((u) => {
-      if (u.listing?.platform === 'merc') u.listing = null;
-    });
+  // 利用制限中の販路からは出品が下がる
+  for (const u of s.inventory) {
+    if (u.listing?.platform === 'merc' && s.banWeeks > 0) u.listing = null;
+    if (u.listing?.platform === 'ama' && s.amaBan > 0) u.listing = null;
   }
+
+  // 仕組み化：価格改定ツールと外注の出品
+  const repriced = autoReprice(s);
+  const listed = autoList(s);
+  if (repriced || listed) steps.push(info('仕組みが動いた', [listed ? `外注が${listed}件を出品した` : '', repriced ? `価格改定ツールが${repriced}件を値下げした` : '']));
 
   steps.push(...drawEvents(s, 'calendar'));
   steps.push(...drawEvents(s, 'weekStart'));
@@ -69,6 +80,7 @@ export function endWeek(s) {
     sold: sales.sold.map((x) => ({ pid: x.pid, price: x.price, platform: x.platform, net: x.net, profit: x.profit, delayed: !!x.delayed })),
     auctionsUnsold: sales.auctionsUnsold.map((x) => ({ pid: x.pid, bidders: x.bidders })),
     staminaUsed: sales.staminaUsed || 0,
+    outsourced: sales.outsourced || 0,
     delayed: sales.delayed,
   });
   if (sales.sold.length) steps.unshift(sfx('sale'));
@@ -89,14 +101,29 @@ export function endWeek(s) {
 
 function closeWeek(s) {
   const steps = [];
-  const over = spaceUsed(s) > ROOM_CAPACITY;
-  addStamina(s, over ? 3 : 6);
+  addStamina(s, overCapacity(s) ? 3 : 6);
   addHate(s, -2);
   if (s.banWeeks > 0) s.banWeeks--;
+  if (s.amaBan > 0) s.amaBan--;
   if (isMonthEnd(s.week)) steps.push(...monthEnd(s));
-  // 月末の演出を今週の日付のまま見せてから、週を進める
+  if (isYearEnd(s.week)) steps.push(yearReport(s));
+  // 月末・年末の演出を今週の日付のまま見せてから、週を進める
   steps.push({ t: 'defer', run: () => advanceWeek(s) });
   return steps;
+}
+
+function yearReport(s) {
+  const y = yearOf(s.week);
+  const months = s.monthly.filter((m) => m.year === y);
+  const revenue = months.reduce((a, m) => a + m.revenue, 0);
+  const sold = months.reduce((a, m) => a + m.sold, 0);
+  const st = stageOf(s);
+  return info(`${y}年目のまとめ`, [
+    `年間の純利益 ${yen(sumNet(months))}`,
+    `売上 ${yen(revenue)}・販売 ${sold}個`,
+    `ステージ${st.id}：${st.name}（次の目安：${st.next}）`,
+    s.debt > 0 ? `残りの借金 ${yen(s.debt)}` : '借金なし',
+  ], 'good');
 }
 
 function advanceWeek(s) {

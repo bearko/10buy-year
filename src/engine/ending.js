@@ -1,7 +1,8 @@
 // 最終査定とエンディング
 import { productOf } from '../data/products.js';
 import { flag } from './effects.js';
-import { priceOf } from './market.js';
+import { unitPrice } from './market.js';
+import { STAGES } from './career.js';
 import { grossProfit } from './state.js';
 
 export const INVENTORY_RATE = 0.7;
@@ -9,8 +10,7 @@ export const INVENTORY_RATE = 0.7;
 export function inventoryValue(s) {
   return s.inventory.reduce((sum, u) => {
     if (u.fake || u.stolen) return sum;
-    const v = priceOf(s, u.pid) * (u.damaged ? 0.5 : 1);
-    return sum + v * INVENTORY_RATE;
+    return sum + unitPrice(s, u) * INVENTORY_RATE;
   }, 0);
 }
 
@@ -20,13 +20,13 @@ export function netWorth(s) {
 }
 
 const RANKS = [
-  { rank: 'S', min: 3000000, label: '伝説の転売王' },
-  { rank: 'A', min: 1500000, label: '物販のプロ' },
-  { rank: 'B', min: 500000, label: '一人前のせどらー' },
-  { rank: 'C', min: 0, label: '借金ゼロの男' },
-  { rank: 'D', min: -1000000, label: 'もう一息の副業家' },
-  { rank: 'E', min: -2000000, label: '返済道半ば' },
-  { rank: 'F', min: -3000000, label: '在庫と借金の狭間' },
+  { rank: 'S', min: 50000000, label: '伝説の物販王' },
+  { rank: 'A', min: 20000000, label: '物販事業家' },
+  { rank: 'B', min: 8000000, label: '一流のせどらー' },
+  { rank: 'C', min: 3000000, label: '食べていけるせどらー' },
+  { rank: 'D', min: 1000000, label: '副業せどらー' },
+  { rank: 'E', min: 0, label: '借金ゼロの人' },
+  { rank: 'F', min: -1500000, label: '返済道半ば' },
   { rank: 'G', min: -Infinity, label: 'クリプトの亡霊' },
 ];
 
@@ -34,7 +34,7 @@ export const rankOf = (nw) => RANKS.find((r) => nw >= r.min);
 
 const KIND_TITLES = {
   staple: 'ワゴンの魔術師', hype: '限定品ハンター', collect: '古物の目利き', boom: 'バブルの申し子',
-  luxury: '正規店マラソンランナー', seasonal: '季節商戦の仕掛け人', perishable: '催事の早起き番長',
+  luxury: '正規店マラソンランナー', seasonal: '季節商戦の仕掛け人', perishable: '催事の早起き番長', home: '断捨離の達人',
 };
 
 export function titleOf(s) {
@@ -58,27 +58,37 @@ const ENDINGS = {
   },
   crypto: {
     title: '結局クリプトEND',
-    lines: ['借金は完済した。……半分くらいは、仮想通貨の爆益で。', '「転売で地道に稼いだ日々って、何だったんだろう」', 'マインは何も言わず、そっとチャートアプリを削除した。'],
+    lines: ['10年が経った。資産の半分くらいは、仮想通貨の爆益だった。', '「転売で地道に稼いだ日々って、何だったんだろう」', 'マインは何も言わず、そっとチャートアプリを削除した。'],
     pose: 'laugh',
   },
-  ceo: {
-    title: '物販社長END',
-    lines: ['借金を完済したうえに、手元には大きな資金が残った。', 'クリスは法人を設立。仕入れ・検品・出品・発送を仕組み化し、人を雇い始めた。', '「転売ヤー」と呼ばれた男は、いつしか「物販会社の社長」と呼ばれていた。'],
+  tycoon: {
+    title: '事業家END',
+    lines: ['せどりは通過点だった。', '仕入れで掴んだ「売れる理由」をもとに自社ブランドを立ち上げ、買い取る側・教える側にも回った。', '10年前、押し入れの本を1冊売った日のことを、クリスは今も覚えている。'],
     pose: 'cheer',
+  },
+  ceo: {
+    title: '物販会社社長END',
+    lines: ['合同会社クリス物販は、外注と倉庫で回る会社になった。', '「転売ヤー」と呼ばれた男は、いつしか「物販会社の社長」と呼ばれていた。', '次の一手は、せどりの外にあるのかもしれない。'],
+    pose: 'guts',
+  },
+  pro: {
+    title: '専業せどらーEND',
+    lines: ['10年間、仕入れて、売って、また仕入れた。', '自由だけど不自由。当たりの日はハイで、外れの日は眠れない。', '「店を回るだけ」の毎日に、そろそろ体がついてこなくなってきた。'],
+    pose: 'arms',
   },
   honest: {
     title: 'まっとうな商人END',
-    lines: ['借金を完済したクリスは、限定品の転売から少しずつ手を引いた。', 'ワゴンの掘り出し物、絶版本、地方で手に入らない品。「必要な人に届ける」商いを続けている。', '儲けは減った。でも、取引メッセージの「ありがとう」は増えた。'],
+    lines: ['限定品の転売からは少しずつ手を引いた。', 'ワゴンの掘り出し物、絶版本、地方で手に入らない品。「必要な人に届ける」商いを続けている。', '儲けは減った。でも、取引メッセージの「ありがとう」は増えた。'],
     pose: 'smile',
   },
-  payoff: {
-    title: '完済END',
-    lines: ['1年間の転売生活の末、借金を完済した。', '在庫の段ボールを片付けた部屋は、思っていたより広かった。', '「さて、これからどうしようかな」'],
-    pose: 'guts',
+  side: {
+    title: '副業せどらーEND',
+    lines: ['本業のかたわら、週末だけ仕入れて売る。', '大きくは稼げなかったけれど、借金は返し終えた。', '押し入れは、いつの間にか空っぽになっていた。'],
+    pose: 'smile',
   },
   continuing: {
     title: '返済はつづくよEND',
-    lines: ['1年が経った。借金はまだ残っている。', 'それでも、毎月の返済は一度も欠かさなかった……はずだ。', '「来月も、行列に並ぶか」'],
+    lines: ['10年が経った。借金はまだ残っている。', '売れると思った物が売れ残り、計算ミスで赤字を出し、それでも毎月の返済だけは続けてきた。', '「来月も、店を回るか」'],
     pose: 'arms',
   },
 };
@@ -90,16 +100,20 @@ export function finalResult(s) {
   else if (s.over === 'bankrupt') id = 'bankrupt';
   else if (s.debt > 0) id = 'continuing';
   else if (flag(s, 'cryptoWin')) id = 'crypto';
-  else if (nw >= 3000000) id = 'ceo';
+  else if (s.stage >= 5) id = 'tycoon';
+  else if (s.stage === 4) id = 'ceo';
   else if (flag(s, 'santaHelped') && s.hate < 25) id = 'honest';
-  else id = 'payoff';
+  else if (s.stage === 3) id = 'pro';
+  else id = 'side';
   const rank = ['arrested', 'bankrupt'].includes(id) ? RANKS[RANKS.length - 1] : rankOf(nw);
+  const st = STAGES[s.stage - 1];
   return {
     ending: { id, ...ENDINGS[id] },
     netWorth: nw,
     rank: rank.rank,
     rankLabel: rank.label,
     title: titleOf(s),
+    stage: `ステージ${st.id}：${st.name}`,
     revenue: s.stats.revenue,
     profit: grossProfit(s),
     soldUnits: s.stats.soldUnits,

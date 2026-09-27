@@ -2,30 +2,75 @@
 import { productOf, SIZE_INFO } from '../data/products.js';
 import { chance } from './rng.js';
 import { addCash, hasSkill, record, yen } from './effects.js';
+import { yearOf } from './calendar.js';
+import { nodeLv } from './abilities.js';
+import { unitPrice } from './market.js';
 
 export const ROOM_CAPACITY = 30;
 export const PLATFORMS = {
-  merc: { id: 'merc', name: 'プンシー', desc: 'フリマアプリ。手数料10%。値付け次第ですぐ売れるが、値下げ交渉とトラブルが多い' },
-  auc: { id: 'auc', name: 'ミィーム', desc: 'オークション。手数料10%。1週間で落札。コレクター品は競り上がりやすいが、入札ゼロもある' },
+  merc: { id: 'merc', node: 'ch_punsea', name: 'プンシー', fee: 0.1, desc: 'フリマ。手数料10%。値付け次第ですぐ売れるが、値下げ交渉とトラブルが多い' },
+  auc: { id: 'auc', node: 'ch_miime', name: 'ミィーム', fee: 0.1, desc: 'オークション。手数料10%。1週間で落札。コレクター品は競り上がりやすいが、入札ゼロもある' },
+  ama: { id: 'ama', node: 'ch_amacri', name: 'アマクリ', fee: 0.15, perUnit: 300, desc: '大手EC・倉庫委託。手数料15%＋納品料300円/個。新品だけ出品でき、買い手が多く発送の手間がない' },
 };
 
-export function feeRate(s) {
-  return hasSkill(s, 'tenka') ? 0.07 : 0.1;
+export function feeRate(s, platform = 'merc') {
+  const base = PLATFORMS[platform]?.fee ?? 0.1;
+  return hasSkill(s, 'tenka') ? base - 0.03 : base;
 }
 
-export const listingCap = (s) => 5 + Math.floor(s.abilities.list / 10);
+export function platformFee(s, platform, price) {
+  return Math.floor(price * feeRate(s, platform)) + (PLATFORMS[platform]?.perUnit || 0);
+}
+
+// その在庫を出品できる販路
+export function platformsFor(s, u) {
+  return Object.values(PLATFORMS).filter((pf) => {
+    if (!hasSkill(s, pf.node)) return false;
+    if (pf.id === 'ama' && (u?.used || u?.home || u?.damaged)) return false;
+    return true;
+  });
+}
+
+export const listingCap = (s) => 5 + Math.floor(s.abilities.list / 10) + nodeLv(s, 'slots') * 3 + (hasSkill(s, 'ch_shops') ? 5 : 0);
+export const capacity = (s) => ROOM_CAPACITY + (hasSkill(s, 'warehouse') ? 60 : 0) + (hasSkill(s, 'warehouse2') ? 300 : 0);
 export const activeUnits = (s) => s.inventory.filter((u) => u.arrive <= s.week);
 export const listedUnits = (s) => s.inventory.filter((u) => u.listing);
 export const spaceUsed = (s) => s.inventory.reduce((sum, u) => sum + SIZE_INFO[productOf(u.pid).size].space, 0);
+export const overCapacity = (s) => spaceUsed(s) > capacity(s);
+// 通路や玄関まで段ボールを積んでも、これ以上は物理的に置けない
+export const hardCapacity = (s) => Math.round(capacity(s) * 1.5);
 
 export function cardAvailable(s) {
   return Math.max(0, s.card.limit - s.card.current - s.card.due);
 }
 
+function newUnit(s, pid, cost, extra) {
+  const product = productOf(pid);
+  return {
+    uid: s.nextUid++,
+    pid,
+    cost,
+    week: s.week,
+    arrive: s.week,
+    used: !!product.used,
+    fake: false,
+    damaged: false,
+    stolen: false,
+    home: false,
+    edition: product.kind === 'hype' ? s.market[pid].edition || yearOf(s.week) : null,
+    expire: product.kind === 'perishable' ? s.week + product.shelf : null,
+    listing: null,
+    ...extra,
+  };
+}
+
 // 購入。支払いはポイント → 現金 or カード の順。
 export function buy(s, offer, qty, method = 'cash') {
   qty = Math.max(1, Math.min(qty, offer.maxQty));
+  if (offer.minQty && qty < offer.minQty) return { ok: false, msg: `最低${offer.minQty}個から` };
   const product = productOf(offer.pid);
+  const need = SIZE_INFO[product.size].space * qty;
+  if (spaceUsed(s) + need > hardCapacity(s)) return { ok: false, msg: '置き場所がない…（在庫スペースを増やすか、先に売ろう）' };
   const total = offer.price * qty;
   const pointsUsed = Math.min(s.points, total);
   const rest = total - pointsUsed;
@@ -46,22 +91,18 @@ export function buy(s, offer, qty, method = 'cash') {
   s.points += earned;
 
   for (let i = 0; i < qty; i++) {
-    s.inventory.push({
-      uid: s.nextUid++,
-      pid: offer.pid,
-      cost: offer.price,
-      week: s.week,
+    s.inventory.push(newUnit(s, offer.pid, offer.price, {
       arrive: offer.arriveWeek ?? s.week,
-      used: !!product.used,
       fake: offer.fakeRate > 0 && chance(s, offer.fakeRate),
-      damaged: false,
       stolen: !!offer.stolen,
-      expire: product.kind === 'perishable' ? s.week + product.shelf : null,
-      listing: null,
-    });
+      ...(offer.edition ? { edition: offer.edition } : {}),
+    }));
   }
   s.stats.boughtUnits += qty;
+  s.stats.purchases += qty;
   s.stats.spent += total;
+  s.cur.bought += qty;
+  s.cur.spent += total;
   if (offer.scarce) s.stats.scarceBought += qty;
   offer.maxQty -= qty;
   const extra = earned > 0 ? `（${earned.toLocaleString()}pt獲得）` : '';
@@ -75,6 +116,7 @@ export function listUnits(s, uids, platform, price) {
   for (const uid of uids) {
     const u = s.inventory.find((x) => x.uid === uid);
     if (!u || u.arrive > s.week) continue;
+    if (!platformsFor(s, u).some((pf) => pf.id === platform)) continue;
     if (!u.listing && listed >= cap) break;
     if (!u.listing) listed++;
     u.listing = { platform, price: Math.round(price), week: s.week };
@@ -98,21 +140,46 @@ export function removeUnit(s, uid) {
 export function groupInventory(s) {
   const groups = new Map();
   for (const u of s.inventory) {
-    const key = [u.pid, u.cost, u.arrive > s.week ? 'wait' : '', u.damaged ? 'dmg' : '', u.listing ? `${u.listing.platform}:${u.listing.price}` : ''].join('|');
-    if (!groups.has(key)) groups.set(key, { key, pid: u.pid, cost: u.cost, units: [], listing: u.listing, arrive: u.arrive, damaged: u.damaged, expire: u.expire });
+    const key = [u.pid, u.cost, u.edition || '', u.home ? 'home' : '', u.arrive > s.week ? 'wait' : '', u.damaged ? 'dmg' : '', u.listing ? `${u.listing.platform}:${u.listing.price}` : ''].join('|');
+    if (!groups.has(key)) groups.set(key, { key, pid: u.pid, cost: u.cost, units: [], listing: u.listing, arrive: u.arrive, damaged: u.damaged, expire: u.expire, home: u.home, edition: u.edition, week: u.week });
     groups.get(key).units.push(u);
   }
   return [...groups.values()];
 }
 
-// イベントで在庫を直接増やす（福袋など）
+// イベント・家探しで在庫を直接増やす（福袋、家の不用品など）
 export function addUnits(s, pid, qty, cost, extra = {}) {
-  const product = productOf(pid);
-  for (let i = 0; i < qty; i++) {
-    s.inventory.push({
-      uid: s.nextUid++, pid, cost, week: s.week, arrive: s.week, used: !!product.used, fake: false, damaged: false, stolen: false,
-      expire: product.kind === 'perishable' ? s.week + product.shelf : null, listing: null, ...extra,
-    });
+  for (let i = 0; i < qty; i++) s.inventory.push(newUnit(s, pid, cost, extra));
+  if (!extra.home) s.stats.boughtUnits += qty;
+}
+
+// 買取業者に売る（損切り）。すぐ現金になるが、相場の半分以下。偽物・盗品は値がつかない
+export const BUYBACK_RATE = 0.45;
+export function buybackQuote(s, u) {
+  if (u.fake || u.stolen) return 0;
+  return Math.floor((unitPrice(s, u) * BUYBACK_RATE) / 10) * 10;
+}
+
+export function sellToBuyer(s, uids) {
+  let total = 0;
+  let n = 0;
+  for (const uid of uids) {
+    const u = s.inventory.find((x) => x.uid === uid);
+    if (!u || u.arrive > s.week) continue;
+    const price = buybackQuote(s, u);
+    removeUnit(s, uid);
+    total += price;
+    n++;
+    const profit = price - u.cost;
+    s.stats.revenue += price;
+    s.stats.cogs += u.cost;
+    s.stats.soldUnits++;
+    s.cur.revenue += price;
+    s.cur.salesProfit += profit;
+    s.cur.sold++;
+    s.cur.daysSum += Math.max(0, (s.week - u.week) * 7);
+    if (profit < 0) s.cur.lossCuts++;
   }
-  s.stats.boughtUnits += qty;
+  if (n) addCash(s, total, `買取業者へ売却（${n}個）`);
+  return { n, total };
 }

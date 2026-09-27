@@ -1,4 +1,4 @@
-// イベント定義。パワプロのサクセスでいう「仲間イベント」「ランダムイベント」「カレンダーイベント」。
+// イベント定義。偉人との連続イベント、ランダムイベント、日付固定のカレンダーイベント。
 //
 // trigger:
 //   calendar  … 週の頭に、cond を満たせば必ず起きる（日付固定イベント）
@@ -8,13 +8,14 @@
 // once を false にしない限り、1周につき1回だけ起きる。
 import { PRODUCTS, productOf } from './products.js';
 import { SKILL_MAP } from './skills.js';
-import { weekAt } from '../engine/calendar.js';
+import { TOTAL_WEEKS, weekAt, woy } from '../engine/calendar.js';
 import { chance, pick, randInt } from '../engine/rng.js';
 import {
   addAffinity, addCash, addExp, addHate, addMood, addRating, addStamina, affinity, flag, giveHint, giveSkill, hasSkill, setFlag, yen,
 } from '../engine/effects.js';
 import { applyShock, inBoom, isReleased, priceOf } from '../engine/market.js';
-import { addUnits, spaceUsed, ROOM_CAPACITY } from '../engine/inventory.js';
+import { addUnits, overCapacity } from '../engine/inventory.js';
+import { fiscalIncome, MIN_PAYMENT, taxFor } from '../engine/finance.js';
 import { choice, gain, info, narr, sfx, talk } from '../engine/steps.js';
 
 const hold = (s, pid) => s.inventory.filter((u) => u.pid === pid && u.arrive <= s.week);
@@ -24,46 +25,30 @@ const hint = (s, id, lv, heroName) => {
   return [sfx('hint'), info('コツを掴んだ！', [`${heroName}から「${SKILL_MAP[id].name}」のコツ Lv${s.hints[id]} を教わった`, '（能力画面で習得できる）'], 'good')];
 };
 const expStep = (s, gains) => gain(addExp(s, gains));
+// 同じ商品を大量に抱えているか（ライバル殺到イベント用）
+const heavyHolding = (s) => {
+  const counts = {};
+  for (const u of s.inventory) if (!u.home) counts[u.pid] = (counts[u.pid] || 0) + 1;
+  const hit = Object.entries(counts).find(([, n]) => n >= 8);
+  return hit ? hit[0] : null;
+};
 
 export const EVENTS = [
   // ================= カレンダー（日付固定） =================
-  {
-    id: 'tutorial_1',
-    trigger: 'calendar',
-    cond: (s) => s.week === 0,
-    play: () => [
-      talk('mine', 'さあ、転売生活の始まりよ！ まずは基本を説明するわね。', 'pointer'),
-      talk('mine', '1週間に1回、下のメニューから「行動」を選ぶの。店舗を回る、ネットで探す、抽選に応募する、行列に並ぶ…いろいろあるわ。', 'talk'),
-      talk('mine', '行動すると経験点がたまる。経験点を使って「目利き」や「仕入れ」の能力を上げていくのよ。パワプロのサクセスと同じね。', 'wink'),
-      talk('mine', '仕入れた商品は「在庫」画面から出品してね。値付けは自由。相場より高すぎると売れないし、安すぎると損をする。', 'talk'),
-      talk('mine', 'そして大事なのが毎月末の返済。最低10万円。3回滞納したら…わかってるわね？', 'arms'),
-      talk('chris', 'う、うん。まずはワゴンセールで安く仕入れて、定価近くで売る「価格差」から始めてみるよ！', 'guts'),
-    ],
-  },
-  {
-    id: 'tutorial_2',
-    trigger: 'calendar',
-    cond: (s) => s.week === 1,
-    play: () => [
-      talk('maycri', '【速報】人気トレカの新弾「兵法書」が来週発売！ 抽選と予約はもう始まってるぞー！', 'wide'),
-      talk('mine', '限定品は「抽選に応募」か、電脳せどりで「予約」を取るのが基本。発売日に「行列に並ぶ」手もあるわ。', 'pointer'),
-      talk('mine', '当たれば定価で買えて、発売直後は相場が跳ね上がる。…ただし「再販」が決まると一気に値崩れするから注意ね。', 'talk'),
-      talk('chris', '「相場」画面で値動きもチェックできるんだね。目利きが低いうちは推定がブレるのか…。', 'arms'),
-    ],
-  },
   {
     id: 'month1_end',
     trigger: 'calendar',
     cond: (s) => s.week === 3,
     play: (s) => [
-      talk('mine', `今週末は最初の返済日よ。最低返済額は10万円。いまの所持金は${yen(s.cash)}。`, 'arms'),
-      talk('chris', s.cash >= 100000 ? 'なんとか払えそう…！' : '足りない…！ 今週は売ることに集中するか、バイトで稼ぐか…', s.cash >= 100000 ? 'smile' : 'sad'),
+      talk('mine', `今週末は最初の返済日よ。最低返済額は${yen(MIN_PAYMENT)}。いまの所持金は${yen(s.cash)}。`, 'arms'),
+      talk('chris', s.cash >= MIN_PAYMENT ? 'なんとか払えそう…！' : '足りない…！ 今週は売ることに集中するか、バイトで稼ぐか…', s.cash >= MIN_PAYMENT ? 'smile' : 'sad'),
     ],
   },
   {
     id: 'golden_week',
     trigger: 'calendar',
-    cond: (s) => s.week === weekAt(5, 1),
+    yearly: true,
+    cond: (s) => woy(s.week) === weekAt(5, 1),
     play: (s) => {
       s.mods.demand *= 1.3;
       return [
@@ -76,7 +61,8 @@ export const EVENTS = [
   {
     id: 'amacri_day',
     trigger: 'calendar',
-    cond: (s) => s.week === weekAt(7, 2),
+    yearly: true,
+    cond: (s) => woy(s.week) === weekAt(7, 2),
     play: (s) => {
       s.mods.onlinePoints *= 2;
       return [
@@ -89,7 +75,8 @@ export const EVENTS = [
   {
     id: 'summer_fes',
     trigger: 'calendar',
-    cond: (s) => s.week === weekAt(8, 2),
+    yearly: true,
+    cond: (s) => woy(s.week) === weekAt(8, 2),
     play: (s) => {
       s.mods.queueExtra = ['sylph'];
       return [
@@ -103,7 +90,8 @@ export const EVENTS = [
   {
     id: 'black_friday',
     trigger: 'calendar',
-    cond: (s) => s.week === weekAt(11, 4),
+    yearly: true,
+    cond: (s) => woy(s.week) === weekAt(11, 4),
     play: (s) => {
       s.mods.storeDiscount += 0.15;
       return [
@@ -115,7 +103,8 @@ export const EVENTS = [
   {
     id: 'santa',
     trigger: 'calendar',
-    cond: (s) => s.week >= weekAt(12, 2) && s.week <= weekAt(12, 4) && (hold(s, 'winter').length > 0 || hold(s, 'photon').length > 0),
+    yearly: true,
+    cond: (s) => woy(s.week) >= weekAt(12, 2) && woy(s.week) <= weekAt(12, 4) && (hold(s, 'winter').length > 0 || hold(s, 'photon').length > 0),
     play: (s) => {
       const pid = hold(s, 'photon').length ? 'photon' : 'winter';
       const p = productOf(pid);
@@ -154,7 +143,8 @@ export const EVENTS = [
   {
     id: 'fukubukuro',
     trigger: 'calendar',
-    cond: (s) => s.week === weekAt(1, 1),
+    yearly: true,
+    cond: (s) => woy(s.week) === weekAt(1, 1),
     play: (s) => [
       talk('maycri', 'あけましておめでとう！ 初売りの「マイクリ福袋」、1袋1万円だぞー！ 中身は開けてのお楽しみ！', 'wide'),
       talk('mine', '福袋の中身を転売する人も多いわね。…ただ、正直ギャンブルよ。', 'arms'),
@@ -186,16 +176,16 @@ export const EVENTS = [
   {
     id: 'tax_return',
     trigger: 'calendar',
-    cond: (s) => s.week === weekAt(2, 3),
+    yearly: true,
+    cond: (s) => woy(s.week) === weekAt(2, 3),
     play: (s) => {
-      const income = Math.max(0, profit(s) - s.stats.expenses);
-      const deduction = 580000;
-      const taxable = Math.max(0, income - deduction);
-      let tax = Math.round(taxable * 0.2);
+      const income = Math.max(0, fiscalIncome(s));
+      let tax = taxFor(s, income);
       if (hasSkill(s, 'ledger')) tax = Math.round(tax * 0.7);
+      const kind = s.corp ? '法人税など（決算）' : '所得税・住民税';
       const lines = [
-        talk('mine', 'そろそろ確定申告の季節よ。転売の利益も立派な所得。申告しないと大変なことになるわ。', 'pointer'),
-        talk('mine', `今年の利益はざっと${yen(income)}。基礎控除などを引くと、税金はおよそ${yen(tax)}ね（ゲーム内の簡易計算よ）。`, 'talk'),
+        talk('mine', s.corp ? '決算の季節よ。会社の利益にも税金がかかるわ。' : 'そろそろ確定申告の季節よ。転売の利益も立派な所得。申告しないと大変なことになるわ。', 'pointer'),
+        talk('mine', `今年度の事業所得はざっと${yen(income)}。${kind}はおよそ${yen(tax)}ね（ゲーム内の簡易計算よ）。`, 'talk'),
       ];
       if (tax === 0) {
         return [...lines, talk('chris', '控除の範囲に収まってるから、税金はかからないのか。…喜んでいいのかな。', 'arms')];
@@ -206,7 +196,7 @@ export const EVENTS = [
           {
             label: `きちんと申告して納税する（${yen(tax)}）`,
             run: () => {
-              addCash(s, -tax, '所得税・住民税（概算）');
+              addCash(s, -tax, kind);
               s.stats.taxPaid += tax;
               addExp(s, { mind: 10, info: 5 });
               return [talk('chris', '痛いけど…これで堂々と商売できる。', 'guts'), gain({ mind: 10, info: 5 })];
@@ -216,7 +206,7 @@ export const EVENTS = [
             label: 'バレないでしょ。申告しない',
             run: () => {
               setFlag(s, 'taxEvaded', tax);
-              return [talk('mine', '…フリマアプリの売上データ、税務署はちゃんと見てるわよ？', 'arms'), talk('chris', 'だ、大丈夫だって…たぶん。', 'sad')];
+              return [talk('mine', '…フリマの売上データ、税務署はちゃんと見てるわよ？', 'arms'), talk('chris', 'だ、大丈夫だって…たぶん。', 'sad')];
             },
           },
         ]),
@@ -226,9 +216,11 @@ export const EVENTS = [
   {
     id: 'tax_audit',
     trigger: 'calendar',
-    cond: (s) => s.week === weekAt(3, 3) && flag(s, 'taxEvaded'),
+    once: false,
+    cond: (s) => woy(s.week) === weekAt(3, 3) && flag(s, 'taxEvaded'),
     play: (s) => {
       const due = Math.round(flag(s, 'taxEvaded') * 1.4);
+      delete s.flags.taxEvaded;
       addCash(s, -due, '追徴課税（無申告加算税など）');
       s.stats.taxPaid += due;
       addMood(s, -2);
@@ -243,10 +235,10 @@ export const EVENTS = [
   {
     id: 'final_week',
     trigger: 'calendar',
-    cond: (s) => s.week === weekAt(3, 4),
+    cond: (s) => s.week === TOTAL_WEEKS - 1,
     play: (s) => [
-      talk('mine', 'いよいよ最後の1週間よ。最終査定では、在庫は相場の7割で評価するわ。', 'pointer'),
-      talk('chris', s.debt <= 0 ? '借金は返し終わった。あとはどこまで積み上げられるかだ！' : `借金はあと${yen(s.debt)}…。最後まで足掻いてやる！`, 'guts'),
+      talk('mine', 'あなたが転売を始めて、もうすぐ10年。最後の1週間よ。最終査定では、在庫は相場の7割で評価するわ。', 'pointer'),
+      talk('chris', s.debt <= 0 ? '10年か…。借金まみれだったのが嘘みたいだ。' : `借金はまだ${yen(s.debt)}…。最後まで足掻いてやる！`, 'guts'),
     ],
   },
 
@@ -256,7 +248,7 @@ export const EVENTS = [
     trigger: 'weekStart',
     once: false,
     chance: 0.6,
-    cond: (s) => spaceUsed(s) > ROOM_CAPACITY,
+    cond: (s) => overCapacity(s),
     play: (s) => {
       const dm = addMood(s, -1);
       return [
@@ -321,7 +313,7 @@ export const EVENTS = [
       addStamina(s, -10);
       s.flags.midnight = (s.flags.midnight || 0) + 1;
       const lines = [narr('深夜3時。気づけば布団の中で相場チェックと抽選結果メールの確認を繰り返していた。'), info('寝不足', ['体力 -10'], 'bad')];
-      if (s.flags.midnight >= 3 && !hasSkill(s, 'insomnia')) {
+      if (s.flags.midnight + Math.floor((s.flags.nightWork || 0) / 40) >= 3 && !hasSkill(s, 'insomnia')) {
         giveSkill(s, 'insomnia');
         lines.push(info('マイナス能力', ['「寝不足」がついてしまった…'], 'bad'));
       }
@@ -485,11 +477,11 @@ export const EVENTS = [
           run: () => [talk('chris', '教えるのはいいけど…ライバルが増えるってことでもあるんだよな。', 'arms'), gain(addExp(s, { social: 15, info: 5 }))],
         },
         {
-          label: '「転売で月30万稼ぐ方法」を有料noteで売る',
+          label: '「転売で月30万稼ぐ方法」を有料記事で売る',
           run: () => {
-            addCash(s, 49800, '有料note販売');
+            addCash(s, 49800, '有料記事の販売');
             addHate(s, 6);
-            return [narr('1冊9,800円の有料noteが5部売れた。'), talk('mine', '……ミイラ取りがミイラ、ね。', 'arms'), talk('chris', '情報商材の気持ちがちょっとわかった気がする…。', 'laugh')];
+            return [narr('1本9,800円の有料記事が5部売れた。'), talk('mine', '……ミイラ取りがミイラ、ね。', 'arms'), talk('chris', '情報商材の気持ちがちょっとわかった気がする…。', 'laugh')];
           },
         },
       ]),
@@ -1033,6 +1025,93 @@ export const EVENTS = [
         return [narr('行列の様子を撮影している人がいる。「転売ヤーの列www」とSNSに上げるらしい。'), talk('chris', '（顔、映ってないよな…？）', 'sad')];
       }
       return [narr('隣に並んだ親子。「息子の誕生日プレゼントなんです」と照れくさそうに笑っていた。'), talk('chris', '（……）', 'arms'), gain(addExp(s, { mind: 6 }))];
+    },
+  },
+
+  // ================= 専業のリアル（ステージ2以降） =================
+  {
+    id: 'family_when',
+    trigger: 'weekStart',
+    yearly: true,
+    chance: 0.08,
+    cond: (s) => s.stage >= 2,
+    play: (s) => [
+      narr(s.fulltime ? '久しぶりに実家に顔を出すと、父がぽつりと言った。「それで、いつまでその仕事を続けるんだ？」' : '母からのメッセージ。「週末くらい休みなさいよ。売れ筋より体が大事でしょ」'),
+      choice([
+        { label: '「ちゃんと事業にしていくつもり」', run: () => [talk('chris', '（言葉にしたら、少し覚悟が決まった気がする）', 'guts'), gain(addExp(s, { mind: 10 }))] },
+        {
+          label: '今週末は家族と過ごす',
+          run: () => {
+            addMood(s, 1);
+            addStamina(s, 15);
+            return [narr('週末は仕入れに行かず、家族とご飯を食べた。売れ筋はきっとライバルに取られた。でも、それでいい。'), info('リフレッシュ', ['やる気が上がり、体力が回復した'], 'good')];
+          },
+        },
+      ]),
+    ],
+  },
+  {
+    id: 'backpain',
+    trigger: 'weekStart',
+    chance: 0.12,
+    cond: (s) => s.stage >= 2 && !s.skills.includes('backpain') && s.eventsSeen['ino_1'],
+    play: (s) => {
+      giveSkill(s, 'backpain');
+      return [
+        talk('chris', '車で一日5店舗、県をまたいで300km…。腰が…腰がぁ…。', 'wail'),
+        talk('mine', 'ガソリン代と高速代も馬鹿にならないのよ。店舗だけに頼ると、体力の限界がくるわ。', 'arms'),
+        info('マイナス能力', ['「腰痛」がついた（店舗せどりの体力消費1.3倍）'], 'bad'),
+      ];
+    },
+  },
+  {
+    id: 'rival_flood',
+    trigger: 'weekStart',
+    once: false,
+    chance: 0.25,
+    cond: (s) => s.stage >= 2 && heavyHolding(s),
+    play: (s) => {
+      const pid = heavyHolding(s);
+      applyShock(s, pid, 0.8, null, null);
+      s.news.push({ pid, text: `「${productOf(pid).name}」の出品が急増。ライバルが一斉に参入し、相場が崩れ始めた`, kind: 'down' });
+      return [
+        talk('chris', `「${productOf(pid).name}」が売れ筋だと思って大量に仕入れたら、翌週にはライバルが殺到してる…！`, 'wail'),
+        talk('mine', '売れ筋は、みんなにとっても売れ筋。在庫を抱えすぎないのが一番のリスク管理よ。', 'arms'),
+      ];
+    },
+  },
+  {
+    id: 'official_measure',
+    trigger: 'weekStart',
+    yearly: true,
+    chance: 0.1,
+    cond: (s) => s.stage >= 2 && PRODUCTS.some((p) => p.kind === 'hype' && isReleased(s, p)),
+    play: (s) => {
+      const p = pick(s, PRODUCTS.filter((x) => x.kind === 'hype' && isReleased(s, x)));
+      applyShock(s, p.id, 0.8, null, null);
+      s.news.push({ pid: p.id, text: `【転売対策】メーカーが「${p.name}」の購入履歴フィルターと受注生産を発表。出品が一気に消え、相場が乱高下`, kind: 'down' });
+      return [talk('maycri', `【速報】メーカーが「${p.name}」の転売対策を発表！ プンシーから出品が一斉に消えたぞー！`, 'wide'), talk('chris', 'また対策が強化された…。新品の限定品だけで食べていくのは、どんどん難しくなるな。', 'arms')];
+    },
+  },
+  {
+    id: 'shops_offer',
+    trigger: 'weekStart',
+    chance: 0.3,
+    cond: (s) => s.stage >= 3 && !s.skills.includes('ch_shops'),
+    play: () => [
+      talk('collector', '【プンシー事務局】継続的に多数の出品をされている方は、事業者向けの「プンシーShops」への移行をお願いしております。'),
+      talk('mine', '個人のフリマとして扱える規模じゃなくなった、ってことね。スキルツリーの「プンシーShops」で移行できるわ。', 'pointer'),
+    ],
+  },
+  {
+    id: 'outsourcer_holiday',
+    trigger: 'weekStart',
+    once: false,
+    chance: 0.06,
+    cond: (s) => s.skills.includes('out_ship') || s.skills.includes('out_list'),
+    play: (s) => {
+      addStamina(s, -15);
+      return [narr('外注さんから連絡。「すみません、今週は子どもの熱で作業できません」'), talk('chris', '結局、自分で全部梱包する週末…。人に任せるって、こういうことか。', 'sad'), info('外注のお休み', ['体力 -15'], 'bad')];
     },
   },
 
