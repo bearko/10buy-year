@@ -1,14 +1,17 @@
-// テスト・バランス調整用のヘッドレス自動プレイ。UI なしで 48 週を通しで遊ぶ。
+// テスト・バランス調整用のヘッドレス自動プレイ。UI なしで10年（480週）を通しで遊ぶ。
 import { createGame } from '../src/engine/state.js';
 import { startWeek, endWeek } from '../src/engine/turn.js';
-import { performCommand, availableCommands, COMMAND_MAP, sickRisk } from '../src/engine/commands.js';
-import { buy, listUnits, activeUnits, cardAvailable } from '../src/engine/inventory.js';
-import { estimate, isAnnounced, priceOf } from '../src/engine/market.js';
+import { performCommand, availableCommands, availableNightCommands } from '../src/engine/commands.js';
+import { buy, activeUnits, cardAvailable, listUnits, feeRate, sellToBuyer } from '../src/engine/inventory.js';
+import { estimateUnit, priceOf, estimate } from '../src/engine/market.js';
 import { queueTargets, openLotteries } from '../src/engine/offers.js';
-import { ABILITIES, raiseAbility, learnableSkills, learnSkill } from '../src/engine/abilities.js';
+import { ABILITIES, learnSkill, nodeState, raiseAbility } from '../src/engine/abilities.js';
+import { SKILLS } from '../src/data/skills.js';
 import { productOf, shippingCost } from '../src/data/products.js';
 import { repay } from '../src/engine/finance.js';
 import { finalResult } from '../src/engine/ending.js';
+import { checkTutorial } from '../src/engine/tutorial.js';
+import { autoBuy, bestPlatform, reserveNeeded } from '../src/engine/automation.js';
 
 export function play(s, steps, policy) {
   const queue = [...steps];
@@ -25,7 +28,7 @@ export function play(s, steps, policy) {
   }
 }
 
-const RISKY = /突っ込む|入会する|^買う$|5倍|やってみる|捨てアカ|無視|note|福袋を買う/;
+const RISKY = /突っ込む|入会する|^買う$|5倍|やってみる|捨てアカ|無視|有料記事|福袋を買う|まだ/;
 
 export const smartPolicy = {
   choose: (s, st) => {
@@ -33,22 +36,28 @@ export const smartPolicy = {
     return idx >= 0 ? idx : st.options.length - 1;
   },
   buyOffers(s, offers) {
+    if (s.skills.includes('out_buy')) {
+      autoBuy(s, offers);
+      return;
+    }
     for (const o of offers) {
       const p = productOf(o.pid);
       const est = process.env.ORACLE ? priceOf(s, o.pid) : o.est;
-      const net = est * 0.9 - shippingCost(p);
+      const net = est * (1 - feeRate(s)) - shippingCost(p) + o.price * (o.points || 0);
       const margin = net - o.price;
       if (o.warn) continue;
-      if (margin < Math.max(300, o.price * 0.08)) continue;
-      // 月末の返済とカード引き落としに備えて現金を残しておく
-      const reserve = 35000 + s.card.due + s.card.current * 0.5;
-      for (let q = o.maxQty; q >= 1; q--) {
+      if (p.used && !s.flags.license) continue;
+      if (p.alcohol && s.flags.noAlcohol) continue;
+      if (margin < Math.max(300, o.price * 0.1)) continue;
+      const reserve = reserveNeeded(s) * (o.minQty ? 4 : 1) + s.card.current * 0.5;
+      const cap = o.minQty ? s.cash * 0.4 : Infinity;
+      for (let q = o.maxQty; q >= (o.minQty || 1); q--) {
         const total = o.price * q;
-        if (total <= s.cash - reserve) {
+        if (total <= s.cash - reserve && total <= cap) {
           buy(s, o, q, 'cash');
           break;
         }
-        if (total <= cardAvailable(s) && (process.env.AGGRO || s.card.current + total < s.cash + 50000)) {
+        if (!o.minQty && total <= cardAvailable(s) && s.card.current + total < s.cash + 100000) {
           buy(s, o, q, 'card');
           break;
         }
@@ -58,56 +67,94 @@ export const smartPolicy = {
 };
 
 export function manageListings(s) {
+  // 売れない在庫（酒類の出品停止、半年以上の滞留）は買取業者で損切り
+  const dump = activeUnits(s).filter((u) => (productOf(u.pid).alcohol && s.flags.noAlcohol) || s.week - u.week > 26);
+  if (dump.length) sellToBuyer(s, dump.map((u) => u.uid));
   for (const u of activeUnits(s)) {
     const p = productOf(u.pid);
-    const est = (process.env.ORACLE ? priceOf(s, u.pid) : estimate(s, u.pid)) * (u.damaged ? 0.5 : 1);
     if (p.alcohol && s.flags.noAlcohol) continue;
+    const pf = bestPlatform(s, u);
+    if (!pf) continue;
+    const est = process.env.ORACLE ? priceOf(s, u.pid) : estimateUnit(s, u);
     const age = u.listing ? s.week - u.listing.week : 0;
-    const platform = p.kind === 'collect' || p.kind === 'luxury' ? 'auc' : s.banWeeks > 0 ? 'auc' : 'merc';
-    const mult = platform === 'auc' ? 0.7 : Math.max(0.85, 1.02 - age * 0.04);
-    if (!u.listing || age >= 1) listUnits(s, [u.uid], platform, est * mult);
+    const mult = pf === 'auc' ? 0.7 : Math.max(0.85, 1.02 - age * 0.04);
+    if (!u.listing || age >= 1) listUnits(s, [u.uid], pf, est * mult);
   }
+}
+
+// スキルツリーの解放優先度
+const PRIORITY = [
+  'eye_calc', 'eye_market', 'src_online', 'license', 'src_used', 'ch_miime', 'ch_amacri', 'src_lottery', 'kpi_mid', 'net_meetup', 'src_queue',
+  'slots', 'price_tool', 'warehouse', 'routine', 'src_flea', 'profile', 'quick_reply', 'photogenic', 'pack_master', 'eye_fake',
+  'out_ship', 'out_list', 'ch_shops', 'kpi_pro', 'eye_ai', 'src_auction', 'serial_memo', 'bargain', 'lottery_nose', 'poikatsu',
+  'src_wholesale', 'out_buy', 'warehouse2', 'div_brand', 'div_buyback', 'div_consult', 'iron_mental', 'early_bird',
+  ...SKILLS.filter((x) => x.kind === 'gold' || x.kind === 'red').map((x) => x.id),
+];
+
+function growth(s) {
+  for (const id of PRIORITY) {
+    const st = nodeState(s, id);
+    if (st === 'available' || st === 'red') learnSkill(s, id);
+  }
+  // ノードに使う分を残して、余った経験点で基礎能力を上げる
+  const spare = () => Object.values(s.exp).filter((v) => v > 60).length >= 3;
+  for (let i = 0; i < 20 && spare(); i++) for (const a of ABILITIES) raiseAbility(s, a.id, 1);
 }
 
 function chooseCommand(s) {
   const cmds = availableCommands(s).map((c) => c.id);
+  const has = (id) => cmds.includes(id);
   if (cmds.length === 1) return cmds[0];
   if (s.stamina < 40) return 'rest';
-  if (!s.flags.license && s.flags.licensePending === undefined && s.cash > 60000 && s.week > 3) return 'license';
-  if (queueTargets(s).length && s.stamina >= 60) return 'queue';
-  const fresh = openLotteries(s).filter((p) => !(s.botEntered ||= []).includes(p.id));
+  if (s.tutorial === 2 && has('store')) return 'store';
+  if (has('license') && s.cash > 60000) return 'license';
+  if (has('queue') && queueTargets(s).length && s.stamina >= 60) return 'queue';
+  const fresh = has('lottery') ? openLotteries(s).filter((p) => !(s.botEntered ||= []).includes(`${p.id}@${Math.floor(s.week / 48)}`)) : [];
   if (fresh.length) {
-    s.botEntered.push(...openLotteries(s).map((p) => p.id));
+    s.botEntered.push(...openLotteries(s).map((p) => `${p.id}@${Math.floor(s.week / 48)}`));
     return 'lottery';
   }
-  if (s.week % 4 === 3 && s.cash < 60000) return 'parttime';
+  if (has('parttime') && s.week % 4 === 3 && s.cash < reserveNeeded(s)) return 'parttime';
+  if (has('home_search') && s.week % 3 === 0) return 'home_search';
+  if (has('wholesale') && s.cash > 1500000 && s.week % 2 === 0) return 'wholesale';
+  if (has('auction') && s.cash > 300000 && s.week % 3 === 1) return 'auction';
   const listed = s.inventory.filter((u) => u.listing).length;
-  if (listed >= 8 && s.week % 3 === 1) return 'listing';
-  return s.week % 2 ? 'store' : 'online';
+  if (listed >= 8 && s.week % 5 === 1 && !s.skills.includes('out_list')) return 'listing';
+  if (!has('store')) return has('home_search') ? 'home_search' : 'parttime';
+  if (!has('online')) return 'store';
+  return (s.week + (s.actionsLeft || 0)) % 2 ? 'store' : 'online';
 }
 
-function growth(s) {
-  for (const sk of learnableSkills(s)) if (sk.kind !== 'red' || true) learnSkill(s, sk.id);
-  for (let i = 0; i < 30; i++) for (const a of ABILITIES) raiseAbility(s, a.id, 1);
-}
-
-export function runGame(seed, policy = smartPolicy) {
+export function runGame(seed, policy = smartPolicy, { weeks = Infinity } = {}) {
   const s = createGame(seed);
-  while (!s.over) {
+  while (!s.over && s.week < weeks) {
     play(s, startWeek(s), policy);
+    play(s, checkTutorial(s), policy);
     if (s.over) break;
     growth(s);
     manageListings(s);
-    const cmd = chooseCommand(s);
-    void COMMAND_MAP;
-    void sickRisk;
-    void isAnnounced;
-    const cashBefore = s.cash;
-    play(s, performCommand(s, cmd), policy);
-    manageListings(s);
-    if (process.env.BOT_DEBUG) console.log(`W${s.week} ${cmd} cash ${cashBefore}->${s.cash} inv=${s.inventory.length} card=${s.card.current}/${s.card.due} stam=${s.stamina} del=${s.delinquency} debt=${s.debt}`);
-    if (s.cash > 400000 && s.debt > 0) repay(s, s.cash - 250000);
+    play(s, checkTutorial(s), policy);
+    while (s.actionsLeft > 0 && !s.over) {
+      s.actionsLeft--;
+      play(s, performCommand(s, chooseCommand(s)), policy);
+      manageListings(s);
+      play(s, checkTutorial(s), policy);
+    }
+    if (s.nightLeft > 0 && s.stamina >= 45) {
+      s.nightLeft--;
+      const night = availableNightCommands(s).map((c) => c.id);
+      const pickNight = night.includes('online') ? 'online' : night.includes('listing') ? 'listing' : night[0];
+      if (pickNight) {
+        play(s, performCommand(s, pickNight, { night: true }), policy);
+        manageListings(s);
+      }
+    }
+    const keep = Math.max(400000, reserveNeeded(s) * 3);
+    if (s.cash > keep && s.debt > 0) repay(s, s.cash - keep);
     play(s, endWeek(s), policy);
+    play(s, checkTutorial(s), policy);
   }
   return { s, result: finalResult(s) };
 }
+
+export { estimate };

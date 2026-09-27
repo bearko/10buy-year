@@ -1,13 +1,19 @@
+// 自動プレイの統計。ステージ到達・完済の時期と最終資産を見る
 import { runGame } from './bot.js';
-const n = Number(process.argv[2] || 30);
+const n = Number(process.argv[2] || 20);
+const yr = (w) => (w === undefined ? '-' : (w / 48 + 1).toFixed(1));
 const rows = [];
 for (let i = 1; i <= n; i++) {
   const { s, result } = runGame(i * 7919);
-  rows.push({ seed: i, end: result.ending.id, rank: result.rank, nw: result.netWorth, debt: s.debt, rev: result.revenue, profit: result.profit, sold: result.soldUnits, trouble: result.troubles, del: s.delinquency, week: s.week });
+  const sw = s.stageWeeks || {};
+  rows.push({
+    seed: i, end: result.ending.id, rank: result.rank, nw: result.netWorth, stage: s.stage,
+    st2: yr(sw[2]), st3: yr(sw[3]), st4: yr(sw[4]), st5: yr(sw[5]), debtFree: yr(s.flags.debtFree), rev: result.revenue, sold: result.soldUnits, week: s.week,
+  });
 }
 console.table(rows);
 const avg = (k) => Math.round(rows.reduce((a, r) => a + r[k], 0) / rows.length);
-console.log('avg netWorth', avg('nw'), 'avg revenue', avg('rev'), 'avg profit', avg('profit'));
+console.log('avg netWorth', avg('nw'), 'avg revenue', avg('rev'));
 const cnt = {};
-rows.forEach((r) => (cnt[r.end] = (cnt[r.end] || 0) + 1));
+rows.forEach((r) => (cnt[`stage${r.stage}`] = (cnt[`stage${r.stage}`] || 0) + 1));
 console.log(cnt);

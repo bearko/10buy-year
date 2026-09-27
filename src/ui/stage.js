@@ -5,6 +5,13 @@ import { $, clear, h } from './dom.js';
 const BG = (name) => `assets/backgrounds/${name}.jpg`;
 let textSpeed = 22; // ms / 文字
 let blinkTimer = null;
+let autoMode = false; // オート進行中はクリック待ちをせずに流す
+
+export function setAuto(v) {
+  autoMode = v;
+  document.body.classList.toggle('auto', v);
+}
+export const isAuto = () => autoMode;
 
 export function setTextSpeed(ms) {
   textSpeed = ms;
@@ -66,8 +73,9 @@ function speakerLabel(who) {
   return c.title ? `${c.name}（${c.title}）` : c.name;
 }
 
-// クリック／キーで進むまで待つ
+// クリック／キーで進むまで待つ（オート中は少しだけ見せて進む）
 function waitAdvance() {
+  if (autoMode) return new Promise((r) => setTimeout(r, 180));
   return new Promise((resolve) => {
     const box = $('#message');
     const done = (e) => {
@@ -101,7 +109,7 @@ export async function say(who, text, pose) {
 async function typewrite(text) {
   const el = $('#text');
   el.textContent = '';
-  if (textSpeed <= 0) {
+  if (textSpeed <= 0 || autoMode) {
     el.textContent = text;
     return;
   }
