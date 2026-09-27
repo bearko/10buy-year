@@ -127,8 +127,12 @@ function setBusy(v) {
   document.body.classList.toggle('busy', v);
 }
 
+let redrawCommands = null; // 行動を選んでいる間だけ入る
+let resumeCommands = null; // 画面を閉じたあと、会話の相手を下げて選択画面に戻す
+
 function refresh() {
   if (!state) return;
+  if (redrawCommands && !busy) redrawCommands();
   renderHud(state);
   if (!document.body.classList.contains('gain-flash')) renderParams(state);
   renderTicker(state);
@@ -163,9 +167,25 @@ function waitForCommand(mode) {
     const night = mode === 'night';
     const nav = $('#commands');
     const mood = MOOD_MULT[state.mood];
-    const cmds = night ? availableNightCommands(state) : availableCommands(state);
+    // スキルツリーなどで途中に解放しても反映されるよう、描くたびに数え直す
+    let cmds = [];
+    const loadCmds = () => {
+      cmds = night ? availableNightCommands(state) : availableCommands(state);
+    };
     let group = null;
     let selected = null;
+    // まだ見たことのない行動には NEW を付ける（開いた分類の中を見たら既読。この週のあいだは NEW のまま）
+    state.seenCmds ||= availableCommands(state).map((c) => c.id);
+    const fresh = new Set();
+    const isNew = (c) => fresh.has(c.id) || !state.seenCmds.includes(c.id);
+    const markSeen = (list) => {
+      for (const c of list) {
+        if (state.seenCmds.includes(c.id)) continue;
+        fresh.add(c.id);
+        state.seenCmds.push(c.id);
+      }
+    };
+    const newTag = () => h('span', { class: 'new-tag' }, 'NEW');
 
     const idleMessage = () => setMessage('', night ? '夜。もうひと仕事？' : state.sick > 0 ? '体調が悪い…休むしかない。' : '今週は何をしよう？');
     const unpreview = () => {
@@ -174,6 +194,8 @@ function waitForCommand(mode) {
       refresh();
     };
     const pickCmd = (id) => {
+      redrawCommands = null;
+      resumeCommands = null;
       drawIdleCommands();
       unpreview();
       cmdMode(false);
@@ -196,10 +218,11 @@ function waitForCommand(mode) {
       return card({
         class: `cmd ${sel ? 'sel' : ''} ${risk >= 0.3 ? 'danger' : risk > 0 ? 'risky' : ''}`,
         onclick: () => { if (!busy) select(c); },
-      }, c.icon, c.name, sel ? h('span', { class: 'go' }, '決定') : risk > 0 ? h('span', { class: 'risk' }, '⚠') : null);
+      }, c.icon, c.name, sel ? h('span', { class: 'go' }, '決定') : isNew(c) ? newTag() : null, risk > 0 && !sel ? h('span', { class: 'risk' }, '⚠') : null);
     };
 
     function draw() {
+      loadCmds();
       clear(nav);
       nav.classList.toggle('groups', !group && !night);
       const count = state.actionsPerWeek > 1 && !night ? ` ${state.actionsPerWeek - state.actionsLeft + 1}/${state.actionsPerWeek}` : '';
@@ -227,6 +250,7 @@ function waitForCommand(mode) {
 
       if (night) {
         cmds.forEach((c) => nav.append(cmdCard(c)));
+        markSeen(cmds);
         nav.append(card({ class: 'cmd sleep', onclick: () => { if (!busy) pickCmd('sleep'); } }, 'assets/icons/sleep.png', '寝る'));
         return;
       }
@@ -238,12 +262,14 @@ function waitForCommand(mode) {
               if (busy) return;
               await inventoryModal(state, refresh);
               await tutorialStep();
+              resumeCommands?.();
               refresh();
-              draw();
             },
           }, 'assets/extensions/1059.png', '在庫を出品', h('span', { class: 'free-tag' }, '週は進まない')));
         }
-        cmds.filter((c) => c.group === group).forEach((c) => nav.append(cmdCard(c)));
+        const inGroup = cmds.filter((c) => c.group === group);
+        markSeen(inGroup);
+        inGroup.forEach((c) => nav.append(cmdCard(c)));
         return;
       }
       for (const g of GROUPS) {
@@ -259,7 +285,7 @@ function waitForCommand(mode) {
             idleMessage();
             draw();
           },
-        }, g.icon, g.name, sel ? h('span', { class: 'go' }, '決定') : list.length > 1 ? h('span', { class: 'n' }, list.length) : null));
+        }, g.icon, g.name, sel ? h('span', { class: 'go' }, '決定') : list.some((c) => !state.seenCmds.includes(c.id)) ? newTag() : list.length > 1 ? h('span', { class: 'n' }, list.length) : null));
       }
     }
 
@@ -269,6 +295,14 @@ function waitForCommand(mode) {
     playBgm('pve');
     idleMessage();
     cmdMode(true);
+    redrawCommands = draw;
+    resumeCommands = () => {
+      showChris('idle');
+      hidePartner();
+      setBackground('home');
+      idleMessage();
+      draw();
+    };
     draw();
     // 体調不良のときは「休む」だけ
     if (state.sick > 0) select(COMMAND_MAP.rest);
@@ -290,6 +324,7 @@ function renderTabs() {
   const after = async (p) => {
     await p;
     await tutorialStep();
+    resumeCommands?.();
     refresh();
   };
   const marketLock = !hasSkill(state, 'eye_market') && 'スキルツリー「相場チェック」で解放';
