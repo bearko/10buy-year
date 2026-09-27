@@ -495,7 +495,7 @@ export const EVENTS = [
     chance: 0.3,
     cond: (s) => s.week >= 14 && s.cash >= 50000,
     play: (s) => [
-      talk('satoshi', 'クリスくん…。$HEROコインが底を打ったらしい。今が最後の買い場だよ。', ),
+      talk('satoshi', 'クリスくん…。$SAOコインが底を打ったらしい。今が最後の買い場だよ。', ),
       talk('chris', '（あの日、全力ロングで溶かしたコイン…。今なら取り返せるかも…？）', 'arms'),
       talk('mine', 'クリス、あなたなんで借金してるか覚えてる？', 'arms'),
       choice([
@@ -503,13 +503,13 @@ export const EVENTS = [
           label: `手元資金の8割（${yen(s.cash * 0.8)}）を突っ込む`,
           run: () => {
             const bet = Math.floor(s.cash * 0.8);
-            addCash(s, -bet, '$HEROコイン購入');
+            addCash(s, -bet, '$SAOコイン購入');
             if (chance(s, 0.2)) {
-              addCash(s, bet * 4, '$HEROコイン売却');
+              addCash(s, bet * 4, '$SAOコイン売却');
               setFlag(s, 'cryptoWin');
               return [sfx('win'), talk('satoshi', '見たまえ、月まで飛んだよ。'), info('爆益', [`${yen(bet)}が${yen(bet * 4)}に…！`], 'good'), talk('chris', 'やっぱりクリプトなんだよなぁ！！（転売の苦労って一体…）', 'cheer')];
             }
-            addCash(s, Math.floor(bet * 0.1), '$HEROコイン損切り');
+            addCash(s, Math.floor(bet * 0.1), '$SAOコイン損切り');
             addMood(s, -2);
             return [sfx('lose'), talk('satoshi', '……チャートは嘘をつかない。君が読み違えただけさ。'), info('大損', [`${yen(bet)}が${yen(bet * 0.1)}になった`], 'bad'), talk('chris', 'また…やってしまった…。', 'wail')];
           },
