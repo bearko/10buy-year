@@ -44,7 +44,7 @@ export function createGame(seed = (Date.now() ^ (Math.random() * 1e9)) >>> 0) {
     amaBan: 0,
     warnings: 0,
     abilities: { eye: 20, buy: 20, list: 20, talk: 20, pack: 20 },
-    exp: { info: 20, act: 20, tech: 20, social: 20, mind: 20 },
+    exp: { info: 0, act: 0, tech: 0, social: 0, mind: 0 }, // スキルに使う経験点。序盤は店舗せどりを目指す分だけ貯まる
     skills: [...INITIAL_SKILLS],
     nodeLv: {},
     hints: {},

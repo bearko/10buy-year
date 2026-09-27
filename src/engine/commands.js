@@ -24,7 +24,7 @@ export const GROUPS = [
 
 // node: その行動を解放するスキルツリーのノード / hours: 作業時間（時間単価の計算に使う）
 export const COMMANDS = [
-  { id: 'home_search', group: 'buy', icon: E(1059), node: 'src_home', name: '家の中を探す', desc: '押し入れから売れそうな物を探す', stamina: 5, exp: { info: 4, tech: 3 }, hours: 3, bg: 'home' },
+  { id: 'home_search', group: 'buy', icon: E(1059), name: '家の中を探す', desc: '押し入れから売れそうな物を探す', stamina: 5, exp: { info: 4, tech: 3 }, hours: 3, bg: 'home' },
   { id: 'store', group: 'buy', icon: E(2125), node: 'src_store', name: '店舗せどり', desc: 'ワゴンや値札ミスの掘り出し物を探す', stamina: 15, exp: { act: 12, info: 5, social: 2 }, hours: 10, bg: 'store' },
   { id: 'online', group: 'buy', icon: E(5075), node: 'src_online', name: '電脳せどり', desc: 'ポイント還元・予約・フリマの安値', stamina: 8, exp: { info: 13, tech: 4 }, hours: 5, bg: 'online' },
   { id: 'lottery', group: 'buy', icon: E(1016), node: 'src_lottery', name: '抽選に応募', desc: '限定品の抽選。結果は翌週', stamina: 5, exp: { info: 6, mind: 6 }, hours: 2, bg: 'online' },

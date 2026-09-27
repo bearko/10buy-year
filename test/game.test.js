@@ -13,7 +13,7 @@ import { createGame } from '../src/engine/state.js';
 import { abilityCost, raiseAbility } from '../src/engine/abilities.js';
 import { buy, cardAvailable, hardCapacity, listUnits, sellToBuyer, spaceUsed } from '../src/engine/inventory.js';
 import { availableCommands, performCommand } from '../src/engine/commands.js';
-import { learnSkill, nodeState, nodeVisible, OFF_ROUTE_RATE, skillCost } from '../src/engine/abilities.js';
+import { learnSkill, nodeState, nodeTeaser, nodeVisible, OFF_ROUTE_RATE, skillCost } from '../src/engine/abilities.js';
 import { ROUTES, ROUTE_MAP, SKILLS as TREE_SKILLS, TREE_NODES, nodePos } from '../src/data/skills.js';
 import { perk, routeLevel } from '../src/engine/perks.js';
 import { titleOf } from '../src/engine/ending.js';
@@ -135,44 +135,58 @@ test('序盤は行動が絞られていて、チュートリアルで順に解�
   assert.ok(!ids().includes('store') && !ids().includes('online') && !ids().includes('lottery'));
   assert.ok(ids().includes('home_search'));
   assert.ok(s.inventory.every((u) => u.home), '最初の在庫は家の不用品だけ');
-  assert.equal(nodeState(s, 'eye_calc'), 'available');
+  assert.ok(!s.skills.includes('src_home'), 'スキルツリーは最初は何も持っていない');
+  assert.equal(nodeState(s, 'src_home'), 'locked', '中心は売上を立てるまで解放できない');
   // 1. 家の不用品を出品
   listUnits(s, [s.inventory[0].uid], 'merc', 500);
   checkTutorial(s);
   assert.equal(MISSIONS[s.tutorial].id, 'sell_home');
-  // 2. 売れる → ツリーが開く。店舗せどりはまだ自動では増えない
+  // 2. 売れる → ツリーが開き、中心をコスト0で解放できる
   s.stats.soldUnits = 1;
   checkTutorial(s);
   assert.ok(treeOpen(s));
-  assert.equal(MISSIONS[s.tutorial].id, 'tree_store');
+  assert.equal(MISSIONS[s.tutorial].node, 'src_home');
+  assert.deepEqual(skillCost(s, 'src_home'), {});
+  assert.ok(learnSkill(s, 'src_home'));
+  checkTutorial(s);
+  // チュートリアル中は店舗せどり以外の入口は開かない
+  for (const id of ['ch_miime', 'eye_calc', 'eye_market', 'src_online', 'net_meetup', 'pack_master']) assert.equal(nodeState(s, id), 'locked', id);
   assert.ok(!ids().includes('store'), '販路・仕入れ先は自動で解放されない');
-  // 3. 自分の手で「近所の店のワゴン」を解放 → 店舗せどり
+  // 3. 家の物をもっと売る → 行動の経験点をもらい、店舗せどりを目指す
+  s.stats.soldUnits = 3;
+  checkTutorial(s);
+  assert.equal(MISSIONS[s.tutorial].node, 'src_store');
   assert.ok(learnSkill(s, 'src_store'));
   checkTutorial(s);
   assert.ok(ids().includes('store'));
-  // 4〜5. 店に行って仕入れる → ミィームへ誘導（自動では解放されない）
+  // 4〜5. 店に行って仕入れる
   performCommand(s, 'store');
   assert.ok(s.flags.didStore);
   buy(s, { oid: 99, pid: 'scroll', price: 3300, maxQty: 1, points: 0, fakeRate: 0 }, 1, 'cash');
   checkTutorial(s);
-  assert.ok(!s.skills.includes('ch_miime'));
-  assert.equal(MISSIONS[s.tutorial].node, 'ch_miime');
-  assert.ok(learnSkill(s, 'ch_miime'));
-  checkTutorial(s);
-  // 6〜7. 仕入れた商品を出品して売る → 利益計算へ誘導
+  // 6〜7. 仕入れた商品を出品して売る → チュートリアル完了、ミィームと利益計算の入口が開く
   const bought = s.inventory.find((u) => !u.home);
-  listUnits(s, [bought.uid], 'auc', 4000);
+  listUnits(s, [bought.uid], 'merc', 4000);
   s.stats.purchasedSold = 1;
   s.stats.firstFlip = { pid: 'scroll', price: 6000, cost: 3300 };
   checkTutorial(s);
-  assert.ok(!s.skills.includes('eye_calc'));
-  assert.ok(learnSkill(s, 'eye_calc'));
-  checkTutorial(s);
   assert.equal(s.tutorial, MISSIONS.length);
+  assert.equal(nodeState(s, 'ch_miime'), 'available');
+  assert.equal(nodeState(s, 'eye_calc'), 'available');
+  assert.equal(nodeState(s, 'src_online'), 'locked', '電脳は仕入れを重ねてから');
 });
+
+// 序盤の制限をすべて外す（ツリーの仕組みだけを確かめるテスト用）
+function openTree(s) {
+  s.skills.push('src_home');
+  s.flags.tutorialDone = true;
+  s.stats.soldUnits = 99;
+  s.stats.purchases = 99;
+}
 
 test('スキルツリー：親・ステージ・コツが揃わないと解放できない', () => {
   const s = createGame(11);
+  openTree(s);
   s.exp = { info: 999, act: 999, tech: 999, social: 999, mind: 999 };
   assert.equal(nodeState(s, 'src_lottery'), 'locked'); // 親の「ポイント通販」が先
   assert.equal(learnSkill(s, 'src_lottery'), false);
@@ -206,14 +220,20 @@ test('スキルツリーの構造：親があり、中心からたどれて、�
 
 test('スキルツリー：見えるのは中心と、持っているノードの子だけ', () => {
   const s = createGame(16);
+  assert.ok(nodeVisible(s, 'src_home'));
+  assert.ok(!nodeVisible(s, 'src_store'), '最初は中心だけ');
+  s.skills.push('src_home');
   assert.ok(nodeVisible(s, 'src_store'));
   assert.ok(!nodeVisible(s, 'src_queue'));
+  assert.ok(nodeTeaser(s, 'src_queue'), '解放できるパネルの1つ先は「？」で見える');
+  assert.ok(!nodeTeaser(s, 'src_lottery'), '入口が開いていないルートの先は見えない');
   s.skills.push('src_store');
   assert.ok(nodeVisible(s, 'src_queue'));
 });
 
 test('ルート：伸ばした方向が熟練度・到達点・称号になり、専門外は高くなる', () => {
   const s = createGame(17);
+  openTree(s);
   s.exp = { info: 9999, act: 9999, tech: 9999, social: 9999, mind: 9999 };
   s.skills.push('src_store');
   for (const id of ['src_queue', 'bargain', 'early_bird']) assert.ok(learnSkill(s, id), id);
