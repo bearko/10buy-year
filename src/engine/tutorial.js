@@ -31,14 +31,14 @@ export const MISSIONS = [
       talk('chris', '家の物はそのうち尽きるよね。もっと売上をあげるには…？', 'arms'),
       talk('mine', '仕入れ先を増やして、売り先を広げて、目利きを磨く。そのための力が「スキルツリー」よ。', 'pointer'),
       talk('mine', '活動で貯まった経験点を使って、パネルを自分の手で解放していくの。まずは「近所の店のワゴン」。お店で安く仕入れられるようになるわ。', 'wink'),
-      info('解放', ['「ツリー」が開けるようになった'], 'good'),
+      info('解放', ['「スキルツリー」が開けるようになった'], 'good'),
       gain(addExp(s, { act: 10, info: 8, mind: 5 })),
     ],
   },
   {
     id: 'tree_store',
     title: 'スキルツリーで仕入れ先を増やそう',
-    hint: '「ツリー」→「近所の店のワゴン」を解放',
+    hint: '「スキルツリー」→「近所の店のワゴン」を解放',
     node: 'src_store',
     done: (s) => hasSkill(s, 'src_store'),
     reward: () => [
@@ -68,7 +68,7 @@ export const MISSIONS = [
   {
     id: 'tree_miime',
     title: 'スキルツリーで販路を広げよう',
-    hint: '「ツリー」→「ミィーム」を解放',
+    hint: '「スキルツリー」→「ミィーム」を解放',
     node: 'ch_miime',
     done: (s) => hasSkill(s, 'ch_miime'),
     reward: () => [talk('mine', 'これで出品するときに「ミィーム」も選べるわ。コレクター品はオークションで競り上がりやすいの。', 'smile')],
@@ -108,7 +108,7 @@ export const MISSIONS = [
   {
     id: 'tree_calc',
     title: 'スキルツリーで利益計算を覚えよう',
-    hint: '「ツリー」→「利益計算」を解放',
+    hint: '「スキルツリー」→「利益計算」を解放',
     node: 'eye_calc',
     done: (s) => hasSkill(s, 'eye_calc'),
     reward: (s) => [
@@ -121,7 +121,7 @@ export const MISSIONS = [
   },
 ];
 
-// 「ツリー」タブはチュートリアルで最初の売上が出たあとに開く
+// 「スキルツリー」ボタンはチュートリアルで最初の売上が出たあとに開く
 export const treeOpen = (s) => s.tutorial >= MISSIONS.findIndex((m) => m.id === 'tree_store');
 
 export const tutorialDone = (s) => s.tutorial >= MISSIONS.length;

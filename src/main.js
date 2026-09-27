@@ -143,6 +143,15 @@ function nextCommand(mode) {
 
 const cmdMode = (on) => document.body.classList.toggle('cmd-mode', on);
 
+// 行動を選んでいないとき（演出中・週の切り替わり）も、4つの分類カードを並べておく
+function drawIdleCommands() {
+  const nav = clear($('#commands'));
+  if (!state) return;
+  nav.classList.add('groups');
+  nav.append(h('div', { class: 'cmd-header' }, h('span', {}, '今週')));
+  for (const g of GROUPS) nav.append(h('button', { class: 'cmd grp', tabindex: -1 }, h('img', { class: 'cmd-ic', src: g.icon, alt: '' }), h('b', {}, g.name)));
+}
+
 function waitForCommand(mode) {
   return new Promise((resolve) => {
     const night = mode === 'night';
@@ -159,7 +168,7 @@ function waitForCommand(mode) {
       refresh();
     };
     const pickCmd = (id) => {
-      clear(nav);
+      drawIdleCommands();
       unpreview();
       cmdMode(false);
       resolve(id);
@@ -260,15 +269,16 @@ function waitForCommand(mode) {
   });
 }
 
-// 自分の手で解放できるパネルの数（ツリーのタブに出す）
+// 自分の手で解放できるパネルの数（スキルツリーのボタンに出す）
 function treeBadge() {
   if (!treeOpen(state)) return '';
   const n = claimableNodes(state).length;
   return n ? `${n}` : '';
 }
 
+// ステージ右側のボタン（在庫・スキルツリー・メニュー）。相場と経営はメニューの中
 function renderTabs() {
-  const nav = clear($('#tabs'));
+  const nav = clear($('#side-btns'));
   if (!state) return;
   const unlisted = activeUnits(state).filter((u) => !u.listing && !(state.flags.noAlcohol && productOf(u.pid).alcohol)).length;
   const after = async (p) => {
@@ -276,16 +286,26 @@ function renderTabs() {
     await tutorialStep();
     refresh();
   };
+  const marketLock = !hasSkill(state, 'eye_market') && 'スキルツリー「相場チェック」で解放';
   const tabs = [
-    { label: '在庫', open: () => inventoryModal(state, refresh), badge: unlisted ? `${unlisted}` : '' },
-    { label: '相場', open: () => marketModal(state), badge: state.news.length ? `${state.news.length}` : '', lock: !hasSkill(state, 'eye_market') && 'スキルツリー「相場チェック」で解放' },
-    { label: 'ツリー', open: () => openTree(state, refresh, { focus: currentMission(state)?.node }), lock: !treeOpen(state) && '最初の売上のあとに開ける', badge: treeBadge() },
-    { label: '経営', open: () => bizModal(state, refresh, playSteps) },
-    { label: 'メニュー', open: () => menuModal({ s: state, onTitle: toTitle, onRestart: restart, speed: () => speed, onSpeed: setSpeed, onChange: refresh }) },
+    { id: 'tree', label: 'スキルツリー', open: () => openTree(state, refresh, { focus: currentMission(state)?.node }), lock: !treeOpen(state) && '最初の売上のあとに開ける', badge: treeBadge() },
+    { id: 'inv', label: '在庫', open: () => inventoryModal(state, refresh), badge: unlisted ? `${unlisted}` : '' },
+    {
+      id: 'menu',
+      label: 'メニュー',
+      badge: state.news.length > 1 && !marketLock ? '!' : '',
+      open: () => menuModal({
+        s: state, onTitle: toTitle, onRestart: restart, speed: () => speed, onSpeed: setSpeed, onChange: refresh,
+        marketLock,
+        newsCount: state.news.length,
+        onMarket: () => after(marketModal(state)),
+        onBiz: () => after(bizModal(state, refresh, playSteps)),
+      }),
+    },
   ];
   for (const t of tabs) {
     nav.append(h('button', {
-      class: `tab ${t.lock ? 'locked' : ''}`,
+      class: `side-btn ${t.id} ${t.lock ? 'locked' : ''}`,
       onclick: () => {
         if (busy) return;
         if (t.lock) return toast(t.lock, 'bad');
@@ -312,6 +332,7 @@ async function loop() {
   refresh();
   while (!state.over) {
     if (state.phase === 'weekStart') {
+      drawIdleCommands();
       await playSteps(startWeek(state));
       await tutorialStep();
       saveGame(state);

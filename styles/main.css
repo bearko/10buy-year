@@ -82,7 +82,7 @@ h1 small { display: block; font-size: 16px; text-shadow: none; color: var(--gold
 .cash .neg { color: var(--bad); }
 .debt { color: #ffc4c4; font-size: 13px; }
 .debt b { font-size: 16px; }
-.stamina { display: flex; align-items: center; gap: 6px; flex: 1; min-width: 150px; }
+.stamina { display: flex; align-items: center; gap: 6px; flex: 0 0 66%; min-width: 0; }
 .stamina img { width: 18px; height: 18px; }
 .stamina span { font-size: 12px; color: var(--muted); }
 .bar { flex: 1; height: 10px; background: #0005; border: 1px solid var(--line); border-radius: 99px; overflow: hidden; }
@@ -155,8 +155,22 @@ h1 small { display: block; font-size: 16px; text-shadow: none; color: var(--gold
 .x.info, .pr.info { --c: #7cc7ff; } .x.act, .pr.act { --c: #ff9f6b; } .x.tech, .pr.tech { --c: #c9a6ff; } .x.social, .pr.social { --c: #6be58f; } .x.mind, .pr.mind { --c: #ffe066; }
 
 /* 経験点パネル（ステージの右側。行動を選ぶ間と獲得時だけ出る） */
-#params { position: absolute; right: 6px; top: 28px; z-index: 3; display: none; flex-direction: column; gap: 3px; padding: 5px 6px; background: #080c1acc; border: 1px solid var(--line); border-radius: 8px; min-width: 104px; }
-body.cmd-mode #params, body.gain-flash #params { display: flex; }
+#side { position: absolute; right: 6px; top: 28px; z-index: 3; width: 118px; display: flex; flex-direction: column; gap: 6px; }
+#params { display: flex; flex-direction: column; gap: 3px; padding: 5px 6px; background: #080c1acc; border: 1px solid var(--line); border-radius: 8px; }
+/* 演出中（会話の相手が右に立つ）は隠す。経験点の獲得時だけパネルを出す */
+body.busy #side { display: none; }
+body.busy.gain-flash #side { display: flex; }
+body.busy.gain-flash #side-btns { display: none; }
+#side-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.side-btn { position: relative; font: inherit; font-size: 12px; padding: 6px 2px; border-radius: 8px; border: 1px solid var(--line); background: #1a2350e6; color: var(--text); cursor: pointer; }
+.side-btn:hover { background: #26307a; }
+.side-btn.tree { grid-column: 1 / -1; font-size: 13px; font-weight: bold; padding: 8px 4px; color: #1b1300; border: 1px solid #fff6; background: linear-gradient(135deg, #ffe066, #f5a524); box-shadow: 0 0 12px #f5c54277, inset 0 -2px 0 #0002; animation: tree-glow 2.4s ease-in-out infinite; }
+.side-btn.tree.locked { animation: none; background: #3a3a48; color: #aaa; box-shadow: none; }
+@keyframes tree-glow { 50% { box-shadow: 0 0 20px #f5c542bb, inset 0 -2px 0 #0002; } }
+.side-btn.locked { opacity: 0.7; }
+.menu-main { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.menu-main .btn { position: relative; padding: 14px 8px; font-size: 16px; }
+.menu-main .btn.locked { opacity: 0.55; }
 .pr { display: grid; grid-template-columns: 30px 1fr 34px; align-items: baseline; gap: 4px; font-size: 12px; }
 .pr .pn { color: var(--c); }
 .pr b { text-align: right; font-weight: normal; }
@@ -179,13 +193,10 @@ body.cmd-mode #params, body.gain-flash #params { display: flex; }
 .cash-d { font-size: 13px; margin-left: 4px; animation: soft-blink 1s ease-in-out infinite; }
 .cash-d.lose { color: var(--bad); }
 .cash-d.gain { color: var(--good); }
-body.busy #commands, body.busy #tabs { opacity: 0.45; pointer-events: none; }
+body.busy #commands { opacity: 0.45; pointer-events: none; }
 #message { position: relative; }
 
 /* ---------- タブ ---------- */
-#tabs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; padding: 8px 8px 0; }
-.tab { position: relative; background: #243061; border: 2px solid var(--line); border-radius: 8px; padding: 8px 2px; cursor: pointer; font-size: 13px; }
-.tab:hover { background: #2f3d7a; }
 .badge { position: absolute; top: -6px; right: -4px; background: var(--bad); color: #fff; border-radius: 99px; font-size: 10px; padding: 0 5px; }
 
 /* ---------- モーダル ---------- */
@@ -294,7 +305,6 @@ body.busy #commands, body.busy #tabs { opacity: 0.45; pointer-events: none; }
 .cmd.sleep { border-style: dashed; }
 body.auto #message { border-color: var(--info); }
 body.auto #message::after { content: 'オート進行中'; position: absolute; top: 4px; right: 10px; font-size: 11px; color: var(--info); }
-.tab.locked { opacity: 0.55; }
 .muted { color: var(--muted); }
 .sub.small { font-size: 12px; margin-top: 4px; }
 
@@ -536,3 +546,16 @@ body.auto #message::after { content: 'オート進行中'; position: absolute; t
 /* チュートリアルの誘導：目標のパネルの上で指さしが跳ねる */
 .tnode.guide::after { content: '▼'; position: absolute; left: 50%; top: -30px; transform: translateX(-50%); color: #facc15; font-size: 20px; text-shadow: 0 0 8px #facc15aa; animation: guide-bounce 0.8s ease-in-out infinite; pointer-events: none; }
 @keyframes guide-bounce { 50% { transform: translate(-50%, -6px); } }
+
+/* HUD：ステージは残り週の右。体力ゲージは2/3、右に評価・炎上 */
+.date { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.date .chip.stage { align-self: center; font-family: 'Orbitron', var(--font); font-size: 10px; letter-spacing: 0.04em; }
+.hud-row.bars { flex-wrap: nowrap; }
+.hud-row.bars .chips { flex: 1; justify-content: flex-end; flex-wrap: nowrap; }
+.hud-row.warn-row { justify-content: flex-start; }
+
+/* ニュース：はみ出すときは横スクロール */
+#news-ticker .ticker-inner { display: inline-block; white-space: nowrap; }
+#news-ticker.scroll { text-overflow: clip; }
+#news-ticker.scroll .ticker-inner { animation: ticker var(--dur, 10s) linear infinite; }
+@keyframes ticker { 0%, 15% { transform: translateX(0); } 85%, 100% { transform: translateX(var(--dist)); } }

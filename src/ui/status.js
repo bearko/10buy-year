@@ -110,9 +110,13 @@ function row(label, value, cls = '') {
   return h('div', { class: 'lg-row' }, h('span', {}, label), h('b', { class: cls }, value));
 }
 
-export function menuModal({ s, onTitle, onSpeed, speed, onRestart, onChange }) {
+export function menuModal({ s, onTitle, onSpeed, speed, onRestart, onChange, onMarket, onBiz, marketLock, newsCount = 0 }) {
   return openModal('メニュー', (body, api) => {
     body.append(
+      h('div', { class: 'menu-main' },
+        h('button', { class: `btn big ${marketLock ? 'locked' : ''}`, onclick: () => { if (marketLock) return toast(marketLock, 'bad'); api.close(); onMarket?.(); } }, marketLock ? '🔒相場' : '相場', !marketLock && newsCount ? h('span', { class: 'badge' }, newsCount) : null),
+        h('button', { class: 'btn big', onclick: () => { api.close(); onBiz?.(); } }, '経営'),
+      ),
       h('div', { class: 'menu-list' },
         h('button', { class: 'btn', onclick: () => { setSound(!soundOn()); api.refresh(); } }, `サウンド: ${soundOn() ? 'ON' : 'OFF'}`),
         h('div', { class: 'seg' }, h('span', {}, '文字送り '), ...[['はやい', 8], ['ふつう', 22], ['おそい', 40], ['一瞬', 0]].map(([label, ms]) => h('button', { class: `btn small ${speed() === ms ? 'on' : ''}`, onclick: () => { onSpeed(ms); api.refresh(); } }, label))),
