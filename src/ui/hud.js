@@ -28,7 +28,7 @@ export function renderHud(s) {
         h('span', { class: 'chip', title: 'セラー評価' }, `評価 ${Math.round(s.rating)}`),
         h('span', { class: `chip ${s.hate >= 50 ? 'warn' : ''}`, title: '炎上度' }, `炎上 ${Math.round(s.hate)}`),
         s.sick > 0 ? h('span', { class: 'chip warn' }, '体調不良') : null,
-        s.banWeeks > 0 ? h('span', { class: 'chip warn' }, `メルクリ停止${s.banWeeks}週`) : null,
+        s.banWeeks > 0 ? h('span', { class: 'chip warn' }, `プンシー停止${s.banWeeks}週`) : null,
         s.delinquency > 0 ? h('span', { class: 'chip warn' }, `滞納${s.delinquency}`) : null,
       ),
     ),
