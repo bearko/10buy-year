@@ -458,8 +458,22 @@ export function openTree(s, onChange, { focus = null } = {}) {
         applyView();
       }
     });
+    // パネルのダブルタップ（ダブルクリック）で、そのまま解放する
+    let lastTap = { id: null, at: 0 };
+    const tapNode = (id) => {
+      const now = performance.now();
+      const dbl = lastTap.id === id && now - lastTap.at < 400;
+      lastTap = dbl ? { id: null, at: 0 } : { id, at: now };
+      if (!dbl) return select(id);
+      const sk = SKILL_MAP[id];
+      if (!nodeVisible(s, id) || owns(s, id) && sk.kind !== 'repeat') return select(id);
+      if (nodeState(s, id) !== 'available') return toast('まだ解放できない', 'bad');
+      if (!canAfford(s, skillCost(s, id))) return toast('経験点が足りない', 'bad');
+      selected = id;
+      unlock(sk);
+    };
     const up = (e) => {
-      if (drag && drag.moved < 6 && drag.target) select(drag.target.dataset.id);
+      if (drag && drag.moved < 6 && drag.target) tapNode(drag.target.dataset.id);
       pointers.delete(e.pointerId);
       if (pointers.size < 2) pinch = null;
       if (!pointers.size) drag = null;
