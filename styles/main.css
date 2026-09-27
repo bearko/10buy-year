@@ -672,3 +672,7 @@ body.loot-show #side { display: none !important; }
 }
 .tree-shock { position: absolute; width: 80px; height: 80px; margin: -40px 0 0 -40px; border-radius: 50%; border: 3px solid #F5C542; box-shadow: 0 0 24px #F5C542, inset 0 0 24px #F5C54288; pointer-events: none; animation: shock 1.4s ease-out both; }
 @keyframes shock { from { transform: scale(0.4); opacity: 1; } to { transform: scale(9); opacity: 0; } }
+
+/* スキルツリー：経験点の下に「トップに戻る」 */
+.tes-back { pointer-events: auto; margin-top: 6px; font: inherit; font-size: 12px; font-weight: bold; padding: 8px 6px; border-radius: 8px; border: 1px solid #F5C542; background: linear-gradient(135deg, #3a2f10, #1B202A); color: #F5C542; cursor: pointer; }
+.tes-back:hover { background: #3a2f10; }

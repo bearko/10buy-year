@@ -110,6 +110,8 @@ export function openTree(s, onChange, { focus = null } = {}) {
             h('b', {}, have.toLocaleString()),
             h('i', {}, need ? `−${need}` : ''));
         }),
+        // トップ画面に戻る（ツリーのドラッグに取られないよう、押した瞬間の伝播を止める）
+        h('button', { class: 'tes-back', onpointerdown: (e) => e.stopPropagation(), onclick: close }, '◀ トップに戻る'),
       );
     }
 
