@@ -19,6 +19,7 @@ import { openModal, toast } from './ui/modal.js';
 import { choose, hidePartner, isAuto, say, setAuto, setBackground, setMessage, setTextSpeed, showChris, showInfo } from './ui/stage.js';
 import { bizModal, menuModal } from './ui/status.js';
 import { openTree } from './ui/tree.js';
+import { groupItems, showItems } from './ui/loot.js';
 import { offersModal } from './ui/shop.js';
 import { inventoryModal, marketModal, salesModal } from './ui/trade.js';
 
@@ -72,10 +73,15 @@ async function playSteps(steps) {
         if (isAuto()) {
           if (st.autoBought?.length) toast(`外注が${st.autoBought.length}件を仕入れた`, 'good');
         } else {
-          await offersModal(state, st, refresh);
+          const got = await offersModal(state, st, refresh);
+          refresh();
+          await showItems(state, '仕入れた商品', groupItems(got || []));
         }
         break;
       }
+      case 'items':
+        await showItems(state, st.title, groupItems(st.list));
+        break;
       case 'sales':
         if (isAuto()) {
           if (st.sold.length) await showInfo('今週の取引', [`${st.sold.length}件売れた（売上金 ${yenFmt(st.sold.reduce((a, x) => a + x.net, 0))}）`], 'good');

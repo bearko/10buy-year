@@ -9,3 +9,5 @@ export const bgm = (name) => ({ t: 'bgm', name });
 export const gain = (exp, extras = []) => ({ t: 'gain', exp, extras });
 export const info = (title, lines, tone = 'normal') => ({ t: 'info', title, lines, tone });
 export const offers = (list, title, note) => ({ t: 'offers', offers: list, title, note });
+// 手に入れた商品をステージ右に並べて見せる（list: [{ pid, qty }]）
+export const items = (title, list) => ({ t: 'items', title, list });

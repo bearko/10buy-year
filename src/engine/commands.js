@@ -9,7 +9,7 @@ import { woy } from './calendar.js';
 import { inBoom, priceOf } from './market.js';
 import { addUnits, overCapacity } from './inventory.js';
 import { drawEvents } from './events.js';
-import { bg, choice, gain, info, narr, offers, sfx, talk } from './steps.js';
+import { bg, choice, gain, info, items, narr, offers, sfx, talk } from './steps.js';
 
 const E = (id) => `assets/extensions/${id}.png`;
 const I = (name) => `assets/icons/${name}`;
@@ -138,8 +138,8 @@ const HANDLERS = {
     }
     return [
       narr(pick(s, ['押し入れの奥から段ボールを引っ張り出した。', 'クローゼットの上の棚を探ってみた。', '実家から送られてきたまま開けていない箱を開けた。'])),
-      talk('chris', `${found.map((p) => `「${p.genre}」`).join('、')}が出てきた。売れるかな？`, 'sparkle'),
-      info('不用品が見つかった', [...found.map((p) => `${p.genre}（${p.name}）`), s.homePool.length ? `まだ何か眠っていそうだ` : 'もう売れそうな物はなさそうだ']),
+      items('見つけた物', found.map((p) => p.id)),
+      talk('chris', s.homePool.length ? '売れるかな？ まだ何か眠っていそうだ。' : '売れるかな？ …もう売れそうな物はなさそうだ。', 'sparkle'),
     ];
   },
   store(s) {
