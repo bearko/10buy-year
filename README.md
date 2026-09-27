@@ -42,6 +42,7 @@ CLI の場合はリポジトリのルートで `npx vercel`（本番は `npx ver
 | [docs/01_research.md](docs/01_research.md) | 転売活動の調査（サイクル、仕入れ・販路、ジャンル、やりがい、落とし穴、法律、小ネタ、世論） |
 | [docs/02_game_design.md](docs/02_game_design.md) | 企画書（ストーリー、サクセスとの対応、ルール、経済モデル、商品、キャラ、イベント、トーン） |
 | [docs/03_roadmap.md](docs/03_roadmap.md) | 開発ロードマップ（MVP → α → β → 1.0 → 公開後） |
+| [docs/04_pro_reseller_life.md](docs/04_pro_reseller_life.md) | 追加調査：専業転売屋の一日・週・月のリズム、商材別の苦労と戦略、あるある、ゲームへの落とし込み案 |
 
 ## ディレクトリ構成
 
