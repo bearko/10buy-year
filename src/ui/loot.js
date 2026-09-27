@@ -2,10 +2,11 @@
 import { productImage, productOf } from '../data/products.js';
 import { hasSkill } from '../engine/effects.js';
 import { estimate } from '../engine/market.js';
+import { playSe } from './audio.js';
 import { $, clear, h, yenFmt } from './dom.js';
 import { hidePartner, hold } from './stage.js';
 
-export async function showItems(s, title, list) {
+export async function showItems(s, title, list, { se = true } = {}) {
   if (!list.length) return;
   const el = $('#loot');
   let i = 0;
@@ -31,6 +32,7 @@ export async function showItems(s, title, list) {
     );
   };
   hidePartner();
+  if (se) playSe('hint'); // insp
   draw();
   document.body.classList.add('loot-show');
   const first = productOf(list[0].pid).name;

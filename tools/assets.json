@@ -111,5 +111,8 @@
     "Battle/5_debuff_status_effect.mp3": "debuff.mp3",
     "Jingles/knight.mp3": "stageup.mp3",
     "clear.wav": "clear.wav"
+  },
+  "bgm_from_se": {
+    "Actions/craft.mp3": "craft.mp3"
   }
 }

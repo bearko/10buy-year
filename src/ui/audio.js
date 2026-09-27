@@ -27,6 +27,8 @@ export function setSound(on) {
   else playBgm(bgm?.dataset.name || 'pve');
 }
 
+export const currentBgm = () => bgm?.dataset.name || null;
+
 export function playBgm(name) {
   if (bgm && bgm.dataset.name === name) {
     if (settings.on && bgm.paused) bgm.play().catch(() => {});

@@ -58,6 +58,8 @@ def main() -> None:
         copy(SRC / f"Image/BattleIcons/{rel}", OUT / f"icons/{Path(rel).name}")
     for name in manifest["bgm"]:
         copy(SRC / f"Audio/BGM/{name}", OUT / f"audio/bgm/{name}")
+    for rel, name in manifest.get("bgm_from_se", {}).items():
+        copy(SRC / f"Audio/SE/{rel}", OUT / f"audio/bgm/{name}")
     for rel, name in manifest["se"].items():
         copy(SRC / f"Audio/SE/{rel}", OUT / f"audio/se/{name}")
 

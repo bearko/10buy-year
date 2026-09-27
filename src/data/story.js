@@ -1,18 +1,19 @@
 // プロローグ
 import { yen } from '../engine/effects.js';
 import { MIN_PAYMENT } from '../engine/finance.js';
-import { bg, info, narr, sfx, talk } from '../engine/steps.js';
+import { bg, bgm, info, narr, talk } from '../engine/steps.js';
 
 export function prologue(s) {
   return [
     bg('danger'),
-    sfx('lose'),
+    bgm('pvp'),
     talk('chris', 'うそだろ…。$SAOコインが一晩でマイナス95%…？', 'wail'),
     narr('半年前。クリスは「億り人」を夢見て仮想通貨を始めた。最初は順調だった。'),
     narr('調子に乗ってレバレッジをかけ、カードローンで追加入金し、とうとう友達にまで頭を下げてお金を借りた。'),
     narr(`そして昨夜の大暴落。ロスカット。手元に残ったのは、${yen(s.debt)}の借金だけだった。`),
     talk('chris', '毎月の返済、どうしよう…。バイトだけじゃ利息を払うので精一杯だ…。', 'cry'),
     bg('home'),
+    bgm('pve'),
     talk('mine', 'ちょっと、いつまで泣いてるの。', 'arms'),
     talk('chris', 'マイン！？ どうしてここに…。', 'sparkle'),
     talk('mine', 'あなたのお母さんに頼まれて、様子を見に来たのよ。……で、借金はいくら？', 'talk'),

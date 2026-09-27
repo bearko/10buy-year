@@ -75,7 +75,7 @@ async function playSteps(steps) {
         } else {
           const got = await offersModal(state, st, refresh);
           refresh();
-          await showItems(state, '仕入れた商品', groupItems(got || []));
+          await showItems(state, '仕入れた商品', groupItems(got || []), { se: false });
         }
         break;
       }
