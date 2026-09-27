@@ -11,7 +11,7 @@ import { SKILLS } from '../src/data/skills.js';
 import { productOf, shippingCost } from '../src/data/products.js';
 import { repay } from '../src/engine/finance.js';
 import { finalResult } from '../src/engine/ending.js';
-import { checkTutorial } from '../src/engine/tutorial.js';
+import { checkTutorial, currentMission } from '../src/engine/tutorial.js';
 import { autoBuy, bestPlatform, reserveNeeded } from '../src/engine/automation.js';
 
 export function play(s, steps, policy) {
@@ -115,7 +115,7 @@ function chooseCommand(s) {
   const has = (id) => cmds.includes(id);
   if (cmds.length === 1) return cmds[0];
   if (s.stamina < 40) return 'rest';
-  if (s.tutorial === 2 && has('store')) return 'store';
+  if (currentMission(s)?.id === 'go_store' && has('store')) return 'store';
   if (has('license') && s.cash > 60000) return 'license';
   if (has('queue') && queueTargets(s).length && s.stamina >= 60) return 'queue';
   const fresh = has('lottery') ? openLotteries(s).filter((p) => !(s.botEntered ||= []).includes(`${p.id}@${Math.floor(s.week / 48)}`)) : [];

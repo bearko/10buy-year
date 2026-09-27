@@ -1,4 +1,4 @@
-import { CAPSTONE_NEED, SKILLS, SKILL_MAP } from '../data/skills.js';
+import { CAPSTONE_NEED, SKILLS, SKILL_MAP, TREE_NODES } from '../data/skills.js';
 import { mainRoutes, perk, routeCounts } from './perks.js';
 import { giveSkill, removeSkill } from './effects.js';
 
@@ -165,4 +165,9 @@ export function learnSkill(s, skillId) {
 export function monthlyNodeFees(s) {
   const mult = perk(s, 'monthlyFees');
   return SKILLS.filter((sk) => sk.monthly && s.skills.includes(sk.id)).map((sk) => ({ name: sk.name, amount: Math.round(sk.monthly * mult) }));
+}
+
+// いま自分の手で解放できるパネル（経験点が足りるもの・条件を満たした記録パネル）
+export function claimableNodes(s) {
+  return TREE_NODES.filter((n) => nodeVisible(s, n.id) && nodeState(s, n.id) === 'available' && canAfford(s, skillCost(s, n.id)));
 }

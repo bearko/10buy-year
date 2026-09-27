@@ -3,6 +3,7 @@ import { prologue } from './data/story.js';
 import { CAST } from './data/cast.js';
 import { productOf } from './data/products.js';
 import { availableCommands, availableNightCommands, COMMAND_MAP, commandPreview, GROUPS, performCommand, sickRisk, staminaCost } from './engine/commands.js';
+import { claimableNodes } from './engine/abilities.js';
 import { hasSkill, MOOD_MULT } from './engine/effects.js';
 import { finalResult } from './engine/ending.js';
 import { activeUnits, listedUnits } from './engine/inventory.js';
@@ -10,7 +11,7 @@ import { autoBuy } from './engine/automation.js';
 import { clearSave, loadGame, loadRanking, pushRanking, saveGame } from './engine/save.js';
 import { createGame } from './engine/state.js';
 import { endWeek, startWeek } from './engine/turn.js';
-import { checkTutorial, tutorialDone } from './engine/tutorial.js';
+import { checkTutorial, currentMission, treeOpen } from './engine/tutorial.js';
 import { playBgm, playSe, setSound, soundOn } from './ui/audio.js';
 import { $, clear, h, wait, yenFmt } from './ui/dom.js';
 import { renderHud, renderParams, renderTicker, setPreview } from './ui/hud.js';
@@ -259,6 +260,13 @@ function waitForCommand(mode) {
   });
 }
 
+// 自分の手で解放できるパネルの数（ツリーのタブに出す）
+function treeBadge() {
+  if (!treeOpen(state)) return '';
+  const n = claimableNodes(state).length;
+  return n ? `${n}` : '';
+}
+
 function renderTabs() {
   const nav = clear($('#tabs'));
   if (!state) return;
@@ -271,7 +279,7 @@ function renderTabs() {
   const tabs = [
     { label: '在庫', open: () => inventoryModal(state, refresh), badge: unlisted ? `${unlisted}` : '' },
     { label: '相場', open: () => marketModal(state), badge: state.news.length ? `${state.news.length}` : '', lock: !hasSkill(state, 'eye_market') && 'スキルツリー「相場チェック」で解放' },
-    { label: 'ツリー', open: () => openTree(state, refresh), lock: !tutorialDone(state) && 'チュートリアルを終えると開ける' },
+    { label: 'ツリー', open: () => openTree(state, refresh, { focus: currentMission(state)?.node }), lock: !treeOpen(state) && '最初の売上のあとに開ける', badge: treeBadge() },
     { label: '経営', open: () => bizModal(state, refresh, playSteps) },
     { label: 'メニュー', open: () => menuModal({ s: state, onTitle: toTitle, onRestart: restart, speed: () => speed, onSpeed: setSpeed, onChange: refresh }) },
   ];

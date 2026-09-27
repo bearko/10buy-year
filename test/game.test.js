@@ -17,7 +17,7 @@ import { learnSkill, nodeState, nodeVisible, OFF_ROUTE_RATE, skillCost } from '.
 import { ROUTES, ROUTE_MAP, SKILLS as TREE_SKILLS, TREE_NODES, nodePos } from '../src/data/skills.js';
 import { perk, routeLevel } from '../src/engine/perks.js';
 import { titleOf } from '../src/engine/ending.js';
-import { checkTutorial, MISSIONS } from '../src/engine/tutorial.js';
+import { checkTutorial, MISSIONS, treeOpen } from '../src/engine/tutorial.js';
 import { checkPromotion } from '../src/engine/career.js';
 import { kpiLevel } from '../src/engine/kpi.js';
 import { taxFor } from '../src/engine/finance.js';
@@ -140,24 +140,35 @@ test('序盤は行動が絞られていて、チュートリアルで順に解�
   listUnits(s, [s.inventory[0].uid], 'merc', 500);
   checkTutorial(s);
   assert.equal(MISSIONS[s.tutorial].id, 'sell_home');
-  // 2. 売れる → 店舗せどりが解放
+  // 2. 売れる → ツリーが開く。店舗せどりはまだ自動では増えない
   s.stats.soldUnits = 1;
   checkTutorial(s);
+  assert.ok(treeOpen(s));
+  assert.equal(MISSIONS[s.tutorial].id, 'tree_store');
+  assert.ok(!ids().includes('store'), '販路・仕入れ先は自動で解放されない');
+  // 3. 自分の手で「近所の店のワゴン」を解放 → 店舗せどり
+  assert.ok(learnSkill(s, 'src_store'));
+  checkTutorial(s);
   assert.ok(ids().includes('store'));
-  // 3〜4. 店に行って仕入れる → ミィームが解放
+  // 4〜5. 店に行って仕入れる → ミィームへ誘導（自動では解放されない）
   performCommand(s, 'store');
   assert.ok(s.flags.didStore);
   buy(s, { oid: 99, pid: 'scroll', price: 3300, maxQty: 1, points: 0, fakeRate: 0 }, 1, 'cash');
   checkTutorial(s);
-  assert.ok(s.skills.includes('ch_miime'));
-  // 5〜6. 仕入れた商品を出品して売る → 利益計算とツリーが解放
+  assert.ok(!s.skills.includes('ch_miime'));
+  assert.equal(MISSIONS[s.tutorial].node, 'ch_miime');
+  assert.ok(learnSkill(s, 'ch_miime'));
+  checkTutorial(s);
+  // 6〜7. 仕入れた商品を出品して売る → 利益計算へ誘導
   const bought = s.inventory.find((u) => !u.home);
   listUnits(s, [bought.uid], 'auc', 4000);
   s.stats.purchasedSold = 1;
   s.stats.firstFlip = { pid: 'scroll', price: 6000, cost: 3300 };
   checkTutorial(s);
+  assert.ok(!s.skills.includes('eye_calc'));
+  assert.ok(learnSkill(s, 'eye_calc'));
+  checkTutorial(s);
   assert.equal(s.tutorial, MISSIONS.length);
-  assert.ok(s.skills.includes('eye_calc'));
 });
 
 test('スキルツリー：親・ステージ・コツが揃わないと解放できない', () => {
