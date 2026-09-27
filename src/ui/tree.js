@@ -1,7 +1,7 @@
 // 転売屋スキルツリー画面。中心から7つのルートが放射状に伸びる。ドラッグで移動、ホイール／ピンチで拡大縮小。
 import { CAPSTONE_NEED, ROUTES, ROUTE_MAP, ROUTE_LEVELS, SKILL_MAP, SKILLS, TREE_NODES, nodePos } from '../data/skills.js';
 import {
-  ABILITIES, ABILITY_MAX, abilityCost, canAfford, EXP_NAME, EXP_TYPES, isOffRoute, learnSkill, nodeBlockers, nodeLv, nodeState, nodeVisible,
+  ABILITIES, ABILITY_MAX, abilityCost, canAfford, EXP_NAME, EXP_TYPES, isOffRoute, learnSkill, nodeBlockers, nodeLv, nodeState, nodeTeaser, nodeVisible,
   claimableNodes, raiseAbility, rankOf, recordValue, skillCost,
 } from '../engine/abilities.js';
 import { mainRoutes, routeCounts, routeLevel, routePerkText } from '../engine/perks.js';
@@ -10,6 +10,7 @@ import { $, clear, h } from './dom.js';
 import { toast } from './modal.js';
 
 const UNIT = 108; // 1マスのピクセル
+const RING_R = 1.7 + 0.9; // 中心から1段目と、その先の「？」が収まる距離（マス）
 const SVGNS = 'http://www.w3.org/2000/svg';
 const KIND_LABEL = { root: 'はじまり', starter: '解放', unlock: '解放', perk: '常時', repeat: '強化', gold: '偉人の奥義', record: '記録', capstone: '到達点' };
 
@@ -19,6 +20,7 @@ const svg = (tag, attrs = {}) => {
   return el;
 };
 const owns = (s, id) => s.skills.includes(id) || nodeLv(s, id) > 0;
+const shown = (s, id) => nodeVisible(s, id) || nodeTeaser(s, id);
 const costText = (cost) => Object.entries(cost).map(([k, v]) => h('span', { class: `cost-chip x ${k}` }, `${EXP_NAME[k]} ${v}`));
 
 function levelText(s, sk) {
@@ -32,7 +34,6 @@ export function openTree(s, onChange, { focus = null } = {}) {
     let selected = null;
     let panel = null; // 'abilities' | 'red'
     const view = { x: 0, y: 0, scale: window.innerWidth < 560 ? 0.62 : 0.85 };
-    const seen = new Set(TREE_NODES.filter((n) => nodeVisible(s, n.id)).map((n) => n.id));
 
     // ---- ワールド座標の範囲 ----
     const pts = TREE_NODES.map(nodePos);
@@ -51,8 +52,9 @@ export function openTree(s, onChange, { focus = null } = {}) {
     const links = svg('svg', { class: 'tree-links', width: W, height: H, viewBox: `0 0 ${W} ${H}` });
     const nodeLayer = h('div', { class: 'tree-nodes' });
     const sheet = h('footer', { class: 'tree-sheet' });
+    const expSide = h('div', { class: 'tree-expside' }); // 経験点（トップ画面と同じく右側に縦に並べる）
     world.append(links, nodeLayer);
-    viewport.append(world);
+    viewport.append(world, expSide);
     root.append(head, routeBar, viewport, sheet);
     $('#modal-root').append(root);
 
@@ -73,7 +75,9 @@ export function openTree(s, onChange, { focus = null } = {}) {
     const centerOn = (id, animate = false) => {
       const p = px(nodePos(SKILL_MAP[id]));
       const rect = viewport.getBoundingClientRect();
-      view.x = rect.width / 2 - p.x * view.scale;
+      // 右側の経験点パネルに隠れないよう、狭い画面では少し左に寄せる
+      const side = rect.width < 560 ? expSide.offsetWidth + 8 : 0;
+      view.x = (rect.width - side) / 2 - p.x * view.scale;
       view.y = rect.height / 2 - p.y * view.scale;
       world.classList.toggle('glide', animate);
       applyView();
@@ -85,7 +89,24 @@ export function openTree(s, onChange, { focus = null } = {}) {
       clear(head).append(
         h('button', { class: 'tree-back', 'aria-label': '戻る', onclick: close }, '←'),
         h('div', { class: 'tree-title' }, h('b', {}, 'スキルツリー'), h('small', {}, 'RESELLER SKILL TREE')),
-        h('div', { class: 'tree-exp' }, ...EXP_TYPES.map((e) => h('span', { class: `x ${e.id}`, title: e.name }, h('i', {}, e.name[0]), (s.exp[e.id] || 0).toLocaleString()))),
+      );
+      renderExp();
+    }
+
+    // 経験点。選んだパネルのコストぶんを「−10」と並べ、足りない分は赤くする
+    function renderExp() {
+      const sk = selected ? SKILL_MAP[selected] : null;
+      const cost = sk && !owns(s, sk.id) && nodeVisible(s, sk.id) ? skillCost(s, sk.id) : {};
+      clear(expSide).append(
+        h('div', { class: 'tes-h' }, '経験点'),
+        ...EXP_TYPES.map((e) => {
+          const need = cost[e.id] || 0;
+          const have = s.exp[e.id] || 0;
+          return h('div', { class: `tes-row x ${e.id} ${need ? (have >= need ? 'ok' : 'ng') : ''}` },
+            h('span', { class: 'pn' }, e.name),
+            h('b', {}, have.toLocaleString()),
+            h('i', {}, need ? `−${need}` : ''));
+        }),
       );
     }
 
@@ -95,9 +116,8 @@ export function openTree(s, onChange, { focus = null } = {}) {
       const top = main[0] && counts[main[0]] >= 2 ? ROUTE_MAP[main[0]] : null;
       clear(routeBar).append(
         h('div', { class: 'route-goal' },
-          h('small', {}, '目指すルート'),
-          top ? h('b', { style: { color: top.color } }, `${top.title}`) : h('b', { class: 'muted' }, 'まだ決まっていない'),
-          top ? h('span', { class: 'muted' }, ` ／ ${top.name}`) : null,
+          h('small', {}, '目指す'),
+          top ? h('b', { style: { color: top.color } }, `${top.title}`) : h('b', { class: 'muted' }, '未定'),
         ),
         h('div', { class: 'route-pips' }, ...ROUTES.map((r) => {
           const n = counts[r.id] || 0;
@@ -110,7 +130,7 @@ export function openTree(s, onChange, { focus = null } = {}) {
               const first = TREE_NODES.find((x) => x.route === r.id && x.depth === 1);
               centerOn(first.id, true);
             },
-          }, h('i', { style: { width: `${Math.min(100, (n / 8) * 100)}%` } }), h('span', {}, r.name.slice(0, 2)), h('em', {}, lv ? `Lv${lv}` : `${n}`));
+          }, h('span', {}, r.name.slice(0, 2)), h('em', {}, lv ? `Lv${lv}` : `${n}`));
         })),
       );
     }
@@ -127,7 +147,7 @@ export function openTree(s, onChange, { focus = null } = {}) {
       return `M${pa.x},${pa.y} Q${mx - dy * bend},${my + dx * bend} ${pb.x},${pb.y}`;
     }
 
-    function renderLinks(fresh) {
+    function renderLinks(fresh, burst = false) {
       clear(links);
       const defs = svg('defs');
       const glow = svg('filter', { id: 'glow', x: '-50%', y: '-50%', width: '200%', height: '200%' });
@@ -147,12 +167,13 @@ export function openTree(s, onChange, { focus = null } = {}) {
         links.append(t);
       }
       for (const n of TREE_NODES) {
-        if (n.kind === 'root' || !nodeVisible(s, n.id)) continue;
+        if (n.kind === 'root' || !shown(s, n.id)) continue;
         const parent = SKILL_MAP[n.parent];
-        const color = ROUTE_MAP[n.route].color;
+        const teaser = !nodeVisible(s, n.id);
+        const color = teaser ? '#3D4656' : ROUTE_MAP[n.route].color;
         const on = owns(s, n.id);
         const d = linkPath(parent, n);
-        const base = svg('path', { d, class: `link ${on ? 'on' : ''}`, stroke: color });
+        const base = svg('path', { d, class: `link ${on ? 'on' : ''} ${teaser ? 'teaser' : ''}`, stroke: color });
         links.append(base);
         if (on) links.append(svg('path', { d, class: 'link-flow', stroke: color, filter: 'url(#glow)' }));
         if (fresh.has(n.id)) {
@@ -160,28 +181,30 @@ export function openTree(s, onChange, { focus = null } = {}) {
           base.style.strokeDasharray = `${len}`;
           base.style.strokeDashoffset = `${len}`;
           base.classList.add('grow');
-          base.style.animationDelay = `${fresh.get(n.id) * 110}ms`;
+          base.style.animationDelay = `${fresh.get(n.id) * (burst ? 70 : 110)}ms`;
         }
       }
     }
 
     function nodeClass(sk) {
+      if (!nodeVisible(s, sk.id)) return 'teaser';
       const st = nodeState(s, sk.id);
-      if (sk.kind === 'root') return 'owned';
+      if (sk.kind === 'root') return owns(s, sk.id) ? 'owned' : st === 'available' ? 'can' : 'locked';
       if (st === 'owned') return sk.kind === 'repeat' || sk.kind === 'capstone' ? 'max' : 'owned';
       if (st === 'available') return canAfford(s, skillCost(s, sk.id)) ? 'can' : 'short';
       if (owns(s, sk.id)) return 'owned';
       return 'locked';
     }
 
-    function renderNodes(fresh) {
+    function renderNodes(fresh, burst = false) {
       clear(nodeLayer);
+      const center = px(nodePos(SKILL_MAP.src_home));
       for (const sk of TREE_NODES) {
-        if (!nodeVisible(s, sk.id)) continue;
+        if (!shown(s, sk.id)) continue;
         const p = px(nodePos(sk));
         const cls = nodeClass(sk);
         const color = sk.route ? ROUTE_MAP[sk.route].color : '#F5C542';
-        const hiddenGold = sk.kind === 'gold' && !owns(s, sk.id) && !(s.hints[sk.id] > 0);
+        const hiddenGold = cls === 'teaser' || (sk.kind === 'gold' && !owns(s, sk.id) && !(s.hints[sk.id] > 0));
         const lvl = levelText(s, sk);
         const inner = [];
         if (sk.kind === 'record') {
@@ -192,14 +215,22 @@ export function openTree(s, onChange, { focus = null } = {}) {
         }
         inner.push(hiddenGold ? h('span', { class: 'tnode-q' }, '？') : h('img', { src: sk.icon, alt: '', draggable: 'false' }));
         const btn = h('button', {
-          class: `tnode k-${sk.kind} ${cls} ${selected === sk.id ? 'sel' : ''} ${fresh.has(sk.id) ? 'pop' : ''} ${sk.id === focus && !owns(s, sk.id) ? 'guide' : ''}`,
-          style: { left: `${p.x}px`, top: `${p.y}px`, '--c': color, animationDelay: fresh.has(sk.id) ? `${fresh.get(sk.id) * 110 + 380}ms` : null },
+          class: `tnode k-${cls === 'teaser' ? 'teaser' : sk.kind} ${cls} ${selected === sk.id ? 'sel' : ''} ${fresh.has(sk.id) ? (burst && sk.kind !== 'root' ? 'burst' : 'pop') : ''} ${sk.id === focus && !owns(s, sk.id) ? 'guide' : ''}`,
+          style: {
+            left: `${p.x}px`,
+            top: `${p.y}px`,
+            '--c': color,
+            // 中心から飛び出してくる距離
+            '--fx': `${center.x - p.x}px`,
+            '--fy': `${center.y - p.y}px`,
+            animationDelay: fresh.has(sk.id) ? `${fresh.get(sk.id) * (burst ? 70 : 110) + (burst ? 250 : 380)}ms` : null,
+          },
           'data-id': sk.id,
           'aria-label': sk.name,
         },
-        sk.stage && !owns(s, sk.id) && s.stage < sk.stage ? h('span', { class: 'tnode-stage' }, `ST${sk.stage}`) : null,
+        sk.stage && cls !== 'teaser' && !owns(s, sk.id) && s.stage < sk.stage ? h('span', { class: 'tnode-stage' }, `ST${sk.stage}`) : null,
         h('span', { class: 'tnode-panel' }, ...inner),
-        lvl ? h('span', { class: 'tnode-lv' }, cls === 'max' ? 'MAX' : lvl) : null,
+        lvl && cls !== 'teaser' ? h('span', { class: 'tnode-lv' }, cls === 'max' ? 'MAX' : lvl) : null,
         h('span', { class: 'tnode-name' }, hiddenGold ? '？？？' : sk.name));
         nodeLayer.append(btn);
       }
@@ -214,6 +245,17 @@ export function openTree(s, onChange, { focus = null } = {}) {
       if (panel === 'red') return renderRed();
       if (!selected) return renderIdle();
       const sk = SKILL_MAP[selected];
+      if (!nodeVisible(s, sk.id)) {
+        add(
+          h('div', { class: 'sheet-top' },
+            h('div', {}, h('div', { class: 'sheet-name' }, '？？？'), h('div', { class: 'sheet-meta' }, h('span', { class: 'route-tag', style: { '--c': ROUTE_MAP[sk.route].color } }, ROUTE_MAP[sk.route].name))),
+            h('button', { class: 'sheet-x', 'aria-label': '閉じる', onclick: () => { selected = null; renderAll(); } }, '×'),
+          ),
+          h('p', { class: 'sheet-desc' }, `「${SKILL_MAP[sk.parent].name}」を解放すると、この先が見える。`),
+          h('button', { class: 'tree-btn', onclick: () => select(sk.parent, true) }, `「${SKILL_MAP[sk.parent].name}」へ`),
+        );
+        return;
+      }
       const st = nodeState(s, sk.id);
       const route = sk.route ? ROUTE_MAP[sk.route] : null;
       const hiddenGold = sk.kind === 'gold' && !owns(s, sk.id) && !(s.hints[sk.id] > 0);
@@ -222,7 +264,8 @@ export function openTree(s, onChange, { focus = null } = {}) {
       const afford = canAfford(s, cost);
       const off = isOffRoute(s, sk.id);
       let action;
-      if (sk.kind === 'root') action = h('button', { class: 'tree-btn', disabled: true }, 'すべてはここから');
+      if (sk.kind === 'root' && owns(s, sk.id)) action = h('button', { class: 'tree-btn', disabled: true }, 'すべてはここから');
+      else if (sk.kind === 'root') action = h('button', { class: 'tree-btn gold', disabled: st !== 'available', onclick: () => unlock(sk) }, st === 'available' ? '解放する（コスト0）' : 'まだ解放できない');
       else if (st === 'owned') action = h('button', { class: 'tree-btn', disabled: true }, sk.kind === 'repeat' ? '最大レベル' : '解放済み');
       else if (st === 'available') {
         const free = sk.kind === 'record';
@@ -249,6 +292,7 @@ export function openTree(s, onChange, { focus = null } = {}) {
         sk.kind === 'record' ? h('div', { class: 'sheet-rec' }, h('span', {}, sk.record.label), h('b', {}, `${Math.floor(recordValue(s, sk.record.key)).toLocaleString()} / ${sk.record.target.toLocaleString()}`)) : null,
         sk.kind === 'capstone' ? h('p', { class: 'sheet-note' }, `このルートのノードを${CAPSTONE_NEED}個そろえると解放できる。ルートの到達点で、称号にもなる。`) : null,
         blockers.length && st !== 'owned' ? h('p', { class: 'sheet-block' }, blockers.join('／')) : null,
+        st === 'available' && !afford ? h('p', { class: 'sheet-block' }, `経験点が足りない：${Object.entries(cost).filter(([k, v]) => (s.exp[k] || 0) < v).map(([k, v]) => `${EXP_NAME[k]} あと${v - (s.exp[k] || 0)}`).join('／')}`) : null,
         off && st === 'available' ? h('p', { class: 'sheet-note' }, '専門外：いま伸ばしている上位2ルート以外なので、コストが25%高い') : null,
         action,
       );
@@ -257,7 +301,7 @@ export function openTree(s, onChange, { focus = null } = {}) {
     function renderIdle() {
       const counts = routeCounts(s);
       const claimable = claimableNodes(s);
-      const nextRecord = TREE_NODES.filter((n) => n.kind === 'record' && !owns(s, n.id))
+      const nextRecord = TREE_NODES.filter((n) => n.kind === 'record' && !owns(s, n.id) && nodeVisible(s, n.id))
         .map((n) => ({ n, v: recordValue(s, n.record.key) / n.record.target }))
         .sort((a, b) => b.v - a.v)[0];
       const main = mainRoutes(s)[0];
@@ -321,27 +365,54 @@ export function openTree(s, onChange, { focus = null } = {}) {
       selected = id;
       panel = null;
       renderNodes(new Map());
+      renderExp();
       renderSheet();
       if (move) centerOn(id, true);
     }
 
     function unlock(sk) {
-      const before = new Set(TREE_NODES.filter((n) => nodeVisible(s, n.id)).map((n) => n.id));
+      const before = new Set(TREE_NODES.filter((n) => shown(s, n.id)).map((n) => n.id));
       const lvBefore = routeLevel(s, sk.route);
       if (!learnSkill(s, sk.id)) return;
-      playSe('unlock');
+      const burst = sk.kind === 'root';
+      playSe(burst ? 'stageup' : 'unlock');
       toast(`「${sk.name}」を解放！`, 'good');
       const fresh = new Map();
       let i = 0;
-      for (const n of TREE_NODES) if (nodeVisible(s, n.id) && !before.has(n.id)) fresh.set(n.id, i++);
+      // 中心から近い順に、枝が広がっていく
+      const order = TREE_NODES.filter((n) => shown(s, n.id) && !before.has(n.id)).sort((a, b) => (a.depth || 0) - (b.depth || 0) || (ROUTE_MAP[a.route]?.angle ?? 0) - (ROUTE_MAP[b.route]?.angle ?? 0));
+      for (const n of order) fresh.set(n.id, i++);
       fresh.set(sk.id, 0);
       if (sk.route && routeLevel(s, sk.route) > lvBefore) {
         playSe('levelup');
         toast(`${ROUTE_MAP[sk.route].name}の熟練度が Lv${routeLevel(s, sk.route)} に！`, 'good');
       }
-      for (const id of fresh.keys()) seen.add(id);
-      renderAll(fresh);
+      if (burst) {
+        selected = null;
+        shockwave();
+        zoomToFit();
+      }
+      renderAll(fresh, burst);
       onChange?.();
+    }
+
+    // 中心から光の輪が広がる
+    function shockwave() {
+      const c = px(nodePos(SKILL_MAP.src_home));
+      for (let k = 0; k < 3; k++) {
+        const ring = h('div', { class: 'tree-shock', style: { left: `${c.x}px`, top: `${c.y}px`, animationDelay: `${k * 180}ms` } });
+        world.append(ring);
+        setTimeout(() => ring.remove(), 1600 + k * 180);
+      }
+    }
+
+    // 新しく見えた枝がおさまるように少し引く
+    function zoomToFit() {
+      const rect = viewport.getBoundingClientRect();
+      const r = RING_R * UNIT;
+      const side = rect.width < 560 ? expSide.offsetWidth + 8 : 0;
+      view.scale = Math.max(0.55, Math.min(view.scale, Math.min(rect.width - side, rect.height) / (2 * r)));
+      centerOn('src_home', true);
     }
 
     function changed() {
@@ -349,11 +420,11 @@ export function openTree(s, onChange, { focus = null } = {}) {
       onChange?.();
     }
 
-    function renderAll(fresh = new Map()) {
+    function renderAll(fresh = new Map(), burst = false) {
       renderHead();
       renderRouteBar();
-      renderLinks(fresh);
-      renderNodes(fresh);
+      renderLinks(fresh, burst);
+      renderNodes(fresh, burst);
       renderSheet();
     }
 

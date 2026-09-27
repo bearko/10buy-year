@@ -38,7 +38,7 @@ const H = (id) => `assets/heroes/${id}.png`;
 
 export const SKILLS = [
   // ---- 中心 ----
-  { id: 'src_home', route: null, kind: 'root', name: '押し入れの宝の山', desc: '「家の中を探す」。すべてはここから始まる', icon: E(1008) },
+  { id: 'src_home', route: null, kind: 'root', name: '押し入れの宝の山', desc: '家の物を売って最初の売上を立てたら、コスト0で解放できる。すべてはここから始まる', gate: [{ key: 'soldUnits', target: 1, label: '売上を立てた件数' }], icon: E(1008) },
   { id: 'ch_punsea', route: null, kind: 'initial', name: 'プンシー', desc: 'フリマ。手数料10%' },
   { id: 'kpi_basic', route: null, kind: 'initial', name: '帳簿', desc: '売上・利益・販売個数を記録する' },
 
@@ -52,7 +52,7 @@ export const SKILLS = [
   { id: 'cap_store', route: 'store', parent: 'early_bird', depth: 4, lane: 0, kind: 'capstone', name: '店舗の鬼', desc: '店舗の仕入れ候補+2、ワゴンの値引き+5%、店舗巡りの体力消費-20%', cost: { act: 150, info: 80 }, icon: E(5531) },
 
   // ---- 電脳・ポイ活 ----
-  { id: 'src_online', route: 'online', parent: 'src_home', depth: 1, lane: 0, kind: 'unlock', name: 'ポイント通販', desc: '「電脳せどり」が解放。ポイント還元を利益に変える', cost: { info: 20 }, icon: I('cp.png') },
+  { id: 'src_online', route: 'online', parent: 'src_home', depth: 1, lane: 0, kind: 'unlock', name: 'ポイント通販', desc: '「電脳せどり」が解放。ポイント還元を利益に変える', cost: { info: 20 }, gate: [{ flag: 'tutorialDone', label: 'チュートリアルを終える' }, { key: 'purchases', target: 5, label: '累計の仕入れ数' }], icon: I('cp.png') },
   { id: 'src_lottery', route: 'online', parent: 'src_online', depth: 2, lane: 0, kind: 'unlock', name: '抽選・予約', desc: '「抽選に応募」と、電脳せどりでの予約・在庫復活が解放', cost: { info: 25, mind: 15 }, icon: E(4016) },
   { id: 'poikatsu', route: 'online', parent: 'src_online', depth: 2, lane: -1, kind: 'perk', name: 'ポイ活の鬼', desc: '電脳のポイント還元+40%、カード還元が2%に', cost: { info: 40, tech: 10 }, icon: I('ce.png') },
   { id: 'rec_points', route: 'online', parent: 'src_online', depth: 2, lane: 1, kind: 'record', name: 'ポイント長者', desc: 'ポイント還元+10%', record: { key: 'pointsEarned', target: 100000, label: '獲得したポイント' }, icon: I('cp.png') },
@@ -61,7 +61,7 @@ export const SKILLS = [
   { id: 'cap_online', route: 'online', parent: 'lottery_nose', depth: 4, lane: 0, kind: 'capstone', name: '電脳の覇者', desc: '電脳の仕入れ候補+2、ポイント還元+30%、抽選の当選率1.2倍', cost: { info: 150, tech: 80 }, icon: E(5016) },
 
   // ---- 古物・目利き ----
-  { id: 'eye_market', route: 'vintage', parent: 'src_home', depth: 1, lane: 0, kind: 'unlock', name: '相場チェック', desc: '「相場」画面が解放。売り切れ価格を調べる習慣で、推定相場の誤差が25%減る', cost: { info: 15 }, icon: I('int.png') },
+  { id: 'eye_market', route: 'vintage', parent: 'src_home', depth: 1, lane: 0, kind: 'unlock', name: '相場チェック', desc: '「相場」画面が解放。売り切れ価格を調べる習慣で、推定相場の誤差が25%減る', cost: { info: 15 }, gate: [{ flag: 'tutorialDone', label: 'チュートリアルを終える' }, { key: 'soldUnits', target: 8, label: '累計の販売数' }], icon: I('int.png') },
   { id: 'license', route: 'vintage', parent: 'eye_market', depth: 2, lane: 0, kind: 'unlock', name: '古物商許可の取り方', desc: '「古物商許可を申請」が解放。中古を仕入れて売るなら必須', cost: { info: 15 }, icon: E(1016) },
   { id: 'eye_fake', route: 'vintage', parent: 'eye_market', depth: 2, lane: 1, kind: 'perk', name: '真贋の知識', desc: '刻印・縫製・シュリンクなどの細部をもう1か所見られて、見誤りにくくなる', cost: { info: 40, mind: 20 }, icon: I('confused.png') },
   { id: 'crowd_madness', route: 'vintage', parent: 'eye_market', depth: 2, lane: -1, kind: 'gold', hero: 'newton', name: '群衆の狂気', desc: '相場推定の誤差が半分に。ブームの天井を察知できる', cost: { info: 80, mind: 50 }, icon: H(3043) },
@@ -73,7 +73,7 @@ export const SKILLS = [
   { id: 'cap_vintage', route: 'vintage', parent: 'src_auction', depth: 5, lane: 0, kind: 'capstone', name: '鑑定士', desc: '鑑定眼：仕入れ候補の真贋がひと目で分かる。中古・業者オークションの仕入れ値-8%', cost: { info: 150, mind: 80 }, icon: E(5509) },
 
   // ---- 販路・出品 ----
-  { id: 'ch_miime', route: 'sales', parent: 'src_home', depth: 1, lane: 0, kind: 'starter', name: 'ミィーム', desc: 'オークション。手数料10%。コレクター品は競り上がりやすい', cost: { tech: 15, info: 10 }, icon: E(1111) },
+  { id: 'ch_miime', route: 'sales', parent: 'src_home', depth: 1, lane: 0, kind: 'starter', name: 'ミィーム', desc: 'オークション。手数料10%。コレクター品は競り上がりやすい', cost: { tech: 15, info: 10 }, gate: [{ flag: 'tutorialDone', label: 'チュートリアルを終える' }], icon: E(1111) },
   { id: 'ch_amacri', route: 'sales', parent: 'ch_miime', depth: 2, lane: 0, kind: 'unlock', name: 'アマクリ', desc: '大手EC・倉庫委託。手数料15%＋納品料。新品がよく売れ、発送の手間がない（月額4,900円）', cost: { tech: 60, info: 40 }, stage: 2, monthly: 4900, icon: I('mch_icon.png') },
   { id: 'photogenic', route: 'sales', parent: 'ch_miime', depth: 2, lane: -1, kind: 'perk', name: '写真映え', desc: '少し高めの値付けでも売れやすくなる', cost: { tech: 45, info: 15 }, icon: E(1075) },
   { id: 'slots', route: 'sales', parent: 'ch_miime', depth: 2, lane: 1, kind: 'repeat', max: 5, name: '出品枠の拡張', desc: '同時に出品できる数が+3（レベルごと）', cost: { tech: 20, info: 10 }, icon: I('buf_phy.png') },
@@ -83,7 +83,7 @@ export const SKILLS = [
   { id: 'cap_sales', route: 'sales', parent: 'ch_shops', depth: 4, lane: 0, kind: 'capstone', name: '売れっ子セラー', desc: '高めの値付けでもさらに売れやすく、すべての販路で買い手+20%', cost: { tech: 150, social: 80 }, icon: E(3112) },
 
   // ---- 仕組み化 ----
-  { id: 'pack_master', route: 'system', parent: 'src_home', depth: 1, lane: 0, kind: 'perk', name: '梱包職人', desc: '発送の体力消費が半分になり、配送破損がなくなる', cost: { tech: 30, act: 30 }, icon: I('decoy.png') },
+  { id: 'pack_master', route: 'system', parent: 'src_home', depth: 1, lane: 0, kind: 'perk', name: '梱包職人', desc: '発送の体力消費が半分になり、配送破損がなくなる', cost: { tech: 30, act: 30 }, gate: [{ flag: 'tutorialDone', label: 'チュートリアルを終える' }, { key: 'soldUnits', target: 20, label: '累計の販売数' }], icon: I('decoy.png') },
   { id: 'price_tool', route: 'system', parent: 'pack_master', depth: 2, lane: 0, kind: 'perk', name: '価格改定ツール', desc: '売れ残った出品を毎週自動で値下げ・相場に追従させる（月額5,000円）', cost: { tech: 40, info: 30 }, stage: 2, monthly: 5000, icon: I('dbf_agi.png') },
   { id: 'warehouse', route: 'system', parent: 'pack_master', depth: 2, lane: -1, kind: 'perk', name: 'レンタル倉庫', desc: '在庫スペース+60（月額2万円）', cost: { act: 40, info: 20 }, stage: 2, monthly: 20000, icon: E(5127) },
   { id: 'routine', route: 'system', parent: 'pack_master', depth: 2, lane: 1, kind: 'unlock', name: 'ルーティン化', desc: '同じ行動を4週まとめて進める「オート」が解放', cost: { mind: 40, info: 20 }, stage: 2, icon: I('resurrection.png') },
@@ -97,7 +97,7 @@ export const SKILLS = [
   { id: 'cap_system', route: 'system', parent: 'out_buy', depth: 6, lane: 0, kind: 'capstone', name: '物流センター', desc: 'ツール・外注・倉庫の月額-40%、外注の発送料半額、在庫スペース+100', cost: { social: 150, act: 100 }, icon: I('mch_icon.png') },
 
   // ---- 人脈・発信 ----
-  { id: 'net_meetup', route: 'network', parent: 'src_home', depth: 1, lane: 0, kind: 'unlock', name: '物販仲間', desc: '「物販交流会」が解放。情報交換と偉人との出会い', cost: { social: 15 }, icon: H(4008) },
+  { id: 'net_meetup', route: 'network', parent: 'src_home', depth: 1, lane: 0, kind: 'unlock', name: '物販仲間', desc: '「物販交流会」が解放。情報交換と偉人との出会い', cost: { social: 15 }, gate: [{ flag: 'tutorialDone', label: 'チュートリアルを終える' }, { key: 'soldUnits', target: 12, label: '累計の販売数' }], icon: H(4008) },
   { id: 'quick_reply', route: 'network', parent: 'net_meetup', depth: 2, lane: 0, kind: 'perk', name: '即レス', desc: '評価が上がりやすく、トラブルが少し減る', cost: { social: 35, mind: 15 }, icon: I('buf_agi.png') },
   { id: 'profile', route: 'network', parent: 'net_meetup', depth: 2, lane: -1, kind: 'perk', name: 'プロフ必読', desc: '取引トラブルが30%減る', cost: { info: 20, social: 30 }, icon: E(1003) },
   { id: 'tenka', route: 'network', parent: 'net_meetup', depth: 2, lane: 1, kind: 'gold', hero: 'nobunaga', name: '天下布武', desc: '楽市楽座の精神。販売手数料-3%、仕入れ候補+1', cost: { social: 70, act: 70 }, icon: H(5001) },
@@ -108,7 +108,7 @@ export const SKILLS = [
   { id: 'div_consult', route: 'network', parent: 'rec_network', depth: 4, lane: 1, kind: 'perk', name: '情報発信・コンサル', desc: '経験を売る。毎月安定した収入。ただし炎上しやすい', cost: { social: 120, info: 100 }, stage: 5, icon: H(3008) },
 
   // ---- 経営 ----
-  { id: 'eye_calc', route: 'manage', parent: 'src_home', depth: 1, lane: 0, kind: 'starter', name: '利益計算', desc: '仕入れ・出品の画面に「手数料と送料を引いた見込み利益」が出る', cost: { info: 10 }, icon: I('gum.png') },
+  { id: 'eye_calc', route: 'manage', parent: 'src_home', depth: 1, lane: 0, kind: 'starter', name: '利益計算', desc: '仕入れ・出品の画面に「手数料と送料を引いた見込み利益」が出る', cost: { info: 10 }, gate: [{ flag: 'tutorialDone', label: 'チュートリアルを終える' }], icon: I('gum.png') },
   { id: 'kpi_mid', route: 'manage', parent: 'eye_calc', depth: 2, lane: 0, kind: 'unlock', name: '利益率と回転', desc: '経営画面に利益率・回転日数・滞留在庫が出る', cost: { info: 40, mind: 20 }, icon: I('int.png') },
   { id: 'cashflow', route: 'manage', parent: 'eye_calc', depth: 2, lane: -1, kind: 'unlock', stage: 2, name: '資金繰り表', desc: '月末の支払いを先読みして現金を回す。カードの利用枠+30万円、税額-5%', cost: { info: 50, mind: 20 }, icon: I('buf_int.png') },
   { id: 'rec_manage', route: 'manage', parent: 'eye_calc', depth: 2, lane: 1, kind: 'record', name: '決算の勘', desc: '獲得する経験点+10%', record: { key: 'netTotal', target: 3000000, label: '累計の純利益（円）' }, icon: I('emblem.webp') },
@@ -126,7 +126,7 @@ export const SKILLS = [
 ];
 
 export const SKILL_MAP = Object.fromEntries(SKILLS.map((s) => [s.id, s]));
-export const INITIAL_SKILLS = SKILLS.filter((s) => s.kind === 'initial' || s.kind === 'root').map((s) => s.id);
+export const INITIAL_SKILLS = SKILLS.filter((s) => s.kind === 'initial').map((s) => s.id);
 // 画面に出すノード（中心＋ルート上のもの）
 export const TREE_NODES = SKILLS.filter((s) => s.kind === 'root' || s.route);
 

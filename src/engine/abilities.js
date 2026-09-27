@@ -108,6 +108,11 @@ export function nodeBlockers(s, skillId) {
   if (sk.stage && s.stage < sk.stage) out.push(`ステージ${sk.stage}から`);
   if (sk.flag && !s.flags[sk.flag]) out.push(sk.flag === 'license' ? '古物商許可が必要' : '条件未達');
   if (sk.kind === 'gold' && !(s.hints[skillId] > 0)) out.push('偉人からコツを教わる必要がある');
+  // 序盤は選択肢を絞る：売上・仕入れの実績やチュートリアルの進み具合で、各ルートの入口が順に開く
+  for (const g of sk.gate || []) {
+    if (g.flag && !s.flags[g.flag]) out.push(g.label);
+    if (g.key && recordValue(s, g.key) < g.target) out.push(`${g.label}：${Math.floor(recordValue(s, g.key)).toLocaleString()} / ${g.target.toLocaleString()}`);
+  }
   if (sk.kind === 'record' && recordValue(s, sk.record.key) < sk.record.target) out.push(`${sk.record.label}：${Math.floor(recordValue(s, sk.record.key)).toLocaleString()} / ${sk.record.target.toLocaleString()}`);
   if (sk.kind === 'capstone') {
     const n = routeCounts(s)[sk.route] || 0;
@@ -133,6 +138,14 @@ export function nodeVisible(s, skillId) {
   if (sk.kind === 'root') return true;
   if (!sk.route) return false;
   return owns(s, skillId) || owns(s, sk.parent);
+}
+
+// 「この先がある」ことだけを見せるパネル（灰色の？）。条件を満たしていて、まだ持っていないパネルの1つ先
+export function nodeTeaser(s, skillId) {
+  const sk = SKILL_MAP[skillId];
+  if (!sk.route || nodeVisible(s, skillId)) return false;
+  const parent = SKILL_MAP[sk.parent];
+  return parent.kind !== 'root' && nodeVisible(s, parent.id) && nodeState(s, parent.id) === 'available';
 }
 
 export function learnableSkills(s) {

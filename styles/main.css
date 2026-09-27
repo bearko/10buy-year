@@ -631,3 +631,44 @@ body.loot-show #side { display: none !important; }
 .bulk-btns .btn { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 8px 4px; font-size: 13px; white-space: nowrap; }
 .bulk-btns .btn small { font-size: 12px; opacity: 0.9; }
 .bulk-btns .btn:disabled { opacity: 0.45; }
+
+/* ---- スキルツリー：見出しを1行に。経験点は右側に縦並び、ルートの数は細い帯に ---- */
+.tree-head { grid-template-rows: auto; padding: 6px 12px; }
+.tree-head .tree-back { grid-row: auto; width: 36px; height: 36px; }
+.tree-routebar { display: flex; align-items: center; gap: 8px; padding: 4px 10px; }
+.tree-routebar .route-goal { flex: none; font-size: 12px; white-space: nowrap; }
+.tree-routebar .route-goal b { font-size: 13px; }
+.tree-routebar .route-pips { flex: 1; margin-top: 0; gap: 3px; }
+.tree-routebar .route-pip { height: 22px; flex-direction: row; gap: 3px; font-size: 10px; }
+.tree-routebar .route-pip em { font-size: 9px; }
+.tree-expside { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); z-index: 3; min-width: 118px; display: flex; flex-direction: column; gap: 3px; padding: 6px 8px; background: rgba(10, 12, 16, 0.86); border: 1px solid var(--t-line); border-radius: 10px; pointer-events: none; }
+.tes-h { font-size: 10px; color: var(--t-ink3); letter-spacing: 0.1em; }
+.tes-row { display: grid; grid-template-columns: 30px 1fr 34px; align-items: baseline; gap: 4px; font-size: 12px; }
+.tes-row .pn { color: var(--c); }
+.tes-row b { text-align: right; font-family: 'Orbitron', monospace; font-weight: 500; font-size: 12px; }
+.tes-row i { font-style: normal; font-size: 11px; font-weight: bold; }
+.tes-row.ok i { color: var(--t-ok); }
+.tes-row.ng i, .tes-row.ng b { color: var(--t-ng); }
+.x.info { --c: #7cc7ff; } .x.act { --c: #ff9f6b; } .x.tech { --c: #c9a6ff; } .x.social { --c: #6be58f; } .x.mind { --c: #ffe066; }
+
+/* 取れる＝緑枠、条件はそろっているが経験点が足りない＝赤枠、その先＝灰色の？ */
+.tnode.can .tnode-panel { border-color: var(--t-ok); box-shadow: 0 0 14px rgba(34, 197, 94, 0.45); }
+.tnode.short .tnode-panel { border-color: var(--t-ng); box-shadow: 0 0 10px rgba(239, 68, 68, 0.35); }
+.tnode.short .tnode-panel img { opacity: 0.75; }
+.tnode.short .tnode-lv { border-color: var(--t-ng); color: var(--t-ng); }
+.tnode.teaser .tnode-panel { border: 2px dashed #3D4656; background: #11151c; box-shadow: none; }
+.tnode.teaser .tnode-q { color: #4B5563; font-size: 24px; font-weight: bold; }
+.tnode.teaser .tnode-name { color: #4B5563; }
+.tree-links .link.teaser { stroke-dasharray: 4 6; opacity: 0.5; }
+.tnode.k-root.can .tnode-panel { border-color: var(--t-ok); box-shadow: 0 0 26px rgba(34, 197, 94, 0.6); animation: pulse 1.4s ease-in-out infinite; }
+.tnode.k-root.locked .tnode-panel { border-style: solid; opacity: 0.8; }
+
+/* 「押し入れの宝の山」を解放したとき、中心から枝が飛び出して広がる */
+.tnode.burst { animation: burst-out 0.7s cubic-bezier(0.18, 1.3, 0.4, 1) both; }
+@keyframes burst-out {
+  from { opacity: 0; transform: translate(calc(-50% + var(--fx)), calc(-50% + var(--fy))) scale(0.2); }
+  60% { opacity: 1; }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+.tree-shock { position: absolute; width: 80px; height: 80px; margin: -40px 0 0 -40px; border-radius: 50%; border: 3px solid #F5C542; box-shadow: 0 0 24px #F5C542, inset 0 0 24px #F5C54288; pointer-events: none; animation: shock 1.4s ease-out both; }
+@keyframes shock { from { transform: scale(0.4); opacity: 1; } to { transform: scale(9); opacity: 0; } }
