@@ -12,18 +12,18 @@ export const MISSIONS = [
   {
     id: 'list_home',
     title: '家の不用品を出品しよう',
-    hint: '「在庫」を開いて、読み終えた本やハットを「出品する」',
+    hint: '「出品」→「在庫を出品」',
     done: (s) => s.inventory.some((u) => u.home && u.listing),
     reward: (s) => [
       talk('mine', '出品できたわね！ 売れたかどうかは週末にわかるわ。', 'smile'),
-      talk('mine', '行動を1つ選ぶと1週間が進むの。今週は「家の中を探す」でほかにも売れる物がないか見てみたら？', 'pointer'),
+      talk('mine', '行動を1つ選ぶと1週間が進むの。今週は「仕入れ」の「家の中を探す」で、ほかにも売れる物がないか見てみたら？', 'pointer'),
       gain(addExp(s, { tech: 5, info: 5 })),
     ],
   },
   {
     id: 'sell_home',
     title: '売れるのを待とう',
-    hint: '行動を選んで週を進める。売れた商品は週末に発送、売上金は翌週に入金',
+    hint: '行動を選んで週を進める',
     done: (s) => s.stats.soldUnits >= 1,
     reward: (s) => {
       grantSkill(s, 'src_store');
@@ -33,7 +33,7 @@ export const MISSIONS = [
         talk('mine', 'でも売値がそのまま入るわけじゃないの。手数料10%と送料が引かれて、残りが翌週に入金されるわ。', 'pointer'),
         talk('chris', '家の物はそのうち尽きるよね。…お店で安く買って、高く売れば？', 'sparkle'),
         talk('mine', 'それが「仕入れ」。まずは近所の店のワゴンセールから見てみましょう。新品の値引き品なら許可もいらないわ。', 'wink'),
-        info('解放', ['行動「店舗せどり」が使えるようになった'], 'good'),
+        info('解放', ['「仕入れ」に「店舗せどり」が追加'], 'good'),
         gain(addExp(s, { info: 8, mind: 5 })),
       ];
     },
@@ -41,14 +41,14 @@ export const MISSIONS = [
   {
     id: 'go_store',
     title: 'お店で仕入れ先を探そう',
-    hint: '行動「店舗せどり」を選ぶ',
+    hint: '「仕入れ」→「店舗せどり」',
     done: (s) => !!s.flags.didStore,
     reward: () => [],
   },
   {
     id: 'buy',
     title: '商品を仕入れよう',
-    hint: '推定相場が仕入れ値より高いものを選ぶ。次の店舗せどりでもOK',
+    hint: '推定相場 ＞ 仕入れ値 のものを選ぶ',
     done: (s) => s.stats.purchases >= 1,
     reward: (s) => {
       grantSkill(s, 'ch_miime');
@@ -63,14 +63,14 @@ export const MISSIONS = [
   {
     id: 'list_bought',
     title: '売り先を決めて出品しよう',
-    hint: '「在庫」で仕入れた商品を開き、プンシーかミィームを選んで出品',
+    hint: '「出品」→「在庫を出品」',
     done: (s) => s.inventory.some((u) => bought(u) && u.listing),
     reward: (s) => [talk('mine', 'あとは売れるのを待つだけ。値付けが高すぎると売れないから、様子を見て下げるのも大事よ。', 'smile'), gain(addExp(s, { tech: 6 }))],
   },
   {
     id: 'sell_bought',
     title: '仕入れた商品を売ろう',
-    hint: '売れなければ価格を見直す。「撮影・出品作業」で売れやすくもなる',
+    hint: '売れなければ値下げ。「撮影・出品作業」も効く',
     done: (s) => s.stats.purchasedSold >= 1,
     reward: (s) => {
       grantSkill(s, 'eye_calc');
@@ -108,7 +108,7 @@ export function checkTutorial(s) {
     s.tutorial++;
     steps.push(...m.reward(s));
     const next = currentMission(s);
-    if (next) steps.push(info('次の目標', [next.title, next.hint]));
+    if (next) steps.push(info('次の目標', [next.title]));
   }
   return steps;
 }

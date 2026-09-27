@@ -2,8 +2,7 @@
 import { prologue } from './data/story.js';
 import { CAST } from './data/cast.js';
 import { productOf } from './data/products.js';
-import { EXP_NAME } from './engine/abilities.js';
-import { availableCommands, availableNightCommands, COMMAND_MAP, NIGHT_EXTRA_STAMINA, performCommand, sickRisk, staminaCost } from './engine/commands.js';
+import { availableCommands, availableNightCommands, COMMAND_MAP, commandPreview, GROUPS, performCommand, sickRisk, staminaCost } from './engine/commands.js';
 import { hasSkill, MOOD_MULT } from './engine/effects.js';
 import { finalResult } from './engine/ending.js';
 import { activeUnits, listedUnits } from './engine/inventory.js';
@@ -13,8 +12,8 @@ import { createGame } from './engine/state.js';
 import { endWeek, startWeek } from './engine/turn.js';
 import { checkTutorial, tutorialDone } from './engine/tutorial.js';
 import { playBgm, playSe } from './ui/audio.js';
-import { $, clear, h, yenFmt } from './ui/dom.js';
-import { renderHud, renderTicker } from './ui/hud.js';
+import { $, clear, h, wait, yenFmt } from './ui/dom.js';
+import { renderHud, renderParams, renderTicker, setPreview } from './ui/hud.js';
 import { openModal, toast } from './ui/modal.js';
 import { choose, hidePartner, isAuto, say, setAuto, setBackground, setMessage, setTextSpeed, showChris, showInfo } from './ui/stage.js';
 import { bizModal, menuModal } from './ui/status.js';
@@ -58,7 +57,7 @@ async function playSteps(steps) {
         await showInfo(st.title, st.lines, st.tone);
         break;
       case 'gain':
-        await showInfo('経験点', [Object.entries(st.exp).map(([k, v]) => `${EXP_NAME[k]} +${v}`).join('　'), ...(st.extras || [])], 'good');
+        await flashGain(st.exp);
         break;
       case 'choice': {
         stopAuto(); // 選択肢はプレイヤーが決める
@@ -79,7 +78,7 @@ async function playSteps(steps) {
         if (isAuto()) {
           if (st.sold.length) await showInfo('今週の取引', [`${st.sold.length}件売れた（売上金 ${yenFmt(st.sold.reduce((a, x) => a + x.net, 0))}）`], 'good');
         } else if (st.sold.length || st.auctionsUnsold.length) await salesModal(state, st);
-        else if (listedUnits(state).length) await showInfo('今週の取引', ['出品中の商品は1つも売れなかった…', '値付けを見直すか、「撮影・出品作業」で売れやすくしよう'], 'bad');
+        else if (listedUnits(state).length) await showInfo('今週の取引', ['1つも売れなかった…'], 'bad');
         break;
       case 'sfx':
         playSe(st.name);
@@ -100,6 +99,16 @@ async function playSteps(steps) {
 
 const tutorialStep = () => playSteps(checkTutorial(state));
 
+// 経験点の獲得は、ステージ右の経験点パネルを光らせて見せる
+async function flashGain(exp) {
+  if (!Object.keys(exp).length) return;
+  document.body.classList.add('gain-flash');
+  renderParams(state, { gains: exp });
+  await wait(isAuto() ? 350 : 1100);
+  document.body.classList.remove('gain-flash');
+  renderParams(state);
+}
+
 function setBusy(v) {
   busy = v;
   document.body.classList.toggle('busy', v);
@@ -108,6 +117,7 @@ function setBusy(v) {
 function refresh() {
   if (!state) return;
   renderHud(state);
+  if (!document.body.classList.contains('gain-flash')) renderParams(state);
   renderTicker(state);
   renderTabs();
 }
@@ -124,69 +134,121 @@ function nextCommand(mode) {
   return waitForCommand(mode);
 }
 
+const cmdMode = (on) => document.body.classList.toggle('cmd-mode', on);
+
 function waitForCommand(mode) {
   return new Promise((resolve) => {
-    let selected = null;
-    const nav = clear($('#commands'));
     const night = mode === 'night';
-    const cmds = night ? availableNightCommands(state) : availableCommands(state);
+    const nav = $('#commands');
     const mood = MOOD_MULT[state.mood];
-    const extra = night ? NIGHT_EXTRA_STAMINA : 0;
+    const cmds = night ? availableNightCommands(state) : availableCommands(state);
+    let group = null;
+    let selected = null;
+
+    const idleMessage = () => setMessage('', night ? '夜。もうひと仕事？' : state.sick > 0 ? '体調が悪い…休むしかない。' : '今週は何をしよう？');
+    const unpreview = () => {
+      selected = null;
+      setPreview(null);
+      refresh();
+    };
     const pickCmd = (id) => {
       clear(nav);
+      unpreview();
+      cmdMode(false);
       resolve(id);
     };
-    const describe = (c) => {
-      const risk = sickRisk(state, c);
-      setMessage(c.name, `${c.desc}${night ? `\n（夜の作業：体力が${extra}余計に減る）` : ''}${risk > 0 ? `\n体調不良のおそれ ${Math.round(risk * 100)}%` : ''}\n（もう一度押すと決定）`);
+    const select = (c) => {
+      if (selected === c.id) return pickCmd(c.id);
+      selected = c.id;
+      const p = commandPreview(state, c, { night });
+      setPreview({ ...p, exp: Object.fromEntries(Object.entries(c.exp).map(([k, v]) => [k, Math.round(v * mood)])) });
+      refresh();
+      setMessage(c.name, c.desc);
+      draw();
     };
-    const header = night
-      ? '夜の作業'
-      : state.actionsPerWeek > 1
-        ? `今週の行動 ${state.actionsPerWeek - state.actionsLeft + 1} / ${state.actionsPerWeek}`
-        : '今週の行動';
-    nav.append(h('div', { class: 'cmd-header' }, header));
-    for (const c of cmds) {
-      const cost = staminaCost(state, c) + extra;
+
+    const card = (props, icon, label, extra) => h('button', props, h('img', { class: 'cmd-ic', src: icon, alt: '' }), h('b', {}, label), extra);
+    const cmdCard = (c) => {
       const risk = sickRisk(state, c);
-      const expTags = Object.entries(c.exp).map(([k, v]) => h('i', { class: `x ${k}` }, `${EXP_NAME[k][0]}${Math.round(v * mood)}`));
-      const btn = h('button', {
-        class: `cmd ${risk >= 0.3 ? 'danger' : risk > 0 ? 'risky' : ''}`,
-        onclick: () => {
-          if (busy) return;
-          if (selected === c.id) return pickCmd(c.id);
-          selected = c.id;
-          nav.querySelectorAll('.cmd').forEach((b) => b.classList.remove('sel'));
-          btn.classList.add('sel');
-          describe(c);
-        },
-      },
-      h('b', {}, c.name),
-      h('span', { class: 'cost' }, c.heal ? `体力+${c.heal}` : cost > 0 ? `体力-${cost}` : cost < 0 ? `体力+${-cost}` : ''),
-      h('span', { class: 'exps' }, ...expTags),
-      risk > 0 ? h('span', { class: 'risk' }, `${Math.round(risk * 100)}%`) : null);
-      nav.append(btn);
+      const sel = selected === c.id;
+      return card({
+        class: `cmd ${sel ? 'sel' : ''} ${risk >= 0.3 ? 'danger' : risk > 0 ? 'risky' : ''}`,
+        onclick: () => { if (!busy) select(c); },
+      }, c.icon, c.name, sel ? h('span', { class: 'go' }, '決定') : risk > 0 ? h('span', { class: 'risk' }, '⚠') : null);
+    };
+
+    function draw() {
+      clear(nav);
+      nav.classList.toggle('groups', !group && !night);
+      const count = state.actionsPerWeek > 1 && !night ? ` ${state.actionsPerWeek - state.actionsLeft + 1}/${state.actionsPerWeek}` : '';
+      const head = h('div', { class: 'cmd-header' });
+      if (group) {
+        head.append(h('button', { class: 'cmd-back', onclick: () => { if (busy) return; group = null; unpreview(); idleMessage(); draw(); } }, `◀ ${GROUPS.find((g) => g.id === group).name}`));
+      } else {
+        head.append(h('span', {}, night ? '夜' : `今週${count}`));
+      }
+      if (!night && !group && hasSkill(state, 'routine') && state.lastCommand && cmds.some((c) => c.id === state.lastCommand)) {
+        const last = COMMAND_MAP[state.lastCommand];
+        head.append(h('button', {
+          class: 'cmd-auto',
+          title: `「${last.name}」を${AUTO_WEEKS}週くり返す（選択肢で止まる）`,
+          onclick: () => {
+            if (busy) return;
+            autoWeeks = AUTO_WEEKS;
+            autoCmd = last.id;
+            setAuto(true);
+            pickCmd(last.id);
+          },
+        }, `⟳ ${last.name}×${AUTO_WEEKS}`));
+      }
+      nav.append(head);
+
+      if (night) {
+        cmds.forEach((c) => nav.append(cmdCard(c)));
+        nav.append(card({ class: 'cmd sleep', onclick: () => { if (!busy) pickCmd('sleep'); } }, 'assets/icons/sleep.png', '寝る'));
+        return;
+      }
+      if (group) {
+        if (group === 'sell') {
+          nav.append(card({
+            class: 'cmd free',
+            onclick: async () => {
+              if (busy) return;
+              await inventoryModal(state, refresh);
+              await tutorialStep();
+              refresh();
+              draw();
+            },
+          }, 'assets/extensions/1059.png', '在庫を出品', h('span', { class: 'free-tag' }, '週は進まない')));
+        }
+        cmds.filter((c) => c.group === group).forEach((c) => nav.append(cmdCard(c)));
+        return;
+      }
+      for (const g of GROUPS) {
+        const list = cmds.filter((c) => c.group === g.id);
+        const sel = list.length === 1 && selected === list[0].id;
+        nav.append(card({
+          class: `cmd grp ${list.length ? '' : 'off'} ${sel ? 'sel' : ''}`,
+          onclick: () => {
+            if (busy || (!list.length && g.id !== 'sell')) return;
+            if (g.id === 'rest') return select(list[0]);
+            group = g.id;
+            unpreview();
+            idleMessage();
+            draw();
+          },
+        }, g.icon, g.name, sel ? h('span', { class: 'go' }, '決定') : list.length > 1 ? h('span', { class: 'n' }, list.length) : null));
+      }
     }
-    if (night) {
-      nav.append(h('button', { class: 'cmd sleep', onclick: () => { if (!busy) pickCmd('sleep'); } }, h('b', {}, '寝る'), h('span', { class: 'cost' }, '夜は休む')));
-    } else if (hasSkill(state, 'routine') && state.lastCommand && cmds.some((c) => c.id === state.lastCommand)) {
-      const last = COMMAND_MAP[state.lastCommand];
-      nav.append(h('button', {
-        class: 'cmd auto',
-        onclick: () => {
-          if (busy) return;
-          autoWeeks = AUTO_WEEKS;
-          autoCmd = last.id;
-          setAuto(true);
-          pickCmd(last.id);
-        },
-      }, h('b', {}, `オート${AUTO_WEEKS}週`), h('span', { class: 'cost' }, `「${last.name}」をくり返す`), h('span', { class: 'cost' }, '選択肢が出たら止まる')));
-    }
+
     showChris('idle');
     hidePartner();
-    setBackground(night ? 'home' : 'home');
-    if (night) setMessage('', '夜。もうひと仕事するか、寝るか。（睡眠を削ると体力を余計に使う）');
-    else setMessage('', state.sick > 0 ? '体調が悪い…今週は休むしかない。' : '今週は何をしよう？（在庫・相場などは上のタブから。行動を選ぶと週が進む）');
+    setBackground('home');
+    idleMessage();
+    cmdMode(true);
+    draw();
+    // 体調不良のときは「休む」だけ
+    if (state.sick > 0) select(COMMAND_MAP.rest);
   });
 }
 
