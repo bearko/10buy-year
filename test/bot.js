@@ -5,7 +5,7 @@ import { performCommand, availableCommands, availableNightCommands } from '../sr
 import { buy, activeUnits, cardAvailable, listUnits, feeRate, sellToBuyer } from '../src/engine/inventory.js';
 import { estimateUnit, priceOf, estimate } from '../src/engine/market.js';
 import { queueTargets, openLotteries } from '../src/engine/offers.js';
-import { ABILITIES, learnSkill, nodeState, raiseAbility } from '../src/engine/abilities.js';
+import { ABILITIES, learnSkill, nodeState, raiseAbility, skillCost } from '../src/engine/abilities.js';
 import { SKILLS } from '../src/data/skills.js';
 import { productOf, shippingCost } from '../src/data/products.js';
 import { repay } from '../src/engine/finance.js';
@@ -82,23 +82,31 @@ export function manageListings(s) {
   }
 }
 
-// スキルツリーの解放優先度
-const PRIORITY = [
-  'eye_calc', 'eye_market', 'src_online', 'license', 'src_used', 'ch_miime', 'ch_amacri', 'src_lottery', 'kpi_mid', 'net_meetup', 'src_queue',
-  'slots', 'price_tool', 'warehouse', 'routine', 'src_flea', 'profile', 'quick_reply', 'photogenic', 'pack_master', 'eye_fake',
-  'out_ship', 'out_list', 'ch_shops', 'kpi_pro', 'eye_ai', 'src_auction', 'serial_memo', 'bargain', 'lottery_nose', 'poikatsu',
-  'src_wholesale', 'out_buy', 'warehouse2', 'div_brand', 'div_buyback', 'div_consult', 'iron_mental', 'early_bird',
-  ...SKILLS.filter((x) => x.kind === 'gold' || x.kind === 'red').map((x) => x.id),
-];
+// スキルツリーの解放優先度：まず基本、次に「目指すルート」2本、最後に残り
+const ESSENTIAL = ['eye_calc', 'eye_market', 'src_online', 'license', 'src_used', 'ch_miime', 'ch_amacri', 'src_lottery', 'kpi_mid', 'net_meetup', 'src_queue', 'slots', 'price_tool', 'warehouse', 'routine', 'out_ship', 'out_list', 'out_buy', 'warehouse2', 'kpi_pro', 'ch_shops'];
+const ROUTE_PLANS = [['store', 'system'], ['online', 'sales'], ['vintage', 'system'], ['sales', 'manage'], ['store', 'online'], ['network', 'system']];
+function priorityFor(s) {
+  const plan = ROUTE_PLANS[s.seed % ROUTE_PLANS.length];
+  const inPlan = SKILLS.filter((x) => plan.includes(x.route)).sort((a, b) => a.depth - b.depth).map((x) => x.id);
+  return [...ESSENTIAL, ...inPlan, ...SKILLS.map((x) => x.id)];
+}
 
 function growth(s) {
-  for (const id of PRIORITY) {
+  for (const id of priorityFor(s)) {
     const st = nodeState(s, id);
     if (st === 'available' || st === 'red') learnSkill(s, id);
   }
-  // ノードに使う分を残して、余った経験点で基礎能力を上げる
+  // 次に狙うノード（コスト不足で取れなかったもの）の分を残して、余った経験点で基礎能力を上げる
+  const target = priorityFor(s).find((id) => nodeState(s, id) === 'available');
+  const reserve = target ? skillCost(s, target) : {};
   const spare = () => Object.values(s.exp).filter((v) => v > 60).length >= 3;
-  for (let i = 0; i < 20 && spare(); i++) for (const a of ABILITIES) raiseAbility(s, a.id, 1);
+  for (let i = 0; i < 20 && spare(); i++) {
+    for (const a of ABILITIES) {
+      const exp = { ...s.exp }, lv = s.abilities[a.id];
+      raiseAbility(s, a.id, 1);
+      if (Object.entries(reserve).some(([k, v]) => s.exp[k] < exp[k] && s.exp[k] < v)) { s.exp = exp; s.abilities[a.id] = lv; }
+    }
+  }
 }
 
 function chooseCommand(s) {

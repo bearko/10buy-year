@@ -3,11 +3,12 @@ import { productOf } from './products.js';
 import { chance } from '../engine/rng.js';
 import { addExp, addHate, addMood, addRating, addStamina, hasSkill, yen } from '../engine/effects.js';
 import { cancelSale, finalizeSale, partialRefund, restoreUnit } from '../engine/sales.js';
+import { perk } from '../engine/perks.js';
 import { choice, gain, info, narr, sfx, talk } from '../engine/steps.js';
 
 // 交渉判定。交渉力と「このはし渡るべからず」で成功率が上がる。
 export function talkCheck(s, base = 0.25) {
-  const p = base + s.abilities.talk / 200 + (hasSkill(s, 'tonchi') ? 0.3 : 0);
+  const p = base + s.abilities.talk / 200 + (hasSkill(s, 'tonchi') ? 0.3 : 0) + perk(s, 'talkCheck');
   return chance(s, Math.min(0.95, p));
 }
 

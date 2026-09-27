@@ -1,10 +1,6 @@
-// スキルツリー・経営（KPI）・メニュー画面
-import { BRANCHES, SKILL_MAP, SKILLS } from '../data/skills.js';
+// 経営（KPI）・メニュー画面
 import { productOf } from '../data/products.js';
 import { weekLabel } from '../engine/calendar.js';
-import {
-  ABILITIES, ABILITY_MAX, abilityCost, canAfford, EXP_NAME, EXP_TYPES, learnSkill, nodeBlockers, nodeLv, nodeState, raiseAbility, rankOf, skillCost,
-} from '../engine/abilities.js';
 import { debtFreeSteps, MIN_PAYMENT, repay } from '../engine/finance.js';
 import { computeKpis, formatKpi, KPI_DEFS, kpiLevel } from '../engine/kpi.js';
 import { STAGES, stageOf } from '../engine/career.js';
@@ -12,116 +8,6 @@ import { grossProfit } from '../engine/state.js';
 import { playSe, setSound, soundOn } from './audio.js';
 import { h, signYen, yenFmt } from './dom.js';
 import { openModal, toast } from './modal.js';
-
-const costText = (cost) => Object.entries(cost).map(([k, v]) => `${EXP_NAME[k]}${v}`).join(' ');
-const KIND_BADGE = { unlock: '解放', perk: '常時', repeat: '強化', gold: '偉人の奥義', red: '不調', initial: '初期' };
-
-function expPool(s) {
-  return h('div', { class: 'exp-pool' }, ...EXP_TYPES.map((e) => h('div', { class: `exp ${e.id}` }, h('small', {}, e.name), h('b', {}, s.exp[e.id] || 0))));
-}
-
-// ノードの深さ（前提ノードの連なり）
-function depthOf(id, seen = new Set()) {
-  const sk = SKILL_MAP[id];
-  if (!sk.req?.length || seen.has(id)) return 0;
-  seen.add(id);
-  return 1 + Math.max(...sk.req.filter((r) => SKILL_MAP[r].branch === sk.branch).map((r) => depthOf(r, seen)), -1);
-}
-
-// ツリー順に並べる：前提ノードの直後に子ノードが来るように
-function treeOrder(branch) {
-  const nodes = SKILLS.filter((sk) => sk.branch === branch);
-  const out = [];
-  const visit = (sk) => {
-    if (out.includes(sk)) return;
-    out.push(sk);
-    for (const child of nodes.filter((c) => (c.req || []).includes(sk.id))) visit(child);
-  };
-  for (const sk of nodes.filter((x) => !(x.req || []).some((r) => SKILL_MAP[r].branch === branch))) visit(sk);
-  return out;
-}
-
-export function treeModal(s, onChange) {
-  let branch = 'src';
-  return openModal('転売屋スキルツリー', (body, api) => {
-    const owned = SKILLS.filter((sk) => sk.kind !== 'red' && nodeState(s, sk.id) === 'owned').length;
-    const total = SKILLS.filter((sk) => sk.kind !== 'red').length;
-    body.append(
-      expPool(s),
-      h('p', { class: 'note' }, `活動で貯めた経験点でノードを解放する。解放 ${owned} / ${total}。ステージが上がると新しいノードが開く。`),
-      h('div', { class: 'seg branch-tabs' },
-        ...[...BRANCHES, { id: 'red', name: '不調' }].map((b) => h('button', { class: `btn small ${branch === b.id ? 'on' : ''}`, onclick: () => { branch = b.id; api.refresh(); } }, b.name)),
-      ),
-    );
-    const br = BRANCHES.find((b) => b.id === branch);
-    if (br?.ability) body.append(abilityCard(s, ABILITIES.find((a) => a.id === br.ability), api, onChange));
-
-    const nodes = branch === 'red' ? SKILLS.filter((sk) => sk.kind === 'red' && s.skills.includes(sk.id)) : treeOrder(branch);
-    if (branch === 'red' && !nodes.length) body.append(h('p', { class: 'empty' }, '今は不調はない'));
-    for (const sk of nodes) body.append(nodeCard(s, sk, api, onChange));
-  }).closed;
-}
-
-function abilityCard(s, a, api, onChange) {
-  const lv = s.abilities[a.id];
-  const cost = abilityCost(a.id, lv);
-  const ok = lv < ABILITY_MAX && canAfford(s, cost);
-  return h('div', { class: 'card ability root' },
-    h('div', { class: `rank r${rankOf(lv)}` }, rankOf(lv)),
-    h('div', { class: 'grow' },
-      h('div', { class: 'name' }, `基礎能力：${a.name}`, h('small', {}, ` ${lv}`)),
-      h('div', { class: 'bar' }, h('i', { style: { width: `${lv}%` } })),
-      h('small', { class: 'desc' }, a.desc),
-    ),
-    h('div', { class: 'col' },
-      h('button', { class: 'btn small', disabled: !ok, onclick: () => { raiseAbility(s, a.id, 1); api.refresh(); onChange?.(); } }, '+1'),
-      h('button', { class: 'btn small', disabled: !ok, onclick: () => { raiseAbility(s, a.id, 5); api.refresh(); onChange?.(); } }, '+5'),
-      h('small', {}, costText(cost)),
-    ),
-  );
-}
-
-function nodeCard(s, sk, api, onChange) {
-  const state = nodeState(s, sk.id);
-  const cost = skillCost(s, sk.id);
-  const blockers = nodeBlockers(s, sk.id);
-  const depth = depthOf(sk.id);
-  const hint = s.hints[sk.id] || 0;
-  const lvText = sk.kind === 'repeat' ? ` Lv${nodeLv(s, sk.id)}/${sk.max}` : '';
-  const hidden = sk.kind === 'gold' && state === 'locked' && !hint;
-  return h('div', { class: `card node ${state} ${sk.kind}`, style: { marginLeft: `${Math.min(depth, 3) * 14}px` } },
-    depth ? h('span', { class: 'branch-line' }, '└') : null,
-    h('div', { class: 'grow' },
-      h('div', { class: 'name' },
-        hidden ? '？？？' : sk.name,
-        h('small', { class: 'badge-kind' }, ` ${KIND_BADGE[sk.kind]}${lvText}`),
-        hint && sk.kind !== 'red' ? h('small', { class: 'pos' }, ` コツLv${hint}`) : null,
-        sk.monthly ? h('small', { class: 'neg' }, ` 月${yenFmt(sk.monthly)}`) : null,
-      ),
-      h('small', { class: 'desc' }, hidden ? '偉人とのイベントでコツを教わると現れる' : sk.desc),
-      state === 'locked' && !hidden ? h('div', { class: 'warn' }, blockers.join('／')) : null,
-    ),
-    state === 'owned'
-      ? h('span', { class: 'owned-mark' }, sk.kind === 'repeat' ? 'MAX' : '✓')
-      : state === 'available' || state === 'red'
-        ? h('div', { class: 'col' },
-          h('button', {
-            class: 'btn small primary',
-            disabled: !canAfford(s, cost),
-            onclick: () => {
-              if (learnSkill(s, sk.id)) {
-                playSe('hint');
-                toast(state === 'red' ? `「${sk.name}」を克服した！` : `「${sk.name}」を解放した！`, 'good');
-              }
-              api.refresh();
-              onChange?.();
-            },
-          }, state === 'red' ? '治す' : '解放'),
-          h('small', {}, costText(cost)),
-        )
-        : null,
-  );
-}
 
 // ---------------- 経営（KPI・お金） ----------------
 export function bizModal(s, onChange, playSteps) {

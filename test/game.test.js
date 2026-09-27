@@ -13,7 +13,10 @@ import { createGame } from '../src/engine/state.js';
 import { abilityCost, raiseAbility } from '../src/engine/abilities.js';
 import { buy, cardAvailable, hardCapacity, listUnits, sellToBuyer, spaceUsed } from '../src/engine/inventory.js';
 import { availableCommands, performCommand } from '../src/engine/commands.js';
-import { learnSkill, nodeState } from '../src/engine/abilities.js';
+import { learnSkill, nodeState, nodeVisible, OFF_ROUTE_RATE, skillCost } from '../src/engine/abilities.js';
+import { ROUTES, ROUTE_MAP, SKILLS as TREE_SKILLS, TREE_NODES, nodePos } from '../src/data/skills.js';
+import { perk, routeLevel } from '../src/engine/perks.js';
+import { titleOf } from '../src/engine/ending.js';
 import { checkTutorial, MISSIONS } from '../src/engine/tutorial.js';
 import { checkPromotion } from '../src/engine/career.js';
 import { kpiLevel } from '../src/engine/kpi.js';
@@ -157,21 +160,66 @@ test('序盤は行動が絞られていて、チュートリアルで順に解�
   assert.ok(s.skills.includes('eye_calc'));
 });
 
-test('スキルツリー：前提とステージが揃わないと解放できない', () => {
+test('スキルツリー：親・ステージ・コツが揃わないと解放できない', () => {
   const s = createGame(11);
   s.exp = { info: 999, act: 999, tech: 999, social: 999, mind: 999 };
-  assert.equal(nodeState(s, 'src_online'), 'locked'); // 店舗せどりが前提
-  assert.equal(learnSkill(s, 'src_online'), false);
-  assert.ok(learnSkill(s, 'src_store'));
+  assert.equal(nodeState(s, 'src_lottery'), 'locked'); // 親の「ポイント通販」が先
+  assert.equal(learnSkill(s, 'src_lottery'), false);
   assert.ok(learnSkill(s, 'src_online'));
-  assert.ok(availableCommands(s).some((c) => c.id === 'online'));
+  assert.ok(learnSkill(s, 'src_lottery'));
+  assert.ok(availableCommands(s).some((c) => c.id === 'lottery'));
+  s.skills.push('ch_miime');
   assert.equal(nodeState(s, 'ch_amacri'), 'locked'); // ステージ2から
   s.stage = 2;
-  assert.ok(learnSkill(s, 'ch_miime'));
   assert.ok(learnSkill(s, 'ch_amacri'));
+  assert.ok(learnSkill(s, 'photogenic'));
   assert.equal(nodeState(s, 'doyou'), 'locked'); // 偉人のコツが必要
   s.hints.doyou = 1;
   assert.equal(nodeState(s, 'doyou'), 'available');
+});
+
+test('スキルツリーの構造：親があり、中心からたどれて、パネルが重ならない', () => {
+  for (const n of TREE_NODES) {
+    if (n.kind === 'root') continue;
+    assert.ok(SKILL_MAP[n.parent], `${n.id} の親`);
+    let cur = n;
+    for (let i = 0; i < 20 && cur.kind !== 'root'; i++) cur = SKILL_MAP[cur.parent];
+    assert.equal(cur.kind, 'root', `${n.id} が中心につながらない`);
+    assert.ok(ROUTE_MAP[n.route], `${n.id} のルート`);
+    assert.ok(exists(n.icon), `${n.id} のアイコン ${n.icon}`);
+  }
+  const ps = TREE_NODES.map(nodePos);
+  for (let i = 0; i < ps.length; i++) for (let j = i + 1; j < ps.length; j++) assert.ok(Math.hypot(ps[i].x - ps[j].x, ps[i].y - ps[j].y) >= 0.9, `${TREE_NODES[i].id} と ${TREE_NODES[j].id} が重なる`);
+  for (const r of ROUTES) assert.equal(SKILLS.filter((x) => x.route === r.id && x.kind === 'capstone').length, 1, `${r.id} の到達点`);
+});
+
+test('スキルツリー：見えるのは中心と、持っているノードの子だけ', () => {
+  const s = createGame(16);
+  assert.ok(nodeVisible(s, 'src_store'));
+  assert.ok(!nodeVisible(s, 'src_queue'));
+  s.skills.push('src_store');
+  assert.ok(nodeVisible(s, 'src_queue'));
+});
+
+test('ルート：伸ばした方向が熟練度・到達点・称号になり、専門外は高くなる', () => {
+  const s = createGame(17);
+  s.exp = { info: 9999, act: 9999, tech: 9999, social: 9999, mind: 9999 };
+  s.skills.push('src_store');
+  for (const id of ['src_queue', 'bargain', 'early_bird']) assert.ok(learnSkill(s, id), id);
+  assert.equal(routeLevel(s, 'store'), 1);
+  assert.equal(nodeState(s, 'cap_store'), 'locked'); // 5個必要
+  s.stats.storeTrips = 40;
+  assert.ok(learnSkill(s, 'rec_walker')); // 記録パネルは無料
+  s.hints.ino_map = 1;
+  assert.ok(learnSkill(s, 'ino_map'));
+  assert.equal(nodeState(s, 'cap_store'), 'available');
+  assert.ok(learnSkill(s, 'cap_store'));
+  assert.equal(routeLevel(s, 'store'), 2);
+  assert.ok(perk(s, 'storeOffers') >= 3);
+  // 2つめのルートまでは通常価格、3つめ以降は専門外
+  assert.ok(learnSkill(s, 'src_online'));
+  assert.deepEqual(skillCost(s, 'net_meetup'), { social: Math.ceil(15 * OFF_ROUTE_RATE) });
+  assert.equal(titleOf(s), '店舗の鬼');
 });
 
 test('キャリア：月5万円を2か月でステージ2、月30万円が安定したら専業の判断', () => {

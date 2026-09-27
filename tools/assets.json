@@ -69,14 +69,26 @@
     "gum.png",
     "cp.png",
     "ce.png",
-    "mch_icon.png"
+    "mch_icon.png",
+    "emblem.webp"
   ],
   "battle_icons": [
     "Parameters/hp.png",
     "Buffs/buf_agi.png",
     "Buffs/dbf_agi.png",
     "StatusEffects/sleep.png",
-    "StatusEffects/confused.png"
+    "StatusEffects/confused.png",
+    "Parameters/phy.png",
+    "Parameters/int.png",
+    "Buffs/buf_phy.png",
+    "Buffs/buf_int.png",
+    "Buffs/dbf_phy.png",
+    "Buffs/dbf_int.png",
+    "StatusEffects/decoy.png",
+    "StatusEffects/bleed.png",
+    "StatusEffects/poison.png",
+    "StatusEffects/fear.png",
+    "StatusEffects/resurrection.png"
   ],
   "bgm": [
     "pve.mp3",

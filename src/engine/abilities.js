@@ -1,4 +1,5 @@
-import { SKILLS, SKILL_MAP } from '../data/skills.js';
+import { CAPSTONE_NEED, SKILLS, SKILL_MAP } from '../data/skills.js';
+import { mainRoutes, perk, routeCounts } from './perks.js';
 import { giveSkill, removeSkill } from './effects.js';
 
 export const EXP_TYPES = [
@@ -63,16 +64,36 @@ export function raiseAbility(s, abilityId, times = 1) {
 
 // ---------------- スキルツリー ----------------
 export const nodeLv = (s, id) => (s.nodeLv?.[id] || 0);
+const owns = (s, id) => s.skills.includes(id) || nodeLv(s, id) > 0;
 
-// 解放コスト。金ノードはコツLvで安くなり、repeat ノードはレベルごとに高くなる。
+// 記録パネル（丸）の現在値
+export function recordValue(s, key) {
+  if (key === 'netTotal') return s.monthly.reduce((a, m) => a + m.net, 0);
+  return s.stats[key] || 0;
+}
+
+// 専門外コスト：ルートのノードを4個以上持ったら、上位2ルート以外のノードは25%高くなる
+export const OFF_ROUTE_RATE = 1.25;
+export function isOffRoute(s, skillId) {
+  const sk = SKILL_MAP[skillId];
+  if (!sk.route || ['starter', 'record', 'red'].includes(sk.kind)) return false;
+  const counts = routeCounts(s);
+  const total = Object.values(counts).reduce((a, n) => a + n, 0);
+  if (total < 4) return false;
+  return !mainRoutes(s).slice(0, 2).includes(sk.route);
+}
+
+// 解放コスト。金ノードはコツLvで安くなり、repeat はレベルごとに高くなり、専門外は高くなる
 export function skillCost(s, skillId) {
   const sk = SKILL_MAP[skillId];
+  if (sk.kind === 'record') return {};
   let rate = 1;
   if (sk.kind === 'gold' || sk.kind === 'perk') {
     const hint = s.hints[skillId] || 0;
     rate = 1 - Math.min(0.6, hint * 0.12 + (hint > 0 ? 0.08 : 0));
   }
   if (sk.kind === 'repeat') rate = 1 + nodeLv(s, skillId);
+  if (isOffRoute(s, skillId)) rate *= OFF_ROUTE_RATE;
   const cost = {};
   for (const [k, v] of Object.entries(sk.cost || {})) cost[k] = Math.ceil(v * rate);
   return cost;
@@ -82,10 +103,16 @@ export function skillCost(s, skillId) {
 export function nodeBlockers(s, skillId) {
   const sk = SKILL_MAP[skillId];
   const out = [];
-  for (const r of sk.req || []) if (!s.skills.includes(r)) out.push(`「${SKILL_MAP[r].name}」が必要`);
+  if (sk.parent && !owns(s, sk.parent)) out.push(`「${SKILL_MAP[sk.parent].name}」の先`);
+  for (const r of sk.req || []) if (!owns(s, r)) out.push(`「${SKILL_MAP[r].name}」が必要`);
   if (sk.stage && s.stage < sk.stage) out.push(`ステージ${sk.stage}から`);
   if (sk.flag && !s.flags[sk.flag]) out.push(sk.flag === 'license' ? '古物商許可が必要' : '条件未達');
   if (sk.kind === 'gold' && !(s.hints[skillId] > 0)) out.push('偉人からコツを教わる必要がある');
+  if (sk.kind === 'record' && recordValue(s, sk.record.key) < sk.record.target) out.push(`${sk.record.label}：${Math.floor(recordValue(s, sk.record.key)).toLocaleString()} / ${sk.record.target.toLocaleString()}`);
+  if (sk.kind === 'capstone') {
+    const n = routeCounts(s)[sk.route] || 0;
+    if (n < CAPSTONE_NEED) out.push(`このルートのノードを${CAPSTONE_NEED}個（いま${n}個）`);
+  }
   return out;
 }
 
@@ -100,7 +127,14 @@ export function nodeState(s, skillId) {
   return nodeBlockers(s, skillId).length ? 'locked' : 'available';
 }
 
-// 旧API互換：習得できる（ボタンを出してよい）もの
+// ツリーに表示するか：中心、持っているノード、親を持っているノード
+export function nodeVisible(s, skillId) {
+  const sk = SKILL_MAP[skillId];
+  if (sk.kind === 'root') return true;
+  if (!sk.route) return false;
+  return owns(s, skillId) || owns(s, sk.parent);
+}
+
 export function learnableSkills(s) {
   return SKILLS.filter((sk) => ['available', 'red'].includes(nodeState(s, sk.id)));
 }
@@ -127,7 +161,8 @@ export function learnSkill(s, skillId) {
   return true;
 }
 
-// 所有ノードの月額維持費
+// 所有ノードの月額維持費（仕組み化ルートの熟練度・物流センターで安くなる）
 export function monthlyNodeFees(s) {
-  return SKILLS.filter((sk) => sk.monthly && s.skills.includes(sk.id)).map((sk) => ({ name: sk.name, amount: sk.monthly }));
+  const mult = perk(s, 'monthlyFees');
+  return SKILLS.filter((sk) => sk.monthly && s.skills.includes(sk.id)).map((sk) => ({ name: sk.name, amount: Math.round(sk.monthly * mult) }));
 }

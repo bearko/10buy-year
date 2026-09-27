@@ -4,6 +4,7 @@ import { chance, pick, randInt } from './rng.js';
 import { addCash, addExp, addHate, addMood, addStamina, clamp, flag, hasSkill, setFlag, yen } from './effects.js';
 import { auctionOffers, lotteryEntries, lotteryWinRate, onlineOffers, openLotteries, queueOffer, queueSuccessRate, queueTargets, storeOffers, wholesaleOffers } from './offers.js';
 import { addExpense, addHours } from './kpi.js';
+import { perk } from './perks.js';
 import { woy } from './calendar.js';
 import { inBoom, priceOf } from './market.js';
 import { addUnits, overCapacity } from './inventory.js';
@@ -54,6 +55,7 @@ export function staminaCost(s, cmd) {
   let cost = cmd.stamina;
   if (cmd.id === 'store' && hasSkill(s, 'ino_map')) cost = Math.round(cost * 0.7);
   if (cmd.id === 'store' && hasSkill(s, 'backpain')) cost = Math.round(cost * 1.3);
+  if (cmd.id === 'store') cost = Math.round(cost * perk(s, 'storeStamina'));
   return cost;
 }
 
@@ -118,6 +120,7 @@ const HANDLERS = {
   },
   store(s) {
     s.flags.didStore = true;
+    s.stats.storeTrips = (s.stats.storeTrips || 0) + 1;
     const list = storeOffers(s);
     return [
       talk('chris', pick(s, ['よし、今日は駅前から郊外まで5店舗回るぞ！', 'ワゴンの奥に宝が眠ってる…はず！', '値札の貼り替え日を狙って来たんだ。']), 'guts'),

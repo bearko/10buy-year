@@ -5,6 +5,7 @@ import { addCash, hasSkill, record, yen } from './effects.js';
 import { yearOf } from './calendar.js';
 import { nodeLv } from './abilities.js';
 import { unitPrice } from './market.js';
+import { perk } from './perks.js';
 
 export const ROOM_CAPACITY = 30;
 export const PLATFORMS = {
@@ -32,7 +33,7 @@ export function platformsFor(s, u) {
 }
 
 export const listingCap = (s) => 5 + Math.floor(s.abilities.list / 10) + nodeLv(s, 'slots') * 3 + (hasSkill(s, 'ch_shops') ? 5 : 0);
-export const capacity = (s) => ROOM_CAPACITY + (hasSkill(s, 'warehouse') ? 60 : 0) + (hasSkill(s, 'warehouse2') ? 300 : 0);
+export const capacity = (s) => ROOM_CAPACITY + (hasSkill(s, 'warehouse') ? 60 : 0) + (hasSkill(s, 'warehouse2') ? 300 : 0) + perk(s, 'capacityAdd');
 export const activeUnits = (s) => s.inventory.filter((u) => u.arrive <= s.week);
 export const listedUnits = (s) => s.inventory.filter((u) => u.listing);
 export const spaceUsed = (s) => s.inventory.reduce((sum, u) => sum + SIZE_INFO[productOf(u.pid).size].space, 0);
@@ -41,7 +42,7 @@ export const overCapacity = (s) => spaceUsed(s) > capacity(s);
 export const hardCapacity = (s) => Math.round(capacity(s) * 1.5);
 
 export function cardAvailable(s) {
-  return Math.max(0, s.card.limit - s.card.current - s.card.due);
+  return Math.max(0, s.card.limit + perk(s, 'cardLimitAdd') - s.card.current - s.card.due);
 }
 
 function newUnit(s, pid, cost, extra) {
@@ -89,6 +90,7 @@ export function buy(s, offer, qty, method = 'cash') {
   }
   const earned = Math.floor(total * (offer.points || 0));
   s.points += earned;
+  s.stats.pointsEarned = (s.stats.pointsEarned || 0) + earned;
 
   for (let i = 0; i < qty; i++) {
     s.inventory.push(newUnit(s, offer.pid, offer.price, {

@@ -3,6 +3,8 @@ import { productOf } from '../data/products.js';
 import { flag } from './effects.js';
 import { unitPrice } from './market.js';
 import { STAGES } from './career.js';
+import { mainRoutes, routeCounts } from './perks.js';
+import { ROUTE_MAP } from '../data/skills.js';
 import { grossProfit } from './state.js';
 
 export const INVENTORY_RATE = 0.7;
@@ -39,6 +41,8 @@ const KIND_TITLES = {
 
 export function titleOf(s) {
   if (s.hate >= 60) return '炎上系セラー';
+  const main = mainRoutes(s)[0];
+  if (main && (routeCounts(s)[main] || 0) >= 4) return ROUTE_MAP[main].title;
   if (s.stats.troubles >= 10) return 'トラブルバスター';
   if (s.stats.scarceBought >= 12) return '買い占めの帝王';
   if (s.stats.bestSale) return KIND_TITLES[productOf(s.stats.bestSale.pid).kind];
