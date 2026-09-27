@@ -559,3 +559,20 @@ body.auto #message::after { content: 'オート進行中'; position: absolute; t
 #news-ticker.scroll { text-overflow: clip; }
 #news-ticker.scroll .ticker-inner { animation: ticker var(--dur, 10s) linear infinite; }
 @keyframes ticker { 0%, 15% { transform: translateX(0); } 85%, 100% { transform: translateX(var(--dist)); } }
+
+/* 手に入れた商品（クリスの右側。表示中は経験点パネルを隠す） */
+#loot { position: absolute; right: 6px; top: 26px; z-index: 4; width: 164px; max-height: calc(100% - 32px); overflow: hidden; display: none; flex-direction: column; align-items: center; gap: 1px; padding: 6px 9px 8px; background: #0a0f1fee; border: 2px solid var(--gold); border-radius: 10px; box-shadow: 0 0 16px #f5c54255; }
+body.loot-show #loot { display: flex; animation: loot-in 0.25s ease-out; }
+body.loot-show #side { display: none !important; }
+@keyframes loot-in { from { transform: translateY(8px) scale(0.96); opacity: 0; } }
+.loot-head { width: 100%; display: flex; justify-content: space-between; align-items: center; min-height: 24px; }
+.loot-head b { color: var(--gold); font-family: 'Orbitron', var(--font); font-size: 13px; letter-spacing: 0.08em; }
+.loot-ic { width: 52px; height: 52px; object-fit: contain; image-rendering: pixelated; filter: drop-shadow(0 2px 0 #0008); }
+.loot-name { font-size: 14px; font-weight: bold; text-align: center; }
+.loot-name small { color: var(--gold); }
+.loot-genre { font-size: 11px; color: var(--info); }
+.loot-desc { margin: 2px 0 3px; font-size: 11px; line-height: 1.4; color: #cfd6ff; }
+.loot-price { width: 100%; display: flex; justify-content: space-between; align-items: baseline; font-size: 11px; color: var(--muted); border-top: 1px dashed var(--line); padding-top: 4px; }
+.loot-price b { color: var(--gold); font-size: 14px; white-space: nowrap; }
+.loot-pager { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--muted); }
+.loot-pager button { font: inherit; font-size: 11px; width: 30px; height: 24px; border-radius: 99px; border: 1px solid var(--gold); background: #1a2350; color: var(--gold); cursor: pointer; }

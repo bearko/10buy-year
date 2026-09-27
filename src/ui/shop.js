@@ -41,6 +41,7 @@ export function offersModal(s, step, onChange) {
   let filter = null;
   let open = null; // 開いている商品ページ
   let shot = 0;
+  const got = []; // この画面で仕入れた商品（閉じたあとステージに並べる）
 
   const root = h('div', { class: 'shop' });
   const onKey = (e) => {
@@ -51,7 +52,7 @@ export function offersModal(s, step, onChange) {
   function close() {
     root.remove();
     window.removeEventListener('keydown', onKey);
-    resolveClosed();
+    resolveClosed(got);
   }
   function back() {
     open = null;
@@ -260,7 +261,10 @@ export function offersModal(s, step, onChange) {
     }
     const res = buy(s, o, q, method);
     toast(res.msg, res.ok ? 'good' : 'bad');
-    if (res.ok) playSe('buy');
+    if (res.ok) {
+      playSe('buy');
+      got.push({ pid: o.pid, qty: q });
+    }
     render();
     onChange?.();
   }

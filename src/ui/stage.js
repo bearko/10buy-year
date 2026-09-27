@@ -169,6 +169,17 @@ export function choose(options, prompt) {
   });
 }
 
+// メッセージを出してタップを待つ（ステージ側に何かを見せている間に使う）
+export async function hold(speaker, text) {
+  const box = $('#message');
+  box.classList.remove('info', 'good', 'bad', 'narr');
+  $('#speaker').textContent = speaker;
+  $('#text').textContent = text;
+  box.classList.add('waiting');
+  await waitAdvance();
+  box.classList.remove('waiting');
+}
+
 export function setMessage(speaker, text) {
   $('#speaker').textContent = speaker;
   $('#text').textContent = text;
