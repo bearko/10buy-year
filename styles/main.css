@@ -676,3 +676,7 @@ body.loot-show #side { display: none !important; }
 /* スキルツリー：経験点の下に「トップに戻る」 */
 .tes-back { pointer-events: auto; margin-top: 6px; font: inherit; font-size: 12px; font-weight: bold; padding: 8px 6px; border-radius: 8px; border: 1px solid #F5C542; background: linear-gradient(135deg, #3a2f10, #1B202A); color: #F5C542; cursor: pointer; }
 .tes-back:hover { background: #3a2f10; }
+
+/* 新しく増えた行動カード */
+.cmd .new-tag { position: absolute; top: -8px; right: -4px; z-index: 1; font-family: 'Orbitron', var(--font); font-size: 10px; font-weight: 700; letter-spacing: 0.06em; padding: 2px 7px; border-radius: 99px; background: linear-gradient(135deg, #ff4d6d, #ff8a3d); color: #fff; box-shadow: 0 0 10px #ff4d6d99; animation: new-pulse 1.2s ease-in-out infinite; }
+@keyframes new-pulse { 50% { transform: scale(1.12); box-shadow: 0 0 16px #ff4d6dcc; } }
