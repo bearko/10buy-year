@@ -10,7 +10,7 @@ import { openLotteries } from '../engine/offers.js';
 import { heldDays, kpiLevel } from '../engine/kpi.js';
 import { playSe } from './audio.js';
 import { h, signYen, yenFmt } from './dom.js';
-import { openModal, toast } from './modal.js';
+import { confirmBox, openModal, toast } from './modal.js';
 
 const KIND_LABEL = {
   staple: '定番', hype: '限定', collect: 'コレクター', seasonal: '季節', perishable: '生もの', boom: 'ブーム', luxury: '高級', home: '家の不用品',
@@ -83,10 +83,14 @@ const banned = (s, id) => (id === 'merc' && s.banWeeks > 0) || (id === 'ama' && 
 
 export function inventoryModal(s, onChange) {
   const pick = new Map(); // グループごとの { mult, qty }
+  const selected = new Set(); // まとめて操作する商品（グループのキー）
+  let selecting = false;
   let showInfo = false;
   // 停止中の売り先は避けて開く
   const open = Object.values(PLATFORMS).filter((pf) => hasSkill(s, pf.node) && !banned(s, pf.id));
   if (banned(s, market) && open.length) market = open[0].id;
+  const askConfirm = () => s.settings.confirmBuyback !== false;
+
   return openModal('在庫・出品', (body, api) => {
     const markets = Object.values(PLATFORMS).filter((pf) => hasSkill(s, pf.node));
     if (!markets.some((pf) => pf.id === market)) market = markets[0]?.id || 'merc';
@@ -97,7 +101,67 @@ export function inventoryModal(s, onChange) {
       api.refresh();
       onChange?.();
     };
+    const groups = groupInventory(s);
+    groups.sort((x, y) => (x.listing ? 1 : 0) - (y.listing ? 1 : 0)); // 出品していない物を上に
+    for (const key of [...selected]) if (!groups.some((g) => g.key === key)) selected.delete(key);
 
+    // 商品ごとの値付け・個数と、そこから決まる金額
+    function plan(g) {
+      const u0 = g.units[0];
+      const est = estimateUnit(s, u0);
+      const cur = pick.get(g.key) || { mult: g.listing ? g.listing.price / Math.max(1, est) : 1, qty: g.units.length };
+      pick.set(g.key, cur);
+      const platform = g.listing ? g.listing.platform : market;
+      const p = productOf(g.pid);
+      return {
+        est,
+        cur,
+        platform,
+        price: Math.max(100, roundPrice(est * cur.mult)),
+        quote: buybackQuote(s, u0),
+        uids: g.units.slice(0, cur.qty).map((u) => u.uid),
+        waiting: g.arrive > s.week,
+        blocked: p.alcohol && flag(s, 'noAlcohol'),
+        canHere: platformsFor(s, u0).some((m) => m.id === platform) && !banned(s, platform),
+      };
+    }
+
+    // 即決買取（設定で確認をはさむ。「次回から表示しない」で設定を切る）
+    async function sellBack(entries) {
+      const units = entries.reduce((a, e) => a + e.uids.length, 0);
+      const total = entries.reduce((a, e) => a + e.quote * e.uids.length, 0);
+      if (askConfirm()) {
+        const r = await confirmBox({
+          title: '即決買取',
+          lines: [`${units}個を買取業者に売ります。`, `受け取り ${yenFmt(total)}（相場の半分以下）`],
+          okLabel: '買い取ってもらう',
+          danger: true,
+          dontAsk: true,
+        });
+        if (!r.ok) return;
+        if (r.dontAsk) s.settings.confirmBuyback = false;
+      }
+      let n = 0;
+      let sum = 0;
+      for (const e of entries) {
+        const r = sellToBuyer(s, e.uids);
+        n += r.n;
+        sum += r.total;
+      }
+      playSe('coin');
+      selected.clear();
+      selecting = false;
+      done(`${n}個を${yenFmt(sum)}で買い取ってもらった`);
+    }
+
+    function toggle(key) {
+      if (selected.has(key)) selected.delete(key);
+      else selected.add(key);
+      selecting = selected.size > 0;
+      api.refresh();
+    }
+
+    const selectable = groups.filter((g) => g.arrive <= s.week);
     body.append(...[
       h('div', { class: 'mk-tabs' },
         ...markets.map((m) => h('button', { class: `mk-tab ${m.id === market ? 'on' : ''} ${banned(s, m.id) ? 'ban' : ''}`, onclick: () => { market = m.id; api.refresh(); } }, m.name, banned(s, m.id) ? h('small', {}, '停止中') : null)),
@@ -119,24 +183,66 @@ export function inventoryModal(s, onChange) {
         h('span', { class: spaceUsed(s) > capacity(s) ? 'neg' : '' }, `置き場 ${spaceUsed(s)}/${capacity(s)}（限界${hardCapacity(s)}）`),
         banned(s, market) ? h('span', { class: 'neg' }, `${pf.name}は停止中（あと${market === 'merc' ? s.banWeeks : s.amaBan}週）`) : null,
       ),
+      h('div', { class: 'inv-opts' },
+        h('label', { class: 'inv-opt' },
+          h('input', { type: 'checkbox', checked: askConfirm(), onchange: (e) => { s.settings.confirmBuyback = e.target.checked; onChange?.(); } }),
+          '即決買取で確認をはさむ'),
+        selectable.length
+          ? h('button', { class: `inv-sel-btn ${selecting ? 'on' : ''}`, onclick: () => { selecting = !selecting; if (!selecting) selected.clear(); api.refresh(); } }, selecting ? '選択をやめる' : '☑ 選択')
+          : null,
+      ),
     ].filter(Boolean));
 
-    const groups = groupInventory(s);
     if (!groups.length) body.append(h('p', { class: 'empty' }, s.stats.purchases ? '在庫はない。仕入れに行こう。' : '在庫はない。「家の中を探す」で不用品を探そう。'));
-    // 出品していない物を上に
-    groups.sort((x, y) => (x.listing ? 1 : 0) - (y.listing ? 1 : 0));
+    const bulk = { listLbl: null, buyLbl: null };
+    const updateBulk = () => {
+      if (!bulk.listLbl) return;
+      const sel = groups.filter((g) => selected.has(g.key)).map(plan);
+      const listable = sel.filter((x) => !x.waiting && !x.blocked && x.canHere);
+      bulk.listLbl.replaceChildren(h('span', {}, 'まとめて出品'), h('small', {}, yenFmt(listable.reduce((a, x) => a + x.price * x.uids.length, 0))));
+      bulk.listLbl.disabled = !listable.length;
+      bulk.buyLbl.replaceChildren(h('span', {}, 'まとめて即決買取'), h('small', {}, yenFmt(sel.reduce((a, x) => a + x.quote * x.uids.length, 0))));
+      bulk.buyLbl.disabled = !sel.length;
+    };
     for (const g of groups) body.append(itemRow(g));
+
+    if (selecting) {
+      const sel = groups.filter((g) => selected.has(g.key));
+      bulk.listLbl = h('button', {
+        class: 'btn primary',
+        onclick: () => {
+          let n = 0;
+          let skipped = 0;
+          for (const g of sel) {
+            const x = plan(g);
+            if (x.waiting || x.blocked || !x.canHere) { skipped++; continue; }
+            n += listUnits(s, x.uids, x.platform, x.price);
+          }
+          selected.clear();
+          selecting = false;
+          done(n ? `${n}個をまとめて出品した${skipped ? `（${skipped}件は出品できない）` : ''}` : '出品できなかった（出品枠・売り先を確認）', n ? 'good' : 'bad');
+        },
+      });
+      bulk.buyLbl = h('button', { class: 'btn danger', onclick: () => sellBack(sel.map((g) => { const x = plan(g); return { uids: x.uids, quote: x.quote }; })) });
+      body.append(h('div', { class: 'bulk-bar' },
+        h('div', { class: 'bulk-head' },
+          h('button', { class: 'bulk-x', 'aria-label': '選択をやめる', onclick: () => { selected.clear(); selecting = false; api.refresh(); } }, '×'),
+          h('b', {}, `${selected.size}件を選択中`),
+          h('button', { class: 'bulk-all', onclick: () => { for (const g of selectable) selected.add(g.key); api.refresh(); } }, 'すべて選択'),
+        ),
+        h('div', { class: 'bulk-btns' }, bulk.listLbl, bulk.buyLbl),
+      ));
+      updateBulk();
+    }
 
     function itemRow(g) {
       const p = productOf(g.pid);
       const u0 = g.units[0];
-      const est = estimateUnit(s, u0);
-      const waiting = g.arrive > s.week;
+      const x = plan(g);
+      const { est, cur, platform } = x;
       const days = heldDays(s, u0);
-      const quote = buybackQuote(s, u0);
       const listedOn = g.listing ? PLATFORMS[g.listing.platform] : null;
-      const cur = pick.get(g.key) || { mult: g.listing ? g.listing.price / Math.max(1, est) : 1, qty: g.units.length };
-      pick.set(g.key, cur);
+      const on = selected.has(g.key);
 
       const head = h('div', { class: 'grow' },
         h('div', { class: 'name' }, g.home ? p.genre : p.name, h('small', {}, ` ×${g.units.length}`)),
@@ -145,8 +251,8 @@ export function inventoryModal(s, onChange) {
           editionTag(s, u0),
           g.damaged ? h('span', { class: 'tag bad' }, '傷あり') : null,
           g.expire !== null && g.expire !== undefined ? h('span', { class: 'tag bad' }, `賞味期限 ${weekLabel(g.expire)}まで`) : null,
-          waiting ? h('span', { class: 'tag' }, `${weekLabel(g.arrive)}に届く`) : null,
-          !waiting && kpiLevel(s) >= 2 ? h('span', { class: `tag ${days >= 90 ? 'bad' : ''}` }, `在庫${days}日`) : null,
+          x.waiting ? h('span', { class: 'tag' }, `${weekLabel(g.arrive)}に届く`) : null,
+          !x.waiting && kpiLevel(s) >= 2 ? h('span', { class: `tag ${days >= 90 ? 'bad' : ''}` }, `在庫${days}日`) : null,
           listedOn ? h('span', { class: 'tag good' }, `${listedOn.name}に出品中 ${yenFmt(g.listing.price)}`) : null,
         ),
         h('div', { class: 'nums' },
@@ -154,66 +260,80 @@ export function inventoryModal(s, onChange) {
           h('span', {}, `${estLabel(s)} ${yenFmt(est)}`),
         ),
       );
-      const card = h('div', { class: `card inv ${g.listing ? 'listed' : ''}` }, itemIcon(g.pid), head);
-      if (waiting) return card;
-      if (p.alcohol && flag(s, 'noAlcohol')) {
-        head.append(h('div', { class: 'warn' }, '酒類は出品できない（免許なし）'), buybackBtn());
+      const iconBox = h('div', { class: 'inv-icon' },
+        itemIcon(g.pid),
+        x.waiting ? null : h('button', { class: `sel-dot ${on ? 'on' : ''}`, 'aria-label': on ? '選択を外す' : '選択', onclick: (e) => { e.stopPropagation(); toggle(g.key); } }, '✓'),
+      );
+      const card = h('div', { class: `card inv ${g.listing ? 'listed' : ''} ${on ? 'selected' : ''} ${selecting ? 'selecting' : ''}` }, iconBox, head);
+      if (x.waiting) return card;
+
+      // 長押しで選択を始める。選択中はカードのタップで選択を切り替える
+      let timer = null;
+      let fired = false;
+      const cancel = () => clearTimeout(timer);
+      card.addEventListener('pointerdown', (e) => {
+        if (e.target.closest('button, input')) return;
+        fired = false;
+        timer = setTimeout(() => { fired = true; toggle(g.key); }, 450);
+      });
+      for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) card.addEventListener(ev, cancel);
+      card.addEventListener('click', (e) => {
+        if (fired) { fired = false; return; }
+        if (selecting && !e.target.closest('button, input')) toggle(g.key);
+      });
+
+      if (x.blocked) {
+        head.append(h('div', { class: 'warn' }, '酒類は出品できない（免許なし）'));
+        if (!selecting) head.append(h('div', { class: 'buy-row' }, h('button', { class: 'btn danger inv-buy', onclick: () => sellBack([{ uids: g.units.map((u) => u.uid), quote: x.quote }]) }, `即決買取（${yenFmt(x.quote * g.units.length)}）`)));
         return card;
       }
 
       // 値付けと個数のスライダー（動かしている間は表示だけ書き換える）
-      const platform = g.listing ? g.listing.platform : market;
-      const priceOf = () => Math.max(100, roundPrice(est * cur.mult));
       const priceLbl = h('b', {});
       const feelLbl = h('span', { class: 'feel' });
       const profitLbl = h('span', {});
       const qtyLbl = h('b', {});
-      const listBtn = h('button', { class: 'btn primary inv-list' });
+      const listBtn = h('button', { class: 'btn primary inv-list', disabled: !x.canHere });
       const buyBtn = h('button', { class: 'btn danger inv-buy' });
       const update = () => {
-        const price = priceOf();
-        priceLbl.textContent = `${yenFmt(price)}`;
-        feelLbl.textContent = feelOf(price / Math.max(1, est));
-        const profit = expectedProfit(s, g.pid, price, g.cost, platform);
+        const y = plan(g);
+        priceLbl.textContent = yenFmt(y.price);
+        feelLbl.textContent = feelOf(y.price / Math.max(1, est));
+        const profit = expectedProfit(s, g.pid, y.price, g.cost, platform);
         profitLbl.className = canCalc(s) ? (profit >= 0 ? 'pos' : 'neg') : 'muted';
         profitLbl.textContent = canCalc(s) ? `利益 ${signYen(profit)}/個` : '';
         qtyLbl.textContent = `${cur.qty}個`;
-        listBtn.textContent = g.listing ? `価格変更（${yenFmt(price)}）` : `出品（${yenFmt(price)}）`;
-        buyBtn.textContent = `即決買取（${yenFmt(quote * cur.qty)}）`;
+        listBtn.textContent = g.listing ? `価格変更（${yenFmt(y.price)}）` : `出品（${yenFmt(y.price)}）`;
+        buyBtn.textContent = `即決買取（${yenFmt(y.quote * cur.qty)}）`;
+        updateBulk();
       };
       const slider = (min, max, step, value, onInput) => h('input', { type: 'range', class: 'inv-range', min, max, step, value: String(value), oninput: (e) => { onInput(Number(e.target.value)); update(); } });
-
-      const canHere = platformsFor(s, u0).some((m) => m.id === platform) && !banned(s, platform);
-      listBtn.disabled = !canHere;
       listBtn.onclick = () => {
-        const uids = g.units.slice(0, cur.qty).map((u) => u.uid);
-        const n = listUnits(s, uids, platform, priceOf());
+        const y = plan(g);
+        const n = listUnits(s, y.uids, platform, y.price);
         pick.delete(g.key);
         done(n ? `${n}個を${PLATFORMS[platform].name}に${g.listing ? '出し直した' : '出品した'}` : '出品枠がいっぱいだ', n ? 'good' : 'bad');
       };
       buyBtn.onclick = () => {
-        const r = sellToBuyer(s, g.units.slice(0, cur.qty).map((u) => u.uid));
-        playSe('coin');
-        pick.delete(g.key);
-        done(`${r.n}個を${yenFmt(r.total)}で買い取ってもらった`);
+        const y = plan(g);
+        sellBack([{ uids: y.uids, quote: y.quote }]);
       };
-      function buybackBtn() {
-        return h('button', { class: 'btn danger inv-buy', onclick: () => { const r = sellToBuyer(s, g.units.map((u) => u.uid)); playSe('coin'); done(`${r.n}個を${yenFmt(r.total)}で買い取ってもらった`); } }, `即決買取（${yenFmt(quote * g.units.length)}）`);
-      }
 
-      head.append(
+      head.append(...[
         h('div', { class: 'inv-ctl' },
           h('div', { class: 'inv-line' }, h('span', {}, '値付け'), slider(0.5, 2, 0.05, cur.mult.toFixed(2), (v) => { cur.mult = v; }), priceLbl),
           h('div', { class: 'inv-sub' }, feelLbl, profitLbl),
           g.units.length > 1 ? h('div', { class: 'inv-line' }, h('span', {}, '個数'), slider(1, g.units.length, 1, cur.qty, (v) => { cur.qty = v; }), qtyLbl) : null,
-          !canHere ? h('div', { class: 'warn' }, banned(s, platform) ? `${PLATFORMS[platform].name}は停止中` : `${PLATFORMS[platform].name}には出品できない（新品だけ）`) : null,
+          !x.canHere ? h('div', { class: 'warn' }, banned(s, platform) ? `${PLATFORMS[platform].name}は停止中` : `${PLATFORMS[platform].name}には出品できない（新品だけ）`) : null,
         ),
-        h('div', { class: 'buy-row' },
-          listBtn,
-          buyBtn,
-          g.listing ? h('button', { class: 'btn small', onclick: () => { unlistUnits(s, g.units.map((u) => u.uid)); done('取り下げた'); } }, '取り下げ') : null,
-        ),
-      );
+        selecting
+          ? null
+          : h('div', { class: 'buy-row' },
+            listBtn,
+            buyBtn,
+            g.listing ? h('button', { class: 'btn small', onclick: () => { unlistUnits(s, g.units.map((u) => u.uid)); done('取り下げた'); } }, '取り下げ') : null,
+          ),
+      ].filter(Boolean));
       update();
       return card;
     }
