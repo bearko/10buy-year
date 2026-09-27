@@ -3,7 +3,7 @@ import { productImage, productOf, shippingCost } from '../data/products.js';
 import { weekLabel, yearOf } from '../engine/calendar.js';
 import { flag, hasSkill } from '../engine/effects.js';
 import {
-  activeUnits, buybackQuote, capacity, groupInventory, hardCapacity, listedUnits, listingCap, listUnits, platformFee, platformsFor, PLATFORMS, sellToBuyer, spaceUsed, unlistUnits,
+  activeUnits, buybackQuote, capacity, feeRate, groupInventory, hardCapacity, listedUnits, listingCap, listUnits, platformFee, platformsFor, PLATFORMS, sellToBuyer, spaceUsed, unlistUnits,
 } from '../engine/inventory.js';
 import { confidenceLabel, estimateAt, estimateUnit, isReleased, roundPrice, visibleProducts } from '../engine/market.js';
 import { openLotteries } from '../engine/offers.js';
@@ -76,130 +76,148 @@ export function salesModal(s, step) {
 }
 
 // ---------------- 在庫と出品 ----------------
+// 操作を最小に：上のタブで売り先を選び、商品ごとにスライダーで値付けと個数を決めて、ボタン1つで出品／即決買取
+let market = 'merc'; // 前回選んだ売り先を覚えておく
+const feelOf = (ratio) => (ratio <= 0.92 ? 'すぐ売れそう' : ratio <= 1.05 ? '相場どおり' : ratio <= 1.2 ? 'やや強気' : '売れにくそう');
+const banned = (s, id) => (id === 'merc' && s.banWeeks > 0) || (id === 'ama' && s.amaBan > 0);
+
 export function inventoryModal(s, onChange) {
-  const editing = { key: null, platform: 'merc', price: 0, qty: 1 };
+  const pick = new Map(); // グループごとの { mult, qty }
+  let showInfo = false;
+  // 停止中の売り先は避けて開く
+  const open = Object.values(PLATFORMS).filter((pf) => hasSkill(s, pf.node) && !banned(s, pf.id));
+  if (banned(s, market) && open.length) market = open[0].id;
   return openModal('在庫・出品', (body, api) => {
+    const markets = Object.values(PLATFORMS).filter((pf) => hasSkill(s, pf.node));
+    if (!markets.some((pf) => pf.id === market)) market = markets[0]?.id || 'merc';
+    const pf = PLATFORMS[market];
     const cap = listingCap(s);
-    body.append(
+    const done = (msg, tone = 'good') => {
+      toast(msg, tone);
+      api.refresh();
+      onChange?.();
+    };
+
+    body.append(...[
+      h('div', { class: 'mk-tabs' },
+        ...markets.map((m) => h('button', { class: `mk-tab ${m.id === market ? 'on' : ''} ${banned(s, m.id) ? 'ban' : ''}`, onclick: () => { market = m.id; api.refresh(); } }, m.name, banned(s, m.id) ? h('small', {}, '停止中') : null)),
+        h('button', { class: `mk-info-btn ${showInfo ? 'on' : ''}`, onclick: () => { showInfo = !showInfo; api.refresh(); } }, 'ⓘ マーケット情報'),
+      ),
+      showInfo
+        ? h('div', { class: 'mk-info' },
+          h('b', {}, pf.name),
+          h('p', {}, pf.desc),
+          h('div', { class: 'nums' },
+            h('span', {}, `手数料 ${Math.round(feeRate(s, market) * 100)}%${pf.perUnit ? `＋${pf.perUnit}円/個` : ''}`),
+            h('span', {}, market === 'ama' ? '送料：倉庫から出荷（不要）' : '送料：出品者負担'),
+            market === 'auc' ? h('span', {}, '価格は最低落札価格') : null,
+          ),
+        )
+        : null,
       h('div', { class: 'wallet' },
         h('span', {}, `出品枠 ${listedUnits(s).length}/${cap}`),
         h('span', { class: spaceUsed(s) > capacity(s) ? 'neg' : '' }, `置き場 ${spaceUsed(s)}/${capacity(s)}（限界${hardCapacity(s)}）`),
-        h('span', {}, `在庫 ${s.inventory.length}個`),
-        s.banWeeks > 0 ? h('span', { class: 'neg' }, `プンシー停止中（あと${s.banWeeks}週）`) : null,
-        s.amaBan > 0 ? h('span', { class: 'neg' }, `アマクリ停止中（あと${s.amaBan}週）`) : null,
+        banned(s, market) ? h('span', { class: 'neg' }, `${pf.name}は停止中（あと${market === 'merc' ? s.banWeeks : s.amaBan}週）`) : null,
       ),
-      h('p', { class: 'note' }, '週末に売れるか判定。売上金は翌週に入金'),
-    );
+    ].filter(Boolean));
+
     const groups = groupInventory(s);
     if (!groups.length) body.append(h('p', { class: 'empty' }, s.stats.purchases ? '在庫はない。仕入れに行こう。' : '在庫はない。「家の中を探す」で不用品を探そう。'));
-    for (const g of groups) {
+    // 出品していない物を上に
+    groups.sort((x, y) => (x.listing ? 1 : 0) - (y.listing ? 1 : 0));
+    for (const g of groups) body.append(itemRow(g));
+
+    function itemRow(g) {
       const p = productOf(g.pid);
       const u0 = g.units[0];
       const est = estimateUnit(s, u0);
       const waiting = g.arrive > s.week;
-      const blockedAlcohol = p.alcohol && flag(s, 'noAlcohol');
-      const isEditing = editing.key === g.key;
-      const quote = buybackQuote(s, u0);
       const days = heldDays(s, u0);
-      body.append(h('div', { class: `card ${g.listing ? 'listed' : ''}` },
-        itemIcon(g.pid),
-        h('div', { class: 'grow' },
-          h('div', { class: 'name' }, g.home ? p.genre : p.name, h('small', {}, ` ×${g.units.length}`)),
-          h('div', { class: 'tags' },
-            h('span', { class: 'tag' }, g.home ? '家の不用品' : p.genre),
-            editionTag(s, u0),
-            g.damaged ? h('span', { class: 'tag bad' }, '傷あり') : null,
-            g.expire !== null && g.expire !== undefined ? h('span', { class: 'tag bad' }, `賞味期限 ${weekLabel(g.expire)}まで`) : null,
-            waiting ? h('span', { class: 'tag' }, `${weekLabel(g.arrive)}に届く`) : null,
-            !waiting && kpiLevel(s) >= 2 ? h('span', { class: `tag ${days >= 90 ? 'bad' : ''}` }, `在庫${days}日`) : null,
-            g.listing ? h('span', { class: 'tag good' }, `${PLATFORMS[g.listing.platform].name}に出品中 ${yenFmt(g.listing.price)}`) : null,
-          ),
-          h('div', { class: 'nums' },
-            h('span', {}, g.home ? '仕入れ 0円（家にあった物）' : `仕入れ ${yenFmt(g.cost)}`),
-            h('span', {}, `${estLabel(s)} ${yenFmt(est)}`),
-            g.listing ? profitText(s, expectedProfit(s, g.pid, g.listing.price, g.cost, g.listing.platform)) : null,
-          ),
-          waiting
-            ? null
-            : h('div', { class: 'buy-row' },
-              blockedAlcohol ? h('span', { class: 'warn' }, '酒類は出品できない（免許なし）') : null,
-              blockedAlcohol ? null : h('button', { class: 'btn', onclick: () => { Object.assign(editing, { key: g.key, platform: g.listing?.platform || platformsFor(s, u0).find((pf) => !(pf.id === 'merc' && s.banWeeks > 0))?.id || 'merc', price: g.listing?.price || roundPrice(est), qty: g.units.length }); api.refresh(); } }, g.listing ? '価格を変える' : '出品する'),
-              g.listing ? h('button', { class: 'btn', onclick: () => { unlistUnits(s, g.units.map((u) => u.uid)); api.refresh(); onChange?.(); } }, '取り下げる') : null,
-              h('button', {
-                class: 'btn small danger',
-                onclick: () => {
-                  if (!window.confirm(`${g.units.length}個を買取業者に売りますか？（1個 ${yenFmt(quote)}）`)) return;
-                  const r = sellToBuyer(s, g.units.map((u) => u.uid));
-                  toast(`${r.n}個を${yenFmt(r.total)}で買い取ってもらった`, 'good');
-                  playSe('coin');
-                  api.refresh();
-                  onChange?.();
-                },
-              }, `買取に出す（${yenFmt(quote)}）`),
-            ),
-          isEditing ? listingEditor(s, g, est, editing, api, onChange) : null,
+      const quote = buybackQuote(s, u0);
+      const listedOn = g.listing ? PLATFORMS[g.listing.platform] : null;
+      const cur = pick.get(g.key) || { mult: g.listing ? g.listing.price / Math.max(1, est) : 1, qty: g.units.length };
+      pick.set(g.key, cur);
+
+      const head = h('div', { class: 'grow' },
+        h('div', { class: 'name' }, g.home ? p.genre : p.name, h('small', {}, ` ×${g.units.length}`)),
+        h('div', { class: 'tags' },
+          g.home ? h('span', { class: 'tag' }, '家の不用品') : null,
+          editionTag(s, u0),
+          g.damaged ? h('span', { class: 'tag bad' }, '傷あり') : null,
+          g.expire !== null && g.expire !== undefined ? h('span', { class: 'tag bad' }, `賞味期限 ${weekLabel(g.expire)}まで`) : null,
+          waiting ? h('span', { class: 'tag' }, `${weekLabel(g.arrive)}に届く`) : null,
+          !waiting && kpiLevel(s) >= 2 ? h('span', { class: `tag ${days >= 90 ? 'bad' : ''}` }, `在庫${days}日`) : null,
+          listedOn ? h('span', { class: 'tag good' }, `${listedOn.name}に出品中 ${yenFmt(g.listing.price)}`) : null,
         ),
-      ));
+        h('div', { class: 'nums' },
+          h('span', {}, g.home ? '仕入れ 0円' : `仕入れ ${yenFmt(g.cost)}`),
+          h('span', {}, `${estLabel(s)} ${yenFmt(est)}`),
+        ),
+      );
+      const card = h('div', { class: `card inv ${g.listing ? 'listed' : ''}` }, itemIcon(g.pid), head);
+      if (waiting) return card;
+      if (p.alcohol && flag(s, 'noAlcohol')) {
+        head.append(h('div', { class: 'warn' }, '酒類は出品できない（免許なし）'), buybackBtn());
+        return card;
+      }
+
+      // 値付けと個数のスライダー（動かしている間は表示だけ書き換える）
+      const platform = g.listing ? g.listing.platform : market;
+      const priceOf = () => Math.max(100, roundPrice(est * cur.mult));
+      const priceLbl = h('b', {});
+      const feelLbl = h('span', { class: 'feel' });
+      const profitLbl = h('span', {});
+      const qtyLbl = h('b', {});
+      const listBtn = h('button', { class: 'btn primary inv-list' });
+      const buyBtn = h('button', { class: 'btn danger inv-buy' });
+      const update = () => {
+        const price = priceOf();
+        priceLbl.textContent = `${yenFmt(price)}`;
+        feelLbl.textContent = feelOf(price / Math.max(1, est));
+        const profit = expectedProfit(s, g.pid, price, g.cost, platform);
+        profitLbl.className = canCalc(s) ? (profit >= 0 ? 'pos' : 'neg') : 'muted';
+        profitLbl.textContent = canCalc(s) ? `利益 ${signYen(profit)}/個` : '';
+        qtyLbl.textContent = `${cur.qty}個`;
+        listBtn.textContent = g.listing ? `価格変更（${yenFmt(price)}）` : `出品（${yenFmt(price)}）`;
+        buyBtn.textContent = `即決買取（${yenFmt(quote * cur.qty)}）`;
+      };
+      const slider = (min, max, step, value, onInput) => h('input', { type: 'range', class: 'inv-range', min, max, step, value: String(value), oninput: (e) => { onInput(Number(e.target.value)); update(); } });
+
+      const canHere = platformsFor(s, u0).some((m) => m.id === platform) && !banned(s, platform);
+      listBtn.disabled = !canHere;
+      listBtn.onclick = () => {
+        const uids = g.units.slice(0, cur.qty).map((u) => u.uid);
+        const n = listUnits(s, uids, platform, priceOf());
+        pick.delete(g.key);
+        done(n ? `${n}個を${PLATFORMS[platform].name}に${g.listing ? '出し直した' : '出品した'}` : '出品枠がいっぱいだ', n ? 'good' : 'bad');
+      };
+      buyBtn.onclick = () => {
+        const r = sellToBuyer(s, g.units.slice(0, cur.qty).map((u) => u.uid));
+        playSe('coin');
+        pick.delete(g.key);
+        done(`${r.n}個を${yenFmt(r.total)}で買い取ってもらった`);
+      };
+      function buybackBtn() {
+        return h('button', { class: 'btn danger inv-buy', onclick: () => { const r = sellToBuyer(s, g.units.map((u) => u.uid)); playSe('coin'); done(`${r.n}個を${yenFmt(r.total)}で買い取ってもらった`); } }, `即決買取（${yenFmt(quote * g.units.length)}）`);
+      }
+
+      head.append(
+        h('div', { class: 'inv-ctl' },
+          h('div', { class: 'inv-line' }, h('span', {}, '値付け'), slider(0.5, 2, 0.05, cur.mult.toFixed(2), (v) => { cur.mult = v; }), priceLbl),
+          h('div', { class: 'inv-sub' }, feelLbl, profitLbl),
+          g.units.length > 1 ? h('div', { class: 'inv-line' }, h('span', {}, '個数'), slider(1, g.units.length, 1, cur.qty, (v) => { cur.qty = v; }), qtyLbl) : null,
+          !canHere ? h('div', { class: 'warn' }, banned(s, platform) ? `${PLATFORMS[platform].name}は停止中` : `${PLATFORMS[platform].name}には出品できない（新品だけ）`) : null,
+        ),
+        h('div', { class: 'buy-row' },
+          listBtn,
+          buyBtn,
+          g.listing ? h('button', { class: 'btn small', onclick: () => { unlistUnits(s, g.units.map((u) => u.uid)); done('取り下げた'); } }, '取り下げ') : null,
+        ),
+      );
+      update();
+      return card;
     }
   }, { closeLabel: '閉じる' }).closed;
-}
-
-function listingEditor(s, g, est, editing, api, onChange) {
-  const p = productOf(g.pid);
-  const setPrice = (v) => {
-    editing.price = Math.max(100, roundPrice(v));
-    api.refresh();
-  };
-  const fee = platformFee(s, editing.platform, editing.price);
-  const ship = editing.platform === 'ama' ? 0 : shippingCost(p);
-  const profit = expectedProfit(s, g.pid, editing.price, g.cost, editing.platform);
-  const ratio = editing.price / Math.max(1, est);
-  const feel = ratio <= 0.92 ? 'すぐ売れそう' : ratio <= 1.05 ? '相場どおり' : ratio <= 1.2 ? 'やや強気' : '売れにくそう';
-  const maxQty = g.units.length;
-  const pfs = platformsFor(s, g.units[0]);
-  return h('div', { class: 'editor' },
-    h('div', { class: 'sub small' }, '売り先を決める'),
-    h('div', { class: 'seg' },
-      ...pfs.map((pf) => h('button', {
-        class: `btn small ${editing.platform === pf.id ? 'on' : ''}`,
-        disabled: (pf.id === 'merc' && s.banWeeks > 0) || (pf.id === 'ama' && s.amaBan > 0),
-        onclick: () => { editing.platform = pf.id; api.refresh(); },
-      }, pf.name)),
-    ),
-    h('p', { class: 'note' }, PLATFORMS[editing.platform].desc, editing.platform === 'auc' ? '（価格は最低落札価格）' : ''),
-    h('div', { class: 'price-row' },
-      h('input', { type: 'number', min: '100', step: '100', value: String(editing.price), onchange: (e) => setPrice(Number(e.target.value) || 0) }),
-      h('span', {}, '円'),
-    ),
-    h('div', { class: 'seg' }, ...[0.9, 1.0, 1.1, 1.2, 1.5].map((m) => h('button', { class: 'btn small', onclick: () => setPrice(est * m) }, `相場×${m}`))),
-    h('div', { class: 'nums' },
-      h('span', {}, `手数料 ${yenFmt(fee)}`),
-      h('span', {}, ship ? `送料 ${yenFmt(ship)}` : '送料 倉庫から出荷'),
-      canCalc(s) ? h('span', { class: profit >= 0 ? 'pos' : 'neg' }, `利益 ${signYen(profit)}/個`) : null,
-      h('span', {}, `（${feel}）`),
-    ),
-    maxQty > 1
-      ? h('div', { class: 'stepper' },
-        h('button', { class: 'btn small', onclick: () => { editing.qty = Math.max(1, editing.qty - 1); api.refresh(); } }, '−'),
-        h('span', {}, `${editing.qty}個出品`),
-        h('button', { class: 'btn small', onclick: () => { editing.qty = Math.min(maxQty, editing.qty + 1); api.refresh(); } }, '＋'),
-      )
-      : null,
-    h('div', { class: 'buy-row' },
-      h('button', {
-        class: 'btn primary',
-        onclick: () => {
-          const uids = g.units.slice(0, editing.qty).map((u) => u.uid);
-          const n = listUnits(s, uids, editing.platform, editing.price);
-          toast(n ? `${n}個を${PLATFORMS[editing.platform].name}に出品した` : '出品枠がいっぱいだ', n ? 'good' : 'bad');
-          editing.key = null;
-          api.refresh();
-          onChange?.();
-        },
-      }, 'この内容で出品'),
-      h('button', { class: 'btn', onclick: () => { editing.key = null; api.refresh(); } }, 'やめる'),
-    ),
-  );
 }
 
 // ---------------- 相場 ----------------
