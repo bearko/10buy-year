@@ -262,7 +262,7 @@ export function offersModal(s, step, onChange) {
     const res = buy(s, o, q, method);
     toast(res.msg, res.ok ? 'good' : 'bad');
     if (res.ok) {
-      playSe('buy');
+      playSe('hint'); // insp
       got.push({ pid: o.pid, qty: q });
     }
     render();

@@ -5,7 +5,7 @@ import {
   claimableNodes, raiseAbility, rankOf, recordValue, skillCost,
 } from '../engine/abilities.js';
 import { mainRoutes, routeCounts, routeLevel, routePerkText } from '../engine/perks.js';
-import { playSe } from './audio.js';
+import { currentBgm, playBgm, playSe } from './audio.js';
 import { $, clear, h } from './dom.js';
 import { toast } from './modal.js';
 
@@ -58,7 +58,10 @@ export function openTree(s, onChange, { focus = null } = {}) {
     root.append(head, routeBar, viewport, sheet);
     $('#modal-root').append(root);
 
+    const prevBgm = currentBgm();
+    playBgm('craft');
     const close = () => {
+      if (prevBgm) playBgm(prevBgm);
       root.remove();
       window.removeEventListener('keydown', onKey);
       resolve();
@@ -375,7 +378,7 @@ export function openTree(s, onChange, { focus = null } = {}) {
       const lvBefore = routeLevel(s, sk.route);
       if (!learnSkill(s, sk.id)) return;
       const burst = sk.kind === 'root';
-      playSe(burst ? 'stageup' : 'unlock');
+      playSe('unlock'); // tooldev
       toast(`「${sk.name}」を解放！`, 'good');
       const fresh = new Map();
       let i = 0;
@@ -384,7 +387,6 @@ export function openTree(s, onChange, { focus = null } = {}) {
       for (const n of order) fresh.set(n.id, i++);
       fresh.set(sk.id, 0);
       if (sk.route && routeLevel(s, sk.route) > lvBefore) {
-        playSe('levelup');
         toast(`${ROUTE_MAP[sk.route].name}の熟練度が Lv${routeLevel(s, sk.route)} に！`, 'good');
       }
       if (burst) {
