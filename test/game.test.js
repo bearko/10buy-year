@@ -265,3 +265,27 @@ test('税金：法人化すると高所得での税率が下がる', () => {
   s.corp = true;
   assert.ok(taxFor(s, 12_000_000) < individual);
 });
+
+test('仕入れ画面：偽物かどうかは直接書かず、手がかりと購入結果が一致する', async () => {
+  const { onlineOffers } = await import('../src/engine/offers.js');
+  const { grantSkill } = await import('../src/engine/abilities.js');
+  const s = createGame(21);
+  s.flags.license = 1;
+  s.cash = 50_000_000;
+  for (const id of ['src_online', 'src_flea']) grantSkill(s, id);
+  let fakes = 0;
+  for (let i = 0; i < 200; i++) {
+    for (const o of onlineOffers(s)) {
+      const text = JSON.stringify({ ...o.listing, checks: [] });
+      assert.ok(!/偽物かも|怪しい|パチモン/.test(text), text);
+      if (o.fake && fakes < 5) {
+        fakes++;
+        const before = s.inventory.length;
+        buy(s, o, 1, 'cash');
+        assert.equal(s.inventory.length, before + 1);
+        assert.equal(s.inventory[s.inventory.length - 1].fake, true);
+      }
+    }
+  }
+  assert.ok(fakes > 0);
+});

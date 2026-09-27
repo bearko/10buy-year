@@ -1,4 +1,5 @@
 // 仕組み化（外注・ツール）による自動処理。ここで作った仕組みが、後半の「手を動かさなくても回る」状態を支える。
+import { suspicion } from './listing.js';
 import { productOf, shippingCost } from '../data/products.js';
 import { hasSkill } from './effects.js';
 import { activeUnits, buy, capacity, cardAvailable, feeRate, listUnits, platformsFor, spaceUsed } from './inventory.js';
@@ -61,7 +62,7 @@ export function autoBuy(s, offers) {
   // 外注に任せるのは「手元資金から、来月までの支払いを引いた残りの半分」まで
   let budgetLeft = Math.max(0, (s.cash - reserveNeeded(s) - s.card.current) * 0.5);
   for (const o of offers) {
-    if (o.warn || o.maxQty <= 0) continue;
+    if (o.maxQty <= 0 || suspicion(s, o) >= 2) continue; // 怪しい手がかりが2つ以上ある出品は避ける
     const p = productOf(o.pid);
     if (p.used && !s.flags.license) continue;
     if (p.alcohol && s.flags.noAlcohol) continue;

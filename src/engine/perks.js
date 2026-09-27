@@ -98,7 +98,7 @@ export function routePerkText(route) {
   const names = {
     storeOffers: (e) => `店舗の仕入れ候補+${e.add}`, storeStamina: (e) => `店舗巡りの体力-${Math.round((1 - e.mul) * 100)}%`,
     onlineOffers: (e) => `電脳の仕入れ候補+${e.add}`, pointsMult: (e) => `ポイント還元+${Math.round((e.mul - 1) * 100)}%`,
-    estErr: (e) => `推定誤差-${Math.round((1 - e.mul) * 100)}%`, fakeDetect: (e) => `偽物に気づく確率+${Math.round(e.add * 100)}%`,
+    estErr: (e) => `推定誤差-${Math.round((1 - e.mul) * 100)}%`, fakeDetect: (e) => (e.add >= 1 ? '鑑定眼（真贋がひと目で分かる）' : '見られる細部+1'),
     sellCenter: () => '少し高めでも売れやすい', buyers: (e) => `買い手+${Math.round((e.mul - 1) * 100)}%`,
     shipStamina: (e) => `発送の体力-${Math.round((1 - e.mul) * 100)}%`, monthlyFees: (e) => `月額費用-${Math.round((1 - e.mul) * 100)}%`,
     trouble: (e) => `トラブル-${Math.round((1 - e.mul) * 100)}%`, talkCheck: (e) => `交渉判定+${Math.round(e.add * 100)}%`,
