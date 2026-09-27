@@ -11,7 +11,7 @@ import { clearSave, loadGame, loadRanking, pushRanking, saveGame } from './engin
 import { createGame } from './engine/state.js';
 import { endWeek, startWeek } from './engine/turn.js';
 import { checkTutorial, tutorialDone } from './engine/tutorial.js';
-import { playBgm, playSe } from './ui/audio.js';
+import { playBgm, playSe, setSound, soundOn } from './ui/audio.js';
 import { $, clear, h, wait, yenFmt } from './ui/dom.js';
 import { renderHud, renderParams, renderTicker, setPreview } from './ui/hud.js';
 import { openModal, toast } from './ui/modal.js';
@@ -82,9 +82,14 @@ async function playSteps(steps) {
         break;
       case 'sfx':
         playSe(st.name);
+        if (st.name === 'trouble') playBgm('pvp'); // トラブル・督促の間は緊迫した曲に
+        break;
+      case 'bgm':
+        playBgm(st.name);
         break;
       case 'bg':
         setBackground(st.name);
+        if (st.name === 'queue') playBgm('raid'); // 発売日の行列は争奪戦の曲
         break;
       case 'defer':
         queue.unshift(...(st.run() || []));
@@ -244,6 +249,7 @@ function waitForCommand(mode) {
     showChris('idle');
     hidePartner();
     setBackground('home');
+    playBgm('pve');
     idleMessage();
     cmdMode(true);
     draw();
@@ -373,11 +379,22 @@ function showTitle() {
         h('button', { class: `btn big ${hasSave ? '' : 'primary'}`, onclick: () => { if (!hasSave || window.confirm('セーブデータを消して最初から始めますか？')) newGame(); } }, 'はじめから'),
         h('button', { class: 'btn', onclick: () => rankingModal() }, 'ランキング'),
         h('button', { class: 'btn', onclick: () => aboutModal() }, 'このゲームについて'),
+        h('button', {
+          class: 'btn sound-toggle',
+          onclick: (e) => {
+            setSound(!soundOn());
+            if (soundOn()) playBgm('land');
+            e.currentTarget.textContent = soundLabel();
+          },
+        }, soundLabel()),
       ),
     ),
   );
   showScreen('title-screen');
+  playBgm('land');
 }
+
+const soundLabel = () => (soundOn() ? '🔊 サウンド ON' : '🔇 サウンド OFF');
 
 function rankingModal() {
   openModal('ランキング（この端末）', (body) => {

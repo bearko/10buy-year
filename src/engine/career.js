@@ -59,7 +59,7 @@ function promote(s, to) {
       talk('chris', '自分が動かなくても回る仕組みができた…。次は、自分たちの商品を作る番だ。', 'sparkle'),
     ],
   }[to];
-  return [sfx('win'), ...lines, info(`ステージ${to}：${st.name}`, [st.goal, 'スキルツリーに新しいノードが解放された'], 'good')];
+  return [sfx('stageup'), ...lines, info(`ステージ${to}：${st.name}`, [st.goal, 'スキルツリーに新しいノードが解放された'], 'good')];
 }
 
 function fulltimeChoice(s) {
@@ -76,7 +76,7 @@ function fulltimeChoice(s) {
           s.actionsPerWeek = 2;
           setFlag(s, 'fulltimeWeek', s.week);
           return [
-            sfx('win'),
+            sfx('stageup'),
             talk('chris', '店長、今までありがとうございました…！ 今日から僕は専業せどらーだ！', 'cheer'),
             talk('mine', '自由だけど不自由な毎日の始まりね。体を壊さないように。', 'wink'),
             info('ステージ3：専業', ['行動が週2回になった（バイトは選べない）', `毎月末に生活費 ${yen(LIVING_COST)}`, '外注・ツールのノードが解放された'], 'good'),
@@ -109,7 +109,7 @@ function corpChoice(s) {
           s.corp = true;
           addMood(s, 1);
           return [
-            sfx('win'),
+            sfx('stageup'),
             talk('chris', '合同会社クリス物販、設立！ 名刺の肩書きが「代表社員」だって。', 'cheer'),
             info('ステージ4：法人化・拡大', ['税金が法人税（簡易計算で25%）に', `毎月の社会保険 ${yen(CORP_SOCIAL)}`, '問屋取引・外注仕入れ・物流倉庫のノードが解放された'], 'good'),
           ];

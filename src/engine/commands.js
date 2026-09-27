@@ -9,7 +9,7 @@ import { woy } from './calendar.js';
 import { inBoom, priceOf } from './market.js';
 import { addUnits, overCapacity } from './inventory.js';
 import { drawEvents } from './events.js';
-import { bg, choice, gain, info, narr, offers, talk } from './steps.js';
+import { bg, choice, gain, info, narr, offers, sfx, talk } from './steps.js';
 
 const E = (id) => `assets/extensions/${id}.png`;
 const I = (name) => `assets/icons/${name}`;
@@ -113,7 +113,7 @@ export function performCommand(s, cmdId, { night = false } = {}) {
   if (risk > 0 && chance(s, risk)) {
     s.sick = 2;
     addMood(s, -1);
-    steps.push(talk('chris', 'う…頭がくらくらする…。', 'sad'), narr('無理がたたって、クリスは体調を崩してしまった。'), info('体調不良', ['2週間は休むことしかできない', '売れた商品の発送も遅れてしまう…'], 'bad'));
+    steps.push(sfx('damage'), talk('chris', 'う…頭がくらくらする…。', 'sad'), narr('無理がたたって、クリスは体調を崩してしまった。'), info('体調不良', ['2週間は休むことしかできない', '売れた商品の発送も遅れてしまう…'], 'bad'));
     steps.push(...drawEvents(s, 'sick'));
     return steps;
   }
@@ -241,12 +241,12 @@ const HANDLERS = {
   },
   play(s) {
     const d = addMood(s, 1);
-    return [narr(pick(s, ['公園でぼーっとした。スマホの通知はオフにした。', '喫茶店で、相場のことを考えずにコーヒーを飲んだ。'])), info('リフレッシュ', ['体力 +15', d ? 'やる気が上がった' : ''], 'good')];
+    return [sfx('heal'), narr(pick(s, ['公園でぼーっとした。スマホの通知はオフにした。', '喫茶店で、相場のことを考えずにコーヒーを飲んだ。'])), info('リフレッシュ', ['体力 +15', d ? 'やる気が上がった' : ''], 'good')];
   },
   rest(s) {
     const heal = restHeal(s);
     addStamina(s, heal);
-    const lines = [narr(s.sick > 0 ? '布団から出られない…。' : 'ぐっすり眠った。'), info('休養', [`体力 +${heal}`], 'good')];
+    const lines = [sfx('heal'), narr(s.sick > 0 ? '布団から出られない…。' : 'ぐっすり眠った。'), info('休養', [`体力 +${heal}`], 'good')];
     if (s.sick > 0) s.sick--;
     return lines;
   },
