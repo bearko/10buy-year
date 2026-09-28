@@ -1,7 +1,7 @@
 // 週に1〜2回選ぶ「行動」。育成シミュレーションの「練習メニュー」にあたる。
 import { productOf } from '../data/products.js';
 import { chance, pick, randInt } from './rng.js';
-import { addCash, addExp, addHate, addMood, addStamina, clamp, flag, hasSkill, setFlag, yen } from './effects.js';
+import { addCash, addExp, addHate, addMood, addStamina, clamp, flag, hasSkill, removeSkill, setFlag, yen } from './effects.js';
 import { auctionOffers, lotteryEntries, lotteryWinRate, onlineOffers, openLotteries, queueOffer, queueSuccessRate, queueTargets, storeOffers, wholesaleOffers } from './offers.js';
 import { addExpense, addHours } from './kpi.js';
 import { perk } from './perks.js';
@@ -37,6 +37,7 @@ export const COMMANDS = [
   { id: 'parttime', group: 'out', icon: I('phy.png'), name: '日雇いバイト', desc: '倉庫で働いて確実に稼ぐ', stamina: 25, exp: { act: 4, mind: 5 }, pay: 22000, hours: 0, bg: 'warehouse' },
   { id: 'play', group: 'out', icon: E(3055), name: '気晴らし', desc: 'やる気と体力が回復', stamina: -15, exp: { mind: 3 }, cost: 8000, hours: 0, bg: 'park' },
   { id: 'rest', group: 'rest', icon: I('sleep.png'), name: '休む', desc: '一日中寝る', stamina: 0, heal: 45, exp: {}, hours: 0, bg: 'home' },
+  { id: 'clinic', group: 'out', icon: I('resurrection.png'), name: '通院・治療', desc: '病院・整骨院でケガや体調不良を治す（治療費あり）', stamina: -10, exp: { mind: 2 }, hours: 3, bg: 'study' },
   { id: 'card_up', group: 'out', icon: I('cp.png'), name: 'カード増枠の申請', desc: 'カード会社に利用枠の引き上げを申し込む。審査あり', stamina: 3, exp: { mind: 2 }, hours: 1, bg: 'study' },
   { id: 'license', group: 'out', icon: E(4016), node: 'license', name: '古物商許可を申請', desc: '警察署へ。許可まで約6週間', stamina: 8, exp: { info: 5, mind: 3 }, cost: 19000, hours: 3, bg: 'study' },
 ];
@@ -53,16 +54,26 @@ export function availableNightCommands(s) {
 }
 
 export function availableCommands(s) {
-  if (s.sick > 0) return [COMMAND_MAP.rest];
+  if (s.sick > 0) return [COMMAND_MAP.rest, COMMAND_MAP.clinic];
   return COMMANDS.filter((c) => {
     if (c.node && !hasSkill(s, c.node)) return false;
     if (c.id === 'license') return !flag(s, 'license') && flag(s, 'licensePending') === undefined;
     if (c.id === 'home_search') return s.homePool.length > 0;
     if (c.id === 'parttime') return !s.fulltime;
+    if (c.id === 'clinic') return ailments(s).length > 0;
     if (c.id === 'card_up') return nextCardTier(s) !== null && s.week >= (flag(s, 'cardApplied') ?? -99) + 8;
     return true;
   });
 }
+
+// 病院で治せるケガ・体調不良と治療費
+export const TREATMENTS = [
+  { id: 'sick', name: '体調不良', where: '内科', fee: 3000, has: (s) => s.sick > 0 },
+  { id: 'tendon', name: '腱鞘炎', where: '整形外科', fee: 6000, has: (s) => hasSkill(s, 'tendon') },
+  { id: 'backpain', name: '腰痛', where: '整骨院', fee: 8000, has: (s) => hasSkill(s, 'backpain') },
+  { id: 'insomnia', name: '寝不足', where: '睡眠外来', fee: 5000, has: (s) => hasSkill(s, 'insomnia') },
+];
+export const ailments = (s) => TREATMENTS.filter((x) => x.has(s));
 
 // カードの利用枠の段階と、引き上げの審査基準（直近3か月の平均売上・ステージ）
 export const CARD_TIERS = [
@@ -99,7 +110,8 @@ export function restHeal(s) {
 // 行動したときの体力・所持金の増減（画面の予告表示に使う）
 export function commandPreview(s, cmd, { night = false } = {}) {
   const stamina = cmd.heal ? restHeal(s) : -(staminaCost(s, cmd) + (night ? NIGHT_EXTRA_STAMINA : 0));
-  return { stamina, cash: (cmd.pay || 0) - (cmd.cost || 0), risk: sickRisk(s, cmd) };
+  const fee = cmd.id === 'clinic' ? ailments(s).reduce((a, x) => a + x.fee, 0) : 0;
+  return { stamina, cash: (cmd.pay || 0) - (cmd.cost || 0) - fee, risk: sickRisk(s, cmd) };
 }
 
 // 体調不良率（体力が低いまま重い行動をすると上がる）
@@ -268,6 +280,22 @@ const HANDLERS = {
     const lines = [sfx('heal'), narr(s.sick > 0 ? '布団から出られない…。' : 'ぐっすり眠った。'), info('休養', [`体力 +${heal}`], 'good')];
     if (s.sick > 0) s.sick--;
     return lines;
+  },
+  clinic(s) {
+    const list = ailments(s);
+    const fee = list.reduce((a, x) => a + x.fee, 0);
+    if (s.cash < fee) return [talk('chris', `治療費が足りない…（${yen(fee)}必要）`, 'sad')];
+    addExpense(s, fee, `治療費（${list.map((x) => x.name).join('・')}）`);
+    for (const x of list) {
+      if (x.id === 'sick') s.sick = 0;
+      else removeSkill(s, x.id);
+    }
+    return [
+      narr(`${[...new Set(list.map((x) => x.where))].join('と')}で診てもらった。`),
+      talk('mine', '体が資本よ。無理を続けると、稼ぐどころじゃなくなるんだから。', 'arms'),
+      sfx('heal'),
+      info('治療', [`${list.map((x) => x.name).join('・')}が治った`, `治療費 ${yen(fee)}`], 'good'),
+    ];
   },
   card_up(s) {
     setFlag(s, 'cardApplied', s.week);

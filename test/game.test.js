@@ -360,3 +360,18 @@ test('段階的に強化するパネル：レベルごとに効果が重なり�
   // コストはレベルごとに上がる
   assert.ok(skillCost(s, 'st_goods').act > SKILL_MAP.st_goods.cost.act);
 });
+
+test('通院・治療：ケガや体調不良があるときだけ外出に出て、治療費を払うと治る', () => {
+  const s = createGame(24);
+  const has = () => availableCommands(s).some((c) => c.id === 'clinic');
+  assert.ok(!has(), '元気なときは出ない');
+  s.skills.push('backpain', 'tendon');
+  s.sick = 2;
+  assert.deepEqual(availableCommands(s).map((c) => c.id), ['rest', 'clinic'], '体調不良でも病院には行ける');
+  const cash = s.cash;
+  performCommand(s, 'clinic');
+  assert.equal(s.sick, 0);
+  assert.ok(!s.skills.includes('backpain') && !s.skills.includes('tendon'));
+  assert.equal(cash - s.cash, 3000 + 8000 + 6000);
+  assert.ok(!has());
+});
