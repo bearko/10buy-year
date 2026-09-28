@@ -187,7 +187,7 @@ function waitForCommand(mode) {
     };
     const newTag = () => h('span', { class: 'new-tag' }, 'NEW');
 
-    const idleMessage = () => setMessage('', night ? '夜。もうひと仕事？' : state.sick > 0 ? '体調が悪い…休むしかない。' : '今週は何をしよう？');
+    const idleMessage = () => setMessage('', night ? '夜。もうひと仕事？' : state.sick > 0 ? '体調が悪い…休むか、病院へ行こう。' : '今週は何をしよう？');
     const unpreview = () => {
       selected = null;
       setPreview(null);
