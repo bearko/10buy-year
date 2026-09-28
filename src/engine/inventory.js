@@ -97,6 +97,7 @@ export function buy(s, offer, qty, method = 'cash') {
       arrive: offer.arriveWeek ?? s.week,
       fake: offer.fake ?? (offer.fakeRate > 0 && chance(s, offer.fakeRate)),
       stolen: !!offer.stolen,
+      ...(offer.brandNew ? { used: false } : {}), // 正規店の新品（古物ではない）
       ...(offer.edition ? { edition: offer.edition } : {}),
     }));
   }

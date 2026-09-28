@@ -37,6 +37,7 @@ export const COMMANDS = [
   { id: 'parttime', group: 'out', icon: I('phy.png'), name: '日雇いバイト', desc: '倉庫で働いて確実に稼ぐ', stamina: 25, exp: { act: 4, mind: 5 }, pay: 22000, hours: 0, bg: 'warehouse' },
   { id: 'play', group: 'out', icon: E(3055), name: '気晴らし', desc: 'やる気と体力が回復', stamina: -15, exp: { mind: 3 }, cost: 8000, hours: 0, bg: 'park' },
   { id: 'rest', group: 'rest', icon: I('sleep.png'), name: '休む', desc: '一日中寝る', stamina: 0, heal: 45, exp: {}, hours: 0, bg: 'home' },
+  { id: 'card_up', group: 'out', icon: I('cp.png'), name: 'カード増枠の申請', desc: 'カード会社に利用枠の引き上げを申し込む。審査あり', stamina: 3, exp: { mind: 2 }, hours: 1, bg: 'study' },
   { id: 'license', group: 'out', icon: E(4016), node: 'license', name: '古物商許可を申請', desc: '警察署へ。許可まで約6週間', stamina: 8, exp: { info: 5, mind: 3 }, cost: 19000, hours: 3, bg: 'study' },
 ];
 export const COMMAND_MAP = Object.fromEntries(COMMANDS.map((c) => [c.id, c]));
@@ -58,9 +59,27 @@ export function availableCommands(s) {
     if (c.id === 'license') return !flag(s, 'license') && flag(s, 'licensePending') === undefined;
     if (c.id === 'home_search') return s.homePool.length > 0;
     if (c.id === 'parttime') return !s.fulltime;
+    if (c.id === 'card_up') return nextCardTier(s) !== null && s.week >= (flag(s, 'cardApplied') ?? -99) + 8;
     return true;
   });
 }
+
+// カードの利用枠の段階と、引き上げの審査基準（直近3か月の平均売上・ステージ）
+export const CARD_TIERS = [
+  { limit: 100000 },
+  { limit: 300000, revenue: 50000 },
+  { limit: 500000, revenue: 200000 },
+  { limit: 1000000, revenue: 500000, stage: 2 },
+  { limit: 3000000, revenue: 1500000, stage: 3 },
+  { limit: 5000000, revenue: 3000000, stage: 4 },
+];
+export function nextCardTier(s) {
+  return CARD_TIERS.find((t) => t.limit > s.card.limit) || null;
+}
+const recentRevenue = (s) => {
+  const last = s.monthly.slice(-3);
+  return last.length ? Math.round(last.reduce((a, m) => a + (m.revenue || 0), 0) / last.length) : 0;
+};
 
 export function staminaCost(s, cmd) {
   let cost = cmd.stamina;
@@ -248,6 +267,23 @@ const HANDLERS = {
     addStamina(s, heal);
     const lines = [sfx('heal'), narr(s.sick > 0 ? '布団から出られない…。' : 'ぐっすり眠った。'), info('休養', [`体力 +${heal}`], 'good')];
     if (s.sick > 0) s.sick--;
+    return lines;
+  },
+  card_up(s) {
+    setFlag(s, 'cardApplied', s.week);
+    const tier = nextCardTier(s);
+    const rev = recentRevenue(s);
+    const reasons = [];
+    if (s.delinquency > 0) reasons.push('返済の滞納がある');
+    if (tier.stage && s.stage < tier.stage) reasons.push(`ステージ${tier.stage}から`);
+    if (rev < tier.revenue) reasons.push(`直近3か月の売上が月平均${yen(tier.revenue)}に届いていない（いま${yen(rev)}）`);
+    const lines = [narr('カード会社のサイトから、利用枠の増額を申し込んだ。……数日後、審査の結果が届いた。')];
+    if (reasons.length) {
+      lines.push(info('審査の結果', ['今回はご希望に添えませんでした', ...reasons, '次に申し込めるのは8週間後'], 'bad'));
+      return lines;
+    }
+    s.card.limit = tier.limit;
+    lines.push(sfx('coin'), info('審査の結果', [`利用枠が${yen(tier.limit)}に上がった`], 'good'));
     return lines;
   },
   license(s) {

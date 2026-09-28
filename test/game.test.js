@@ -61,11 +61,28 @@ test('仕入れ：現金とカード枠の範囲でしか買えない', () => {
   const offer = { oid: 1, pid: 'boots', price: 9000, maxQty: 3, points: 0, fakeRate: 0 };
   assert.equal(buy(s, { ...offer }, 1, 'cash').ok, true);
   assert.equal(s.cash, 100000 - 9000);
-  const big = { ...offer, price: 400000, maxQty: 2 };
-  assert.equal(buy(s, { ...big }, 1, 'cash').ok, false);
-  assert.equal(buy(s, { ...big }, 1, 'card').ok, true);
+  // カードの利用枠は10万円から。高額品は枠を上げるまで買えない
   assert.equal(cardAvailable(s), 100000);
+  const big = { ...offer, price: 320000, maxQty: 2 };
+  assert.equal(buy(s, { ...big }, 1, 'cash').ok, false);
   assert.equal(buy(s, { ...big }, 1, 'card').ok, false);
+  const mid = { ...offer, price: 60000, maxQty: 2 };
+  assert.equal(buy(s, { ...mid }, 1, 'card').ok, true);
+  assert.equal(cardAvailable(s), 40000);
+  assert.equal(buy(s, { ...mid }, 1, 'card').ok, false);
+});
+
+test('カード増枠の申請：売上とステージで審査され、通れば枠が上がる', () => {
+  const s = createGame(23);
+  assert.ok(availableCommands(s).some((c) => c.id === 'card_up'));
+  s.monthly = [{ revenue: 10000 }];
+  performCommand(s, 'card_up');
+  assert.equal(s.card.limit, 100000, '売上が足りないと落ちる');
+  assert.ok(!availableCommands(s).some((c) => c.id === 'card_up'), '8週間は申し込めない');
+  s.week += 8;
+  s.monthly = [{ revenue: 80000 }, { revenue: 60000 }];
+  performCommand(s, 'card_up');
+  assert.equal(s.card.limit, 300000);
 });
 
 test('月末：返済できなければ滞納、3回で債務整理', () => {
@@ -239,8 +256,8 @@ test('ルート：伸ばした方向が熟練度・到達点・称号になり�
   for (const id of ['src_queue', 'bargain', 'early_bird']) assert.ok(learnSkill(s, id), id);
   assert.equal(routeLevel(s, 'store'), 1);
   assert.equal(nodeState(s, 'cap_store'), 'locked'); // 5個必要
-  s.stats.storeTrips = 40;
-  assert.ok(learnSkill(s, 'rec_walker')); // 記録パネルは無料
+  assert.ok(learnSkill(s, 'st_goods')); // 段階的に強化するパネルも1個に数える
+  assert.equal(nodeState(s, 'st_goods'), 'available', 'レベルが上限まで上げられる');
   s.hints.ino_map = 1;
   assert.ok(learnSkill(s, 'ino_map'));
   assert.equal(nodeState(s, 'cap_store'), 'available');
@@ -249,7 +266,7 @@ test('ルート：伸ばした方向が熟練度・到達点・称号になり�
   assert.ok(perk(s, 'storeOffers') >= 3);
   // 2つめのルートまでは通常価格、3つめ以降は専門外
   assert.ok(learnSkill(s, 'src_online'));
-  assert.deepEqual(skillCost(s, 'net_meetup'), { social: Math.ceil(15 * OFF_ROUTE_RATE) });
+  assert.deepEqual(skillCost(s, 'net_meetup'), { social: Math.ceil(40 * OFF_ROUTE_RATE) });
   assert.equal(titleOf(s), '店舗の鬼');
 });
 
@@ -319,4 +336,27 @@ test('仕入れ画面：偽物かどうかは直接書かず、手がかりと�
     }
   }
   assert.ok(fakes > 0);
+});
+
+test('段階的に強化するパネル：レベルごとに効果が重なり、パラメータも上がる', () => {
+  const s = createGame(22);
+  openTree(s);
+  s.exp = { info: 9999, act: 9999, tech: 9999, social: 9999, mind: 9999 };
+  s.skills.push('src_store', 'src_online');
+  const offers0 = perk(s, 'storeOffers');
+  assert.ok(learnSkill(s, 'st_goods'));
+  assert.ok(learnSkill(s, 'st_goods'));
+  assert.equal(perk(s, 'storeOffers'), offers0 + 2, '店舗で見つかる商品が増える');
+  const stamina0 = s.maxStamina;
+  assert.ok(learnSkill(s, 'st_legs'));
+  assert.equal(s.maxStamina, stamina0 + 5);
+  const eye0 = s.abilities.eye;
+  s.skills.push('license');
+  assert.ok(learnSkill(s, 'vi_eye'));
+  assert.equal(s.abilities.eye, eye0 + 3);
+  // 記録パネルは親をたどった先。条件を満たせば無料
+  s.stats.storeTrips = 40;
+  assert.ok(learnSkill(s, 'rec_walker'));
+  // コストはレベルごとに上がる
+  assert.ok(skillCost(s, 'st_goods').act > SKILL_MAP.st_goods.cost.act);
 });

@@ -2,7 +2,7 @@
 import { suspicion } from '../src/engine/listing.js';
 import { createGame } from '../src/engine/state.js';
 import { startWeek, endWeek } from '../src/engine/turn.js';
-import { performCommand, availableCommands, availableNightCommands } from '../src/engine/commands.js';
+import { performCommand, availableCommands, availableNightCommands, nextCardTier } from '../src/engine/commands.js';
 import { buy, activeUnits, cardAvailable, listUnits, feeRate, sellToBuyer } from '../src/engine/inventory.js';
 import { estimateUnit, priceOf, estimate } from '../src/engine/market.js';
 import { queueTargets, openLotteries } from '../src/engine/offers.js';
@@ -117,6 +117,11 @@ function chooseCommand(s) {
   if (s.stamina < 40) return 'rest';
   if (currentMission(s)?.id === 'go_store' && has('store')) return 'store';
   if (has('license') && s.cash > 60000) return 'license';
+  // カードの枠：審査に通りそうなら申し込む
+  const tier = nextCardTier(s);
+  const last = s.monthly.slice(-3);
+  const rev = last.length ? last.reduce((a, m) => a + (m.revenue || 0), 0) / last.length : 0;
+  if (has('card_up') && tier && tier.limit <= 1000000 && rev >= tier.revenue && s.stage >= (tier.stage || 1) && !s.delinquency) return 'card_up';
   if (has('queue') && queueTargets(s).length && s.stamina >= 60) return 'queue';
   const fresh = has('lottery') ? openLotteries(s).filter((p) => !(s.botEntered ||= []).includes(`${p.id}@${Math.floor(s.week / 48)}`)) : [];
   if (fresh.length) {

@@ -196,6 +196,7 @@ export function openTree(s, onChange, { focus = null } = {}) {
       const st = nodeState(s, sk.id);
       if (sk.kind === 'root') return owns(s, sk.id) ? 'owned' : st === 'available' ? 'can' : 'locked';
       if (st === 'owned') return sk.kind === 'repeat' || sk.kind === 'capstone' ? 'max' : 'owned';
+      // 強化の途中のパネルも、次のレベルが取れる＝緑、足りない＝赤
       if (st === 'available') return canAfford(s, skillCost(s, sk.id)) ? 'can' : 'short';
       if (owns(s, sk.id)) return 'owned';
       return 'locked';

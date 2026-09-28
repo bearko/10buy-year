@@ -680,3 +680,10 @@ body.loot-show #side { display: none !important; }
 /* 新しく増えた行動カード */
 .cmd .new-tag { position: absolute; top: -8px; right: -4px; z-index: 1; font-family: 'Orbitron', var(--font); font-size: 10px; font-weight: 700; letter-spacing: 0.06em; padding: 2px 7px; border-radius: 99px; background: linear-gradient(135deg, #ff4d6d, #ff8a3d); color: #fff; box-shadow: 0 0 10px #ff4d6d99; animation: new-pulse 1.2s ease-in-out infinite; }
 @keyframes new-pulse { 50% { transform: scale(1.12); box-shadow: 0 0 16px #ff4d6dcc; } }
+
+/* 解放済みのパネルは白枠（取れる＝緑、経験点不足＝赤と区別する） */
+.tnode.owned .tnode-panel, .tnode.max .tnode-panel { border-color: #fff; border-width: 2px; box-shadow: 0 0 12px rgba(255, 255, 255, 0.35); }
+.tnode.owned .tnode-lv, .tnode.max .tnode-lv { border-color: #fff; color: #fff; }
+.tnode.k-root.owned .tnode-panel { border-color: #fff; }
+/* 強化の途中（Lv1以上で上限未満）は、白枠のまま取れる／足りないを縁の色で示す */
+.tnode.k-repeat.lvup .tnode-panel { border-color: #fff; }

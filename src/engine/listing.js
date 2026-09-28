@@ -211,7 +211,7 @@ export function buildListing(s, o) {
   L.description = makeDescription(s, o, site, p, cat, L.accessories);
 
   // 商品の情報
-  const cond = p.used || site.kind === 'pro' || o.source === 'used'
+  const cond = (p.used && !o.brandNew) || site.kind === 'pro' || o.source === 'used'
     ? pick(s, ['目立った傷や汚れなし', 'やや傷や汚れあり', '未使用に近い'])
     : '新品、未使用';
   L.info = [
