@@ -6,7 +6,7 @@ import { playSe } from './audio.js';
 import { $, clear, h, yenFmt } from './dom.js';
 import { hidePartner, hold } from './stage.js';
 
-export async function showItems(s, title, list, { se = true } = {}) {
+export async function showItems(s, title, list, { se = true, badge = 'GET!', text = null, price = null, priceLabel = null } = {}) {
   if (!list.length) return;
   const el = $('#loot');
   let i = 0;
@@ -15,7 +15,7 @@ export async function showItems(s, title, list, { se = true } = {}) {
     const p = productOf(it.pid);
     clear(el).append(
       h('div', { class: 'loot-head' },
-        h('b', {}, 'GET!'),
+        h('b', {}, badge),
         list.length > 1
           ? h('div', { class: 'loot-pager' },
             h('button', { 'aria-label': '前へ', onclick: () => { i = (i + list.length - 1) % list.length; draw(); } }, '◀'),
@@ -28,7 +28,7 @@ export async function showItems(s, title, list, { se = true } = {}) {
       h('div', { class: 'loot-name' }, p.name, it.qty > 1 ? h('small', {}, ` ×${it.qty}`) : null),
       h('div', { class: 'loot-genre' }, p.genre),
       h('p', { class: 'loot-desc' }, p.desc),
-      h('div', { class: 'loot-price' }, h('span', {}, hasSkill(s, 'eye_market') ? '推定相場' : '相場'), h('b', {}, yenFmt(estimate(s, it.pid)))),
+      h('div', { class: 'loot-price' }, h('span', {}, priceLabel || (hasSkill(s, 'eye_market') ? '推定相場' : '相場')), h('b', {}, yenFmt(price ?? estimate(s, it.pid)))),
     );
   };
   hidePartner();
@@ -37,7 +37,7 @@ export async function showItems(s, title, list, { se = true } = {}) {
   document.body.classList.add('loot-show');
   const first = productOf(list[0].pid).name;
   const units = list.reduce((a, x) => a + x.qty, 0);
-  await hold(title, list.length > 1 ? `「${first}」ほか、全部で${units}個` : `「${first}」${units > 1 ? ` ×${units}` : ''}`);
+  await hold(title, text || (list.length > 1 ? `「${first}」ほか、全部で${units}個` : `「${first}」${units > 1 ? ` ×${units}` : ''}`));
   document.body.classList.remove('loot-show');
   clear(el);
 }

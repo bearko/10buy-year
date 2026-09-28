@@ -9,12 +9,16 @@ import { buildListing } from './listing.js';
 
 let oidSeq = 1;
 const byKind = (kind) => PRODUCTS.filter((p) => p.kind === kind);
+// 定価10万円以上の高額品は、ステージ2になるまで仕入れ候補に出てこない（序盤の一攫千金を防ぐ）
+const affordableTier = (s, p) => p.retail < 100000 || s.stage >= 2;
 const round10 = (v) => Math.max(10, Math.round(v / 10) * 10);
 
 function makeOffer(s, pid, fields) {
   const product = productOf(pid);
   const offer = { oid: oidSeq++, pid, maxQty: 1, points: 0, fakeRate: 0, ...fields };
   offer.est = offer.upcoming ? estimateUpcoming(s, pid) : estimate(s, pid);
+  // まとめ買い：数を選べる候補だけ（限定品・一点物・ロット仕入れは除く）
+  if (!offer.scarce && !offer.minQty && offer.maxQty >= 2) offer.maxQty += perk(s, 'offerQty');
   // 偽物かどうかは出品の時点で決まっている。高額品ほど「巧妙な偽物」が多い
   offer.fake = offer.fakeRate > 0 && chance(s, offer.fakeRate);
   offer.clever = offer.fake && chance(s, product.retail >= 100000 ? 0.45 : 0.3);
@@ -93,7 +97,7 @@ export function storeOffers(s) {
           { id: 'taito', weight: 0.4 },
           { id: 'violin', weight: 0.4 },
           { id: 'jewel', weight: 0.4 },
-        ]);
+        ].filter((x) => affordableTier(s, productOf(x.id))));
         const product = productOf(p.id);
         const mp = priceOf(s, p.id);
         if (p.id === 'novice_book') return makeOffer(s, p.id, { source: 'used', label: '古本屋の110円棚', price: pick(s, [110, 110, 220, 330]), maxQty: randInt(s, 2, 6) });
@@ -110,6 +114,11 @@ export function storeOffers(s) {
     {
       weight: s.stage >= 2 ? 0.15 + s.abilities.buy / 400 : 0,
       make: () => makeOffer(s, 'queen_watch', { source: 'luxury', label: '正規店で「在庫がございます」…！', price: productOf('queen_watch').retail, maxQty: 1, scarce: true }),
+    },
+    {
+      // テレビで見た憧れの品。定価で並んでいるが、序盤の資金とカードの枠では手が届かない
+      weight: flag(s, 'dreamJewel') !== undefined && s.stage <= 2 ? 0.6 : 0,
+      make: () => makeOffer(s, 'jewel', { source: 'luxury', label: 'ショーウィンドウの憧れの品', price: productOf('jewel').retail, maxQty: 1, scarce: true, brandNew: true }),
     },
   ];
   const offers = generate(s, gens, n);
@@ -154,7 +163,7 @@ export function onlineOffers(s) {
     {
       weight: hasLicense(s) && hasSkill(s, 'src_flea') ? 2.5 : 0,
       make: () => {
-        const cands = PRODUCTS.filter((p) => isReleased(s, p) && ['hype', 'collect', 'boom'].includes(p.kind));
+        const cands = PRODUCTS.filter((p) => isReleased(s, p) && ['hype', 'collect', 'boom'].includes(p.kind) && affordableTier(s, p));
         const p = pick(s, cands);
         return makeOffer(s, p.id, {
           source: 'flea',
@@ -168,7 +177,7 @@ export function onlineOffers(s) {
     {
       weight: 1.5,
       make: () => {
-        const cands = PRODUCTS.filter((p) => isReleased(s, p) && (p.kind === 'hype' || inBoom(s, p.id) || p.kind === 'luxury'));
+        const cands = PRODUCTS.filter((p) => isReleased(s, p) && (p.kind === 'hype' || inBoom(s, p.id) || p.kind === 'luxury') && affordableTier(s, p));
         if (!cands.length) return null;
         const p = pick(s, cands);
         return makeOffer(s, p.id, {
@@ -254,7 +263,7 @@ export function giftOffer(s, pid, fields) {
 // ---- 業者オークション（古物商だけが参加できる市場）----
 export function auctionOffers(s) {
   const n = 4 + Math.floor(s.abilities.buy / 30);
-  const pool = PRODUCTS.filter((p) => ['collect', 'luxury'].includes(p.kind) || (p.kind === 'hype' && isReleased(s, p)));
+  const pool = PRODUCTS.filter((p) => (['collect', 'luxury'].includes(p.kind) || (p.kind === 'hype' && isReleased(s, p))) && affordableTier(s, p));
   const gens = pool.map((p) => ({
     weight: p.kind === 'collect' ? 3 : 1,
     make: () => makeOffer(s, p.id, {

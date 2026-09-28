@@ -33,7 +33,7 @@ export function createGame(seed = (Date.now() ^ (Math.random() * 1e9)) >>> 0) {
     pending: [],
     debt: 1500000,
     delinquency: 0,
-    card: { limit: 500000, current: 0, due: 0 },
+    card: { limit: 100000, current: 0, due: 0 }, // 利用枠は「カード増枠の申請」で上げていく
     stamina: 100,
     maxStamina: 100,
     mood: 2,

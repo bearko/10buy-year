@@ -80,7 +80,7 @@ async function playSteps(steps) {
         break;
       }
       case 'items':
-        await showItems(state, st.title, groupItems(st.list));
+        await showItems(state, st.title, groupItems(st.list), st.opts || {});
         break;
       case 'sales':
         if (isAuto()) {

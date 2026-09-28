@@ -221,7 +221,7 @@ export function offersModal(s, step, onChange) {
         o.upcoming ? h('span', {}, '発売前（予想相場）') : null,
         o.arriveWeek > s.week ? h('span', {}, `${weekLabel(o.arriveWeek)}着`) : null,
         o.minQty ? h('span', {}, `最低${o.minQty}個`) : null,
-        p.used && !flag(s, 'license') ? h('span', { class: 'bad' }, '要古物商') : null,
+        p.used && !o.brandNew && !flag(s, 'license') ? h('span', { class: 'bad' }, '要古物商') : null,
         p.alcohol && flag(s, 'noAlcohol') ? h('span', { class: 'bad' }, '酒類：出品不可') : null,
       ),
       checks.length ? h('div', { class: 'mm-checks' },
@@ -255,7 +255,7 @@ export function offersModal(s, step, onChange) {
 
   function doBuy(o, q, method) {
     const p = productOf(o.pid);
-    if (p.used && !flag(s, 'license')) {
+    if (p.used && !o.brandNew && !flag(s, 'license')) {
       toast('中古品の仕入れには古物商許可が必要だ', 'bad');
       return;
     }

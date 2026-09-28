@@ -157,9 +157,21 @@ export function grantSkill(s, skillId) {
   const sk = SKILL_MAP[skillId];
   if (sk.kind === 'repeat') {
     s.nodeLv[skillId] = Math.min(sk.max, nodeLv(s, skillId) + 1);
+    applyGrant(s, sk.grant);
     return;
   }
   giveSkill(s, skillId);
+  applyGrant(s, sk.grant);
+}
+
+// パネルを取ったときに、そのまま上がるパラメータ（基礎能力・体力の上限）
+function applyGrant(s, grant) {
+  if (!grant) return;
+  for (const [k, v] of Object.entries(grant.abilities || {})) s.abilities[k] = Math.min(ABILITY_MAX, s.abilities[k] + v);
+  if (grant.maxStamina) {
+    s.maxStamina += grant.maxStamina;
+    s.stamina += grant.maxStamina;
+  }
 }
 
 export function learnSkill(s, skillId) {

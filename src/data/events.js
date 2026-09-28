@@ -16,7 +16,7 @@ import {
 import { applyShock, inBoom, isReleased, priceOf } from '../engine/market.js';
 import { addUnits, overCapacity } from '../engine/inventory.js';
 import { fiscalIncome, MIN_PAYMENT, taxFor } from '../engine/finance.js';
-import { choice, gain, info, narr, sfx, talk } from '../engine/steps.js';
+import { choice, gain, info, items, narr, sfx, talk } from '../engine/steps.js';
 import { perk } from '../engine/perks.js';
 
 const hold = (s, pid) => s.inventory.filter((u) => u.pid === pid && u.arrive <= s.week);
@@ -523,6 +523,66 @@ export const EVENTS = [
         },
       ]),
     ],
+  },
+  // ---- 憧れの品「マリーアントワネット・ブルー」：序盤は見るだけ。いつかは取り扱いたい ----
+  {
+    id: 'tv_jewel',
+    trigger: 'calendar',
+    cond: (s) => s.week >= 6 && s.stage === 1,
+    play: (s) => {
+      setFlag(s, 'dreamJewel', s.week);
+      const p = productOf('jewel');
+      return [
+        narr('夜、なんとなくつけたテレビで、お宝の特集をやっていた。'),
+        items('テレビの特集', ['jewel'], { badge: 'ON AIR', se: false, price: p.retail, priceLabel: '定価', text: `「${p.name}」。正規店での定価は${yen(p.retail)}。中古市場ではさらに高値で取引されるという…。` }),
+        talk('chris', 'すごい…。いつか、こういう品を扱えるようになりたいな。', 'sparkle'),
+        talk('mine', '高い品ほど、偽物も多いのよ。目利きと資金、それに信用がそろってからの話ね。', 'arms'),
+      ];
+    },
+  },
+  {
+    id: 'fake_jewel',
+    trigger: 'weekStart',
+    chance: 0.35,
+    cond: (s) => flag(s, 'dreamJewel') !== undefined && s.week >= flag(s, 'dreamJewel') + 4 && s.stage <= 2,
+    play: (s) => {
+      const p = productOf('jewel');
+      const price = 98000;
+      return [
+        narr('駅前で、スーツ姿の男に声をかけられた。'),
+        talk('fakeseller', `お兄さん、テレビ見ました？ あの「${p.name}」、訳ありで${yen(price)}でお譲りしますよ。カードも使えます。`),
+        talk('chris', '（定価の3割…？ 本物なら、とんでもない利益だ…！）', 'sparkle'),
+        choice([
+          {
+            label: `${yen(price)}で買う`,
+            sub: '相場よりずっと安い',
+            run: () => {
+              const pay = Math.min(price, Math.max(0, s.cash));
+              addCash(s, -pay, `駅前で購入: ${p.name}`);
+              if (pay < price) s.card.current += price - pay;
+              addUnits(s, 'jewel', 1, price, { fake: true });
+              setFlag(s, 'fakeJewel', s.week);
+              return [
+                talk('fakeseller', 'まいど！ いい買い物をしましたね。'),
+                narr('男は足早に人混みへ消えていった。'),
+                talk('mine', '……見せて。刻印の「O」が正円に近いし、金具も軽い。これ、偽物よ。', 'shock'),
+                talk('mine', '偽物と知って売ったら商標法違反。在庫から「即決買取」で処分するしかないわね。', 'arms'),
+                talk('chris', 'そんな…。安すぎる話には、理由があるんだ…。', 'wail'),
+                info('偽物をつかまされた', [`${yen(price)}の損`, '相場の3割は「ありえない」値段だった'], 'bad'),
+              ];
+            },
+          },
+          {
+            label: '断る',
+            run: () => [
+              talk('chris', '……定価の3割なんて、話がうますぎる。やめておきます。', 'arms'),
+              talk('mine', '正解。本物を扱うのは、ちゃんとしたルートと目利きを身につけてからよ。', 'wink'),
+              gain(addExp(s, { mind: 6, info: 4 })),
+            ],
+          },
+        ]),
+      ];
+    },
   },
   {
     id: 'marie',

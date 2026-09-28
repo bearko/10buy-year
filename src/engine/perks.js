@@ -61,6 +61,8 @@ const NODE_PERKS = {
   cashflow: [{ key: 'cardLimitAdd', add: 300000 }, { key: 'taxMult', mul: 0.95 }],
 };
 
+const PER_LV = Object.fromEntries(SKILLS.filter((x) => x.perLv).map((x) => [x.id, x.perLv]));
+
 const MUL_DEFAULT = new Set(['storeStamina', 'pointsMult', 'estErr', 'buyers', 'shipStamina', 'monthlyFees', 'trouble', 'expGain', 'taxMult', 'lotteryMult', 'usedPrice', 'outShipFee']);
 
 // 所有ノードが変わったときだけ計算し直す
@@ -90,6 +92,8 @@ function computePerk(s, key) {
     for (const e of list) if (lv >= e.lv) apply(e);
   }
   for (const id of s.skills) for (const e of NODE_PERKS[id] || []) apply(e);
+  // 段階的に強化するパネル：レベルの数だけ効果を重ねる
+  for (const [id, lv] of Object.entries(s.nodeLv || {})) for (const e of PER_LV[id] || []) for (let i = 0; i < lv; i++) apply(e);
   return v;
 }
 
