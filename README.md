@@ -44,6 +44,7 @@ CLI の場合はリポジトリのルートで `npx vercel`（本番は `npx ver
 | [docs/01_research.md](docs/01_research.md) | 転売活動の調査（サイクル、仕入れ・販路、ジャンル、やりがい、落とし穴、法律、小ネタ、世論） |
 | [docs/02_game_design.md](docs/02_game_design.md) | 企画書（ストーリー、10年のキャリアステージ、チュートリアル、スキルツリー、KPI、ルール、経済モデル、商品、キャラ、イベント、トーン） |
 | [docs/06_counterfeit_checks.md](docs/06_counterfeit_checks.md) | せどりの偽物見極めポイントと、仕入れ画面（フリマ・通販・店舗風）への落とし込み |
+| [docs/07_next_spec.md](docs/07_next_spec.md) | 次の改修の仕様（プレイフィードバック：目標欄と演出、ルーティン、会話ログ、資格、自分の店、TOKUと魔道ルートなど） |
 | [docs/03_roadmap.md](docs/03_roadmap.md) | 開発ロードマップ（MVP v1・v2 → α → β → 1.0 → 公開後） |
 | [docs/04_pro_reseller_life.md](docs/04_pro_reseller_life.md) | 追加調査：専業転売屋の一日・週・月のリズム、商材別の苦労と戦略、あるある、ゲームへの落とし込み案 |
 | [docs/05_career_and_kpi.md](docs/05_career_and_kpi.md) | 追加調査：転売屋の10年キャリアパスとKPI（素人〜玄人の見る目の違い）、ゲームでの実装 |
