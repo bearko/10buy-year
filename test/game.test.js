@@ -18,7 +18,7 @@ import { ROUTES, ROUTE_MAP, SKILLS as TREE_SKILLS, TREE_NODES, nodePos } from '.
 import { perk, routeLevel } from '../src/engine/perks.js';
 import { titleOf } from '../src/engine/ending.js';
 import { checkTutorial, MISSIONS, treeOpen } from '../src/engine/tutorial.js';
-import { checkPromotion } from '../src/engine/career.js';
+import { checkPromotion, stageProgress } from '../src/engine/career.js';
 import { kpiLevel } from '../src/engine/kpi.js';
 import { taxFor } from '../src/engine/finance.js';
 import { monthEnd, MIN_PAYMENT } from '../src/engine/finance.js';
@@ -374,4 +374,14 @@ test('通院・治療：ケガや体調不良があるときだけ外出に出�
   assert.ok(!s.skills.includes('backpain') && !s.skills.includes('tendon'));
   assert.equal(cash - s.cash, 3000 + 8000 + 6000);
   assert.ok(!has());
+});
+
+test('法人化の判断は売上ではなく直近12か月の純利益800万円で出る', () => {
+  const s = createGame(25);
+  s.stage = 3;
+  s.monthly = Array.from({ length: 12 }, () => ({ revenue: 1_000_000, net: 300_000 }));
+  assert.equal(checkPromotion(s).length, 0, '売上1,200万円・純利益360万円では出ない');
+  assert.equal(stageProgress(s).value, 3_600_000);
+  s.monthly = Array.from({ length: 12 }, () => ({ revenue: 3_000_000, net: 700_000 }));
+  assert.ok(checkPromotion(s).length > 0, '純利益840万円で出る');
 });

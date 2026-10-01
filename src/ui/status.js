@@ -3,13 +3,29 @@ import { productOf } from '../data/products.js';
 import { weekLabel } from '../engine/calendar.js';
 import { debtFreeSteps, MIN_PAYMENT, repay } from '../engine/finance.js';
 import { computeKpis, formatKpi, KPI_DEFS, kpiLevel } from '../engine/kpi.js';
-import { STAGES, stageOf } from '../engine/career.js';
+import { STAGES, stageOf, stageProgress } from '../engine/career.js';
 import { grossProfit } from '../engine/state.js';
 import { playSe, setSound, soundOn } from './audio.js';
 import { h, signYen, yenFmt } from './dom.js';
 import { openModal, toast } from './modal.js';
 
 // ---------------- 経営（KPI・お金） ----------------
+// 昇格条件の進み具合。売上ではなく純利益（売上 − 仕入れ値 − 手数料 − 送料 − 経費）で判定する
+function progressBox(s) {
+  const p = stageProgress(s);
+  if (!p) return null;
+  if (p.items) {
+    return h('div', { class: 'stage-prog' }, h('small', {}, p.label),
+      ...p.items.map((x, i) => h('div', { class: 'sp-row' }, h('span', {}, `${p.items.length - i}か月前`), h('b', { class: x.v >= x.target ? 'pos' : 'neg' }, signYen(x.v)))));
+  }
+  const pct = Math.max(0, Math.min(100, (p.value / p.target) * 100));
+  return h('div', { class: 'stage-prog' },
+    h('small', {}, p.label),
+    h('div', { class: 'bar' }, h('i', { style: { width: `${pct}%` } })),
+    h('div', { class: 'sp-row' }, h('b', { class: p.value >= p.target ? 'pos' : '' }, `${yenFmt(p.value)} / ${yenFmt(p.target)}`), p.months < p.need ? h('small', {}, `（記録 ${p.months}/${p.need}か月）`) : null),
+  );
+}
+
 export function bizModal(s, onChange, playSteps) {
   let amount = 0;
   return openModal('経営', (body, api) => {
@@ -25,6 +41,7 @@ export function bizModal(s, onChange, playSteps) {
         h('div', { class: 'name' }, `ステージ${st.id}：${st.name}`, h('small', {}, `（目安 ${st.period}）`)),
         h('small', { class: 'desc' }, st.goal),
         h('div', { class: 'note' }, `次のステージ：${st.next}`),
+        progressBox(s),
       ),
       h('div', { class: 'sub' }, lv === 1 ? '成績（素人の帳簿）' : lv === 2 ? '成績（中級者の指標）' : '成績（玄人の指標）'),
       h('div', { class: 'kpi-table' },

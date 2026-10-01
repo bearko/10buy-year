@@ -6,7 +6,7 @@ import { choice, info, sfx, talk } from './steps.js';
 export const STAGES = [
   { id: 1, name: '副業スタート', period: '0〜1年目', goal: '家の不用品を売って、仕入れ→販売の流れをつかむ', next: '月の純利益5万円を2か月連続' },
   { id: 2, name: '副業安定', period: '1〜3年目', goal: 'ジャンルと販路を広げ、専業にできるか見極める', next: '月の純利益30万円を安定して3か月（平均30万円・各月20万円以上）で専業化の判断' },
-  { id: 3, name: '専業', period: '3〜5年目', goal: 'バイトを辞めて専業に。外注とツールで仕組み化を始める', next: '直近12か月の純利益800万円（法人化の判断）' },
+  { id: 3, name: '専業', period: '3〜5年目', goal: 'バイトを辞めて専業に。外注とツールで仕組み化を始める', next: '直近12か月の純利益（売上ではない）800万円で法人化の判断' },
   { id: 4, name: '法人化・拡大', period: '5〜8年目', goal: '会社にして外注・倉庫・問屋仕入れで規模を広げる', next: '直近12か月の純利益1,800万円＋外注3種（出品・発送・仕入れ）で仕組み化' },
   { id: 5, name: '事業化・多角化', period: '8〜10年目', goal: 'せどりを通過点に、自社ブランド・買取・発信へ', next: '—' },
 ];
@@ -15,6 +15,28 @@ export const stageOf = (s) => STAGES[s.stage - 1];
 export const LIVING_COST = 180000; // 専業後の生活費（国保・年金込み）
 export const CORP_SOCIAL = 60000; // 法人化後の社会保険料（会社負担分込み）
 export const CORP_SETUP = 250000;
+
+// 次のステージへの進み具合（画面表示用）。判定は checkPromotion と同じ数字を使う
+export function stageProgress(s) {
+  const last = (n) => recentMonths(s, n);
+  if (s.stage === 1) {
+    const m = last(2);
+    return { label: '直近2か月の純利益（各月5万円以上）', items: m.map((x) => ({ v: x.net, target: 50000 })), months: m.length, need: 2 };
+  }
+  if (s.stage === 2) {
+    const m = last(3);
+    return { label: '直近3か月の純利益の合計（90万円・各月20万円以上）', value: sumNet(m), target: 900000, months: m.length, need: 3 };
+  }
+  if (s.stage === 3) {
+    const m = last(12);
+    return { label: '直近12か月の純利益の合計', value: sumNet(m), target: 8000000, months: m.length, need: 12 };
+  }
+  if (s.stage === 4) {
+    const m = last(12);
+    return { label: '直近12か月の純利益の合計（＋外注3種）', value: sumNet(m), target: 18000000, months: m.length, need: 12 };
+  }
+  return null;
+}
 
 // 月末に呼ぶ。昇格イベントがあれば steps を返す
 export function checkPromotion(s) {
@@ -96,7 +118,7 @@ function fulltimeChoice(s) {
 
 function corpChoice(s) {
   return [
-    talk('ryoma', '年に800万も稼いどるなら、会社にしたほうがええぜよ！ 税金も、信用も、人を雇うのも、会社のほうが話が早い。'),
+    talk('ryoma', '1年で純利益800万も残しとるなら、会社にしたほうがええぜよ！ 税金も、信用も、人を雇うのも、会社のほうが話が早い。'),
     talk('mine', `設立費用に${yen(CORP_SETUP)}、社会保険で毎月${yen(CORP_SOCIAL)}かかるけど、税率は下がるわ。`, 'pointer'),
     choice([
       {

@@ -687,3 +687,9 @@ body.loot-show #side { display: none !important; }
 .tnode.k-root.owned .tnode-panel { border-color: #fff; }
 /* 強化の途中（Lv1以上で上限未満）は、白枠のまま取れる／足りないを縁の色で示す */
 .tnode.k-repeat.lvup .tnode-panel { border-color: #fff; }
+
+/* 経営画面：昇格条件の進み具合 */
+.stage-prog { margin-top: 6px; padding: 6px 8px; background: #0005; border-radius: 8px; }
+.stage-prog small { color: var(--muted); font-size: 11px; }
+.stage-prog .bar { margin: 4px 0; }
+.stage-prog .sp-row { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
