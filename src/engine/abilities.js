@@ -108,6 +108,8 @@ export function nodeBlockers(s, skillId) {
   if (sk.stage && s.stage < sk.stage) out.push(`ステージ${sk.stage}から`);
   if (sk.flag && !s.flags[sk.flag]) out.push(sk.flag === 'license' ? '古物商許可が必要' : '条件未達');
   if (sk.kind === 'gold' && !(s.hints[skillId] > 0)) out.push('偉人からコツを教わる必要がある');
+  // 基礎能力の前提：パネルだけでなく、能力そのものを育てる意味を持たせる
+  for (const [k, v] of Object.entries(sk.need || {})) if (s.abilities[k] < v) out.push(`${ABILITY_NAME[k]}${v}以上（いま${s.abilities[k]}）`);
   // 序盤は選択肢を絞る：売上・仕入れの実績やチュートリアルの進み具合で、各ルートの入口が順に開く
   for (const g of sk.gate || []) {
     if (g.flag && !s.flags[g.flag]) out.push(g.label);

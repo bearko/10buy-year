@@ -51,7 +51,7 @@ export const SKILLS = [
   { id: 'ino_map', route: 'store', parent: 'bargain', depth: 3, lane: -1, kind: 'gold', hero: 'ino', name: '大日本沿海輿地全図', desc: '店舗仕入れの候補+2、店舗巡りの体力消費-30%', cost: { act: 90, info: 40 }, icon: H(1005) },
   { id: 'st_goods', route: 'store', parent: 'src_store', depth: 2, lane: 1, kind: 'repeat', max: 3, name: '品ぞろえの目', desc: '店舗せどりで見つかる商品が+1（レベルごと）', cost: { act: 25, info: 10 }, perLv: [{ key: 'storeOffers', add: 1 }], icon: E(2125) },
   { id: 'st_legs', route: 'store', parent: 'st_goods', depth: 3, lane: 1, kind: 'repeat', max: 5, name: '健脚', desc: '体力の上限+5（レベルごと）', cost: { act: 30, mind: 10 }, grant: { maxStamina: 5 }, icon: E(1031) },
-  { id: 'cap_store', route: 'store', parent: 'early_bird', depth: 4, lane: 0, kind: 'capstone', name: '店舗の鬼', desc: '店舗の仕入れ候補+2、ワゴンの値引き+5%、店舗巡りの体力消費-20%', cost: { act: 150, info: 80 }, icon: E(5531) },
+  { id: 'cap_store', route: 'store', parent: 'early_bird', depth: 4, lane: 0, kind: 'capstone', name: '店舗の鬼', desc: '店舗の仕入れ候補+2、ワゴンの値引き+5%、店舗巡りの体力消費-20%', cost: { act: 150, info: 80 }, need: { buy: 60 }, icon: E(5531) },
 
   // ---- 電脳・ポイ活 ----
   { id: 'src_online', route: 'online', parent: 'src_home', depth: 1, lane: 0, kind: 'unlock', name: 'ポイント通販', desc: '「電脳せどり」が解放。ポイント還元を利益に変える', cost: { info: 40, tech: 15 }, gate: [{ flag: 'tutorialDone', label: 'チュートリアルを終える' }, { key: 'purchases', target: 5, label: '累計の仕入れ数' }], icon: I('cp.png') },
@@ -63,25 +63,25 @@ export const SKILLS = [
   { id: 'on_search', route: 'online', parent: 'src_online', depth: 2, lane: 1, kind: 'repeat', max: 3, name: '検索ワード帳', desc: '電脳せどりで見つかる商品が+1（レベルごと）', cost: { info: 30, tech: 10 }, perLv: [{ key: 'onlineOffers', add: 1 }], icon: I('int.png') },
   { id: 'on_buy', route: 'online', parent: 'on_search', depth: 3, lane: 1, kind: 'repeat', max: 5, name: '仕入れの勘', desc: '基礎能力「仕入れ」+3（レベルごと）', cost: { info: 25, act: 10 }, grant: { abilities: { buy: 3 } }, icon: I('buf_int.png') },
   { id: 'on_bulk', route: 'online', parent: 'eye_ai', depth: 4, lane: -1, kind: 'repeat', max: 3, name: 'まとめ買い', desc: '仕入れ候補を買える数+1（レベルごと。限定品・一点物を除く）', cost: { info: 40, act: 20 }, perLv: [{ key: 'offerQty', add: 1 }], icon: E(1058) },
-  { id: 'cap_online', route: 'online', parent: 'lottery_nose', depth: 4, lane: 0, kind: 'capstone', name: '電脳の覇者', desc: '電脳の仕入れ候補+2、ポイント還元+30%、抽選の当選率1.2倍', cost: { info: 150, tech: 80 }, icon: E(5016) },
+  { id: 'cap_online', route: 'online', parent: 'lottery_nose', depth: 4, lane: 0, kind: 'capstone', name: '電脳の覇者', desc: '電脳の仕入れ候補+2、ポイント還元+30%、抽選の当選率1.2倍', cost: { info: 150, tech: 80 }, need: { buy: 60 }, icon: E(5016) },
 
   // ---- 古物・目利き ----
   { id: 'eye_market', route: 'vintage', parent: 'src_home', depth: 1, lane: 0, kind: 'unlock', name: '相場チェック', desc: '「相場」画面が解放。売り切れ価格を調べる習慣で、推定相場の誤差が25%減る', cost: { info: 15 }, gate: [{ flag: 'tutorialDone', label: 'チュートリアルを終える' }, { key: 'soldUnits', target: 8, label: '累計の販売数' }], icon: I('int.png') },
   { id: 'license', route: 'vintage', parent: 'eye_market', depth: 2, lane: 0, kind: 'unlock', name: '古物商許可の取り方', desc: '「古物商許可を申請」が解放。中古を仕入れて売るなら必須', cost: { info: 40, mind: 20 }, icon: E(1016) },
-  { id: 'eye_fake', route: 'vintage', parent: 'eye_market', depth: 2, lane: 1, kind: 'perk', name: '真贋の知識', desc: '刻印・縫製・シュリンクなどの細部をもう1か所見られて、見誤りにくくなる', cost: { info: 40, mind: 20 }, icon: I('confused.png') },
+  { id: 'eye_fake', route: 'vintage', parent: 'eye_market', depth: 2, lane: 1, kind: 'perk', name: '真贋の知識', desc: '刻印・縫製・シュリンクなどの細部をもう1か所見られて、見誤りにくくなる', cost: { info: 40, mind: 20 }, need: { eye: 30 }, icon: I('confused.png') },
   { id: 'crowd_madness', route: 'vintage', parent: 'eye_market', depth: 2, lane: -1, kind: 'gold', hero: 'newton', name: '群衆の狂気', desc: '相場推定の誤差が半分に。ブームの天井を察知できる', cost: { info: 80, mind: 50 }, icon: H(3043) },
   { id: 'src_used', route: 'vintage', parent: 'license', depth: 3, lane: 0, kind: 'unlock', name: 'リサイクルショップ・古本', desc: '店舗せどりで中古品・古本が仕入れられる（古物商許可が必要）', cost: { act: 50, info: 30 }, flag: 'license', icon: E(1008) },
   { id: 'serial_memo', route: 'vintage', parent: 'eye_fake', depth: 3, lane: 1, kind: 'perk', name: 'シリアル控え', desc: '発送前に写真とシリアルを記録。すり替え詐欺を撃退できる', cost: { tech: 25, info: 25 }, icon: E(1003) },
   { id: 'src_flea', route: 'vintage', parent: 'src_used', depth: 4, lane: -1, kind: 'unlock', name: 'フリマ仕入れ', desc: '電脳せどりで、フリマの相場より安い出品を仕入れられる（電脳せどりが必要）', cost: { info: 70, tech: 30 }, req: ['src_online'], icon: E(1112) },
-  { id: 'src_auction', route: 'vintage', parent: 'src_used', depth: 4, lane: 0, kind: 'unlock', name: '業者オークション', desc: '「業者オークション」が解放。古物商だけが入れる市場。真贋リスクが低い（会費 月1万円）', cost: { info: 120, social: 60 }, stage: 3, monthly: 10000, icon: E(4069) },
+  { id: 'src_auction', route: 'vintage', parent: 'src_used', depth: 4, lane: 0, kind: 'unlock', name: '業者オークション', desc: '「業者オークション」が解放。古物商だけが入れる市場。真贋リスクが低い（会費 月1万円）', cost: { info: 120, social: 60 }, stage: 3, monthly: 10000, need: { eye: 50 }, icon: E(4069) },
   { id: 'rec_appraiser', route: 'vintage', parent: 'serial_memo', depth: 4, lane: 1, kind: 'record', name: '古物の目', desc: '推定相場の誤差-10%', record: { key: 'usedSold', target: 30, label: '中古・コレクター品を売った数' }, icon: E(4008) },
   { id: 'vi_eye', route: 'vintage', parent: 'license', depth: 3, lane: -1, kind: 'repeat', max: 5, name: '目利きの修行', desc: '基礎能力「目利き」+3（レベルごと）', cost: { info: 20, mind: 10 }, grant: { abilities: { eye: 3 } }, icon: I('ce.png') },
   { id: 'vi_note', route: 'vintage', parent: 'src_flea', depth: 5, lane: -1, kind: 'repeat', max: 3, name: '相場ノート', desc: '推定相場の誤差-5%（レベルごと）', cost: { info: 35, mind: 15 }, perLv: [{ key: 'estErr', mul: 0.95 }], icon: E(4008) },
-  { id: 'cap_vintage', route: 'vintage', parent: 'src_auction', depth: 5, lane: 0, kind: 'capstone', name: '鑑定士', desc: '鑑定眼：仕入れ候補の真贋がひと目で分かる。中古・業者オークションの仕入れ値-8%', cost: { info: 150, mind: 80 }, icon: E(5509) },
+  { id: 'cap_vintage', route: 'vintage', parent: 'src_auction', depth: 5, lane: 0, kind: 'capstone', name: '鑑定士', desc: '鑑定眼：仕入れ候補の真贋が「目利き×1%」の確率でひと目で分かる（最大95%）。中古・業者オークションの仕入れ値-8%', cost: { info: 150, mind: 80 }, need: { eye: 60 }, icon: E(5509) },
 
   // ---- 販路・出品 ----
   { id: 'ch_miime', route: 'sales', parent: 'src_home', depth: 1, lane: 0, kind: 'starter', name: 'ミィーム', desc: 'オークション。手数料10%。コレクター品は競り上がりやすい', cost: { tech: 20, info: 10 }, gate: [{ flag: 'tutorialDone', label: 'チュートリアルを終える' }], icon: E(1111) },
-  { id: 'ch_amacri', route: 'sales', parent: 'ch_miime', depth: 2, lane: 0, kind: 'unlock', name: 'アマクリ', desc: '大手EC・倉庫委託。手数料15%＋納品料。新品がよく売れ、発送の手間がない（月額4,900円）', cost: { tech: 90, info: 60 }, stage: 2, monthly: 4900, icon: I('mch_icon.png') },
+  { id: 'ch_amacri', route: 'sales', parent: 'ch_miime', depth: 2, lane: 0, kind: 'unlock', name: 'アマクリ', desc: '大手EC・倉庫委託。手数料15%＋納品料。新品がよく売れ、発送の手間がない（月額4,900円）', cost: { tech: 90, info: 60 }, stage: 2, monthly: 4900, need: { list: 50 }, icon: I('mch_icon.png') },
   { id: 'photogenic', route: 'sales', parent: 'ch_miime', depth: 2, lane: -1, kind: 'perk', name: '写真映え', desc: '少し高めの値付けでも売れやすくなる', cost: { tech: 45, info: 15 }, icon: E(1075) },
   { id: 'slots', route: 'sales', parent: 'ch_miime', depth: 2, lane: 1, kind: 'repeat', max: 5, name: '出品枠の拡張', desc: '同時に出品できる数が+3（レベルごと）', cost: { tech: 20, info: 10 }, icon: I('buf_phy.png') },
   { id: 'ch_shops', route: 'sales', parent: 'ch_amacri', depth: 3, lane: 0, kind: 'perk', name: 'プンシーShops', desc: '事業者向けショップに移行。プンシーの買い手1.3倍、出品枠+5', cost: { tech: 50, social: 30 }, stage: 3, icon: E(1059) },
@@ -89,23 +89,23 @@ export const SKILLS = [
   { id: 'rec_seller', route: 'sales', parent: 'sa_list', depth: 4, lane: 1, kind: 'record', name: '常連さん', desc: 'すべての販路で買い手+10%', record: { key: 'soldUnits', target: 300, label: '売った商品の数' }, icon: E(3055) },
   { id: 'sa_list', route: 'sales', parent: 'slots', depth: 3, lane: 1, kind: 'repeat', max: 5, name: '出品の腕', desc: '基礎能力「出品」+3（レベルごと）', cost: { tech: 20, info: 10 }, grant: { abilities: { list: 3 } }, icon: I('buf_agi.png') },
   { id: 'sa_fans', route: 'sales', parent: 'ch_shops', depth: 4, lane: -1, kind: 'repeat', max: 3, name: '固定ファン', desc: 'すべての販路で買い手+5%（レベルごと）', cost: { tech: 35, social: 15 }, perLv: [{ key: 'buyers', mul: 1.05 }], icon: E(3112) },
-  { id: 'cap_sales', route: 'sales', parent: 'ch_shops', depth: 4, lane: 0, kind: 'capstone', name: '売れっ子セラー', desc: '高めの値付けでもさらに売れやすく、すべての販路で買い手+20%', cost: { tech: 150, social: 80 }, icon: E(3112) },
+  { id: 'cap_sales', route: 'sales', parent: 'ch_shops', depth: 4, lane: 0, kind: 'capstone', name: '売れっ子セラー', desc: '高めの値付けでもさらに売れやすく、すべての販路で買い手+20%', cost: { tech: 150, social: 80 }, need: { list: 60 }, icon: E(3112) },
 
   // ---- 仕組み化 ----
   { id: 'pack_master', route: 'system', parent: 'src_home', depth: 1, lane: 0, kind: 'perk', name: '梱包職人', desc: '発送の体力消費が半分になり、配送破損がなくなる', cost: { tech: 30, act: 30 }, gate: [{ flag: 'tutorialDone', label: 'チュートリアルを終える' }, { key: 'soldUnits', target: 20, label: '累計の販売数' }], icon: I('decoy.png') },
   { id: 'price_tool', route: 'system', parent: 'pack_master', depth: 2, lane: 0, kind: 'perk', name: '価格改定ツール', desc: '売れ残った出品を毎週自動で値下げ・相場に追従させる（月額5,000円）', cost: { tech: 40, info: 30 }, stage: 2, monthly: 5000, icon: I('dbf_agi.png') },
   { id: 'warehouse', route: 'system', parent: 'pack_master', depth: 2, lane: -1, kind: 'perk', name: 'レンタル倉庫', desc: '在庫スペース+60（月額2万円）', cost: { act: 40, info: 20 }, stage: 2, monthly: 20000, icon: E(5127) },
-  { id: 'routine', route: 'system', parent: 'pack_master', depth: 2, lane: 1, kind: 'unlock', name: 'ルーティン化', desc: '同じ行動を4週まとめて進める「オート」が解放', cost: { mind: 60, info: 30 }, stage: 2, icon: I('resurrection.png') },
+  { id: 'routine', route: 'system', parent: 'pack_master', depth: 2, lane: 1, kind: 'unlock', name: 'ルーティン化', desc: '「ルーティン」が解放。仕入れ→出品→売却→値下げのサイクルを、決めたルールで何週も回す', cost: { mind: 60, info: 30 }, stage: 2, icon: I('resurrection.png') },
   { id: 'out_ship', route: 'system', parent: 'price_tool', depth: 3, lane: 0, kind: 'perk', name: '外注：梱包・発送', desc: '発送の体力消費がゼロに（1件400円）', cost: { social: 60, act: 40 }, stage: 3, icon: E(2125) },
   { id: 'warehouse2', route: 'system', parent: 'warehouse', depth: 3, lane: -1, kind: 'perk', name: '物流倉庫', desc: '在庫スペース+300（月額8万円）', cost: { act: 80, social: 40 }, stage: 4, monthly: 80000, icon: E(5058) },
   { id: 'rec_post', route: 'system', parent: 'sy_pack', depth: 4, lane: 1, kind: 'record', name: '発送の達人', desc: '発送の体力消費-15%', record: { key: 'selfShipped', target: 200, label: '自分で発送した件数' }, icon: I('phy.png') },
-  { id: 'out_list', route: 'system', parent: 'out_ship', depth: 4, lane: 0, kind: 'perk', name: '外注：撮影・出品', desc: '仕入れた商品を毎週自動で相場価格で出品（月額4万円）', cost: { social: 60, tech: 40 }, stage: 3, monthly: 40000, icon: E(1126) },
-  { id: 'src_wholesale', route: 'system', parent: 'warehouse2', depth: 4, lane: -1, kind: 'unlock', name: '問屋・メーカー直取引', desc: '「問屋と商談」が解放。定番品をまとめて卸値で仕入れる', cost: { social: 160, info: 100 }, stage: 4, icon: E(1058) },
+  { id: 'out_list', route: 'system', parent: 'out_ship', depth: 4, lane: 0, kind: 'perk', name: '外注：撮影・出品', desc: '仕入れた商品を毎週自動で相場価格で出品（月額4万円）', cost: { social: 60, tech: 40 }, stage: 3, monthly: 40000, need: { list: 40 }, icon: E(1126) },
+  { id: 'src_wholesale', route: 'system', parent: 'warehouse2', depth: 4, lane: -1, kind: 'unlock', name: '問屋・メーカー直取引', desc: '「問屋と商談」が解放。定番品をまとめて卸値で仕入れる', cost: { social: 160, info: 100 }, stage: 4, need: { talk: 60 }, icon: E(1058) },
   { id: 'out_buy', route: 'system', parent: 'out_list', depth: 5, lane: 0, kind: 'perk', name: '外注：リサーチ・仕入れ', desc: '仕入れ候補から利益率15%以上のものを自動で仕入れる（月額12万円）', cost: { social: 100, info: 80 }, stage: 4, monthly: 120000, icon: I('buf_int.png') },
   { id: 'div_buyback', route: 'system', parent: 'src_wholesale', depth: 5, lane: -1, kind: 'perk', name: '買取事業', desc: '店舗を構えて買い取る側へ。毎月、在庫規模に応じた利益', cost: { social: 150, act: 100 }, stage: 5, icon: E(5111) },
   { id: 'sy_pack', route: 'system', parent: 'routine', depth: 3, lane: 1, kind: 'repeat', max: 5, name: '梱包の手際', desc: '基礎能力「梱包」+3（レベルごと）', cost: { act: 20, tech: 10 }, grant: { abilities: { pack: 3 } }, icon: I('phy.png') },
   { id: 'sy_space', route: 'system', parent: 'out_list', depth: 5, lane: 1, kind: 'repeat', max: 3, name: '整理整頓', desc: '在庫スペース+10（レベルごと）', cost: { act: 25, mind: 10 }, perLv: [{ key: 'capacityAdd', add: 10 }], icon: E(1075) },
-  { id: 'cap_system', route: 'system', parent: 'out_buy', depth: 6, lane: 0, kind: 'capstone', name: '物流センター', desc: 'ツール・外注・倉庫の月額-40%、外注の発送料半額、在庫スペース+100', cost: { social: 150, act: 100 }, icon: I('mch_icon.png') },
+  { id: 'cap_system', route: 'system', parent: 'out_buy', depth: 6, lane: 0, kind: 'capstone', name: '物流センター', desc: 'ツール・外注・倉庫の月額-40%、外注の発送料半額、在庫スペース+100', cost: { social: 150, act: 100 }, need: { pack: 60 }, icon: I('mch_icon.png') },
 
   // ---- 人脈・発信 ----
   { id: 'net_meetup', route: 'network', parent: 'src_home', depth: 1, lane: 0, kind: 'unlock', name: '物販仲間', desc: '「物販交流会」が解放。情報交換と偉人との出会い', cost: { social: 40 }, gate: [{ flag: 'tutorialDone', label: 'チュートリアルを終える' }, { key: 'soldUnits', target: 12, label: '累計の販売数' }], icon: H(4008) },
@@ -117,7 +117,7 @@ export const SKILLS = [
   { id: 'rec_network', route: 'network', parent: 'tenka', depth: 3, lane: 1, kind: 'record', name: 'クレーム慣れ', desc: '取引トラブル-10%', record: { key: 'troubles', target: 10, label: '乗り越えた取引トラブル' }, icon: 'assets/enemies/101.png' },
   { id: 'ne_talk', route: 'network', parent: 'iron_mental', depth: 4, lane: -1, kind: 'repeat', max: 5, name: '交渉術', desc: '基礎能力「交渉」+3（レベルごと）', cost: { social: 20, mind: 10 }, grant: { abilities: { talk: 3 } }, icon: I('cp.png') },
   { id: 'ne_manner', route: 'network', parent: 'ne_talk', depth: 5, lane: -1, kind: 'repeat', max: 3, name: '丁寧な取引', desc: '取引トラブル-5%（レベルごと）', cost: { social: 30, mind: 15 }, perLv: [{ key: 'trouble', mul: 0.95 }], icon: I('resurrection.png') },
-  { id: 'cap_network', route: 'network', parent: 'iron_mental', depth: 4, lane: 0, kind: 'capstone', name: '業界の顔', desc: '取引トラブル半減、交渉判定+20%', cost: { social: 150, mind: 80 }, icon: H(5008) },
+  { id: 'cap_network', route: 'network', parent: 'iron_mental', depth: 4, lane: 0, kind: 'capstone', name: '業界の顔', desc: '取引トラブル半減、交渉判定+20%', cost: { social: 150, mind: 80 }, need: { talk: 60 }, icon: H(5008) },
   { id: 'div_consult', route: 'network', parent: 'rec_network', depth: 4, lane: 1, kind: 'perk', name: '情報発信・コンサル', desc: '経験を売る。毎月安定した収入。ただし炎上しやすい', cost: { social: 120, info: 100 }, stage: 5, icon: H(3008) },
 
   // ---- 経営 ----
@@ -129,7 +129,7 @@ export const SKILLS = [
   { id: 'ledger', route: 'manage', parent: 'kpi_mid', depth: 3, lane: -1, kind: 'gold', hero: 'mitsunari', name: '大一大万大吉', desc: '帳簿が完璧。確定申告の税額-30%、カード払いがリボにならない', cost: { info: 60, mind: 60 }, icon: H(2012) },
   { id: 'ma_learn', route: 'manage', parent: 'eye_calc', depth: 2, lane: 1, kind: 'repeat', max: 5, name: '学びの習慣', desc: '獲得する経験点+4%（レベルごと）', cost: { info: 20, mind: 15 }, perLv: [{ key: 'expGain', mul: 1.04 }], icon: E(1016) },
   { id: 'ma_tax', route: 'manage', parent: 'kpi_pro', depth: 4, lane: -1, kind: 'repeat', max: 3, name: '節税の知恵', desc: '税額-3%（レベルごと）', cost: { info: 40, mind: 20 }, perLv: [{ key: 'taxMult', mul: 0.97 }], icon: I('gum.png') },
-  { id: 'cap_manage', route: 'manage', parent: 'kpi_pro', depth: 4, lane: 0, kind: 'capstone', name: '経営者の眼', desc: '税額-15%、カードの利用枠+100万円、獲得する経験点+10%', cost: { info: 150, mind: 60 }, icon: E(4016) },
+  { id: 'cap_manage', route: 'manage', parent: 'kpi_pro', depth: 4, lane: 0, kind: 'capstone', name: '経営者の眼', desc: '税額-15%、カードの利用枠+100万円、獲得する経験点+10%', cost: { info: 150, mind: 60 }, need: { talk: 50 }, icon: E(4016) },
   { id: 'div_brand', route: 'manage', parent: 'kpi_pro', depth: 4, lane: 1, kind: 'perk', name: '自社ブランド', desc: 'せどりで掴んだ売れ筋をもとにOEM商品を作る。毎月、評価に応じた利益', cost: { info: 150, tech: 80 }, stage: 4, icon: E(3112) },
 
   // ---- 不調（マイナス。ツリーには出さない） ----

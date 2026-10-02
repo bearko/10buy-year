@@ -9,6 +9,7 @@ import { woy } from './calendar.js';
 import { inBoom, priceOf } from './market.js';
 import { addUnits, overCapacity } from './inventory.js';
 import { drawEvents } from './events.js';
+import { attendCourse, courseAvailable } from './courses.js';
 import { bg, choice, gain, info, items, narr, offers, sfx, talk } from './steps.js';
 
 const E = (id) => `assets/extensions/${id}.png`;
@@ -38,6 +39,7 @@ export const COMMANDS = [
   { id: 'play', group: 'out', icon: E(3055), name: '気晴らし', desc: 'やる気と体力が回復', stamina: -15, exp: { mind: 3 }, cost: 8000, hours: 0, bg: 'park' },
   { id: 'rest', group: 'rest', icon: I('sleep.png'), name: '休む', desc: '一日中寝る', stamina: 0, heal: 45, exp: {}, hours: 0, bg: 'home' },
   { id: 'clinic', group: 'out', icon: I('resurrection.png'), name: '通院・治療', desc: '病院・整骨院でケガや体調不良を治す（治療費あり）', stamina: -10, exp: { mind: 2 }, hours: 3, bg: 'study' },
+  { id: 'course', group: 'out', icon: E(4016), name: '資格講座に通う', desc: '受講料を払って通い、資格を取る（ステージ2から）', stamina: 12, exp: { act: 8, mind: 10, info: 6 }, hours: 4, bg: 'study' },
   { id: 'card_up', group: 'out', icon: I('cp.png'), name: 'カード増枠の申請', desc: 'カード会社に利用枠の引き上げを申し込む。審査あり', stamina: 3, exp: { mind: 2 }, hours: 1, bg: 'study' },
   { id: 'license', group: 'out', icon: E(4016), node: 'license', name: '古物商許可を申請', desc: '警察署へ。許可まで約6週間', stamina: 8, exp: { info: 5, mind: 3 }, cost: 19000, hours: 3, bg: 'study' },
 ];
@@ -61,6 +63,7 @@ export function availableCommands(s) {
     if (c.id === 'home_search') return s.homePool.length > 0;
     if (c.id === 'parttime') return !s.fulltime;
     if (c.id === 'clinic') return ailments(s).length > 0;
+    if (c.id === 'course') return courseAvailable(s);
     if (c.id === 'card_up') return nextCardTier(s) !== null && s.week >= (flag(s, 'cardApplied') ?? -99) + 8;
     return true;
   });
@@ -280,6 +283,9 @@ const HANDLERS = {
     const lines = [sfx('heal'), narr(s.sick > 0 ? '布団から出られない…。' : 'ぐっすり眠った。'), info('休養', [`体力 +${heal}`], 'good')];
     if (s.sick > 0) s.sick--;
     return lines;
+  },
+  course(s) {
+    return attendCourse(s);
   },
   clinic(s) {
     const list = ailments(s);

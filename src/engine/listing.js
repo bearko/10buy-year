@@ -254,8 +254,9 @@ export function buildListing(s, o) {
   if (o.fake && L.checks.length && !L.checks.some((c) => c.bad)) L.checks[randInt(s, 0, L.checks.length - 1)].bad = true;
   if (p.id === 'kaeru' && o.fake) L.checks.unshift({ part: '全体', name: 'タグの商品名', ok: '「カエルキッズ」', ng: '「ケロキッズ」と書いてある', bad: true });
   if (p.id === 'heiho' && o.fake) L.checks.find((c) => c.name === 'シュリンク').bad = true;
-  L.seen = seenChecks(s);
-  L.verdict = perk(s, 'fakeDetect') >= 1 && risky;
+  L.seen = seenChecks(s) + (s.certs?.includes(`appraise_${catOf(o.pid)}`) ? 1 : 0);
+  // 鑑定眼は「目利き×1%」の確率（最大95%）。鑑定士を取っても目利きを上げる意味が残る
+  L.verdict = perk(s, 'fakeDetect') >= 1 && risky && chance(s, Math.min(0.95, s.abilities.eye / 100));
   return L;
 }
 

@@ -64,7 +64,8 @@ export const sumNet = (months) => months.reduce((a, m) => a + m.net, 0);
 // 見える KPI の段階：1=素人（利益額・売上・個数） 2=中級（利益率・回転・滞留） 3=玄人（資金効率・時間単価…）
 export function kpiLevel(s) {
   if (hasSkill(s, 'kpi_pro')) return 3;
-  if (hasSkill(s, 'kpi_mid')) return 2;
+  if (hasSkill(s, 'kpi_mid')) return s.certs?.includes('boki') ? 3 : 2;
+  if (s.certs?.includes('boki')) return 2; // 簿記3級で1段
   return 1;
 }
 

@@ -5,6 +5,7 @@ import {
   claimableNodes, raiseAbility, rankOf, recordValue, skillCost,
 } from '../engine/abilities.js';
 import { mainRoutes, routeCounts, routeLevel, routePerkText } from '../engine/perks.js';
+import { abilityEffects } from '../engine/abilityfx.js';
 import { currentBgm, playBgm, playSe } from './audio.js';
 import { $, clear, h } from './dom.js';
 import { toast } from './modal.js';
@@ -338,12 +339,24 @@ export function openTree(s, onChange, { focus = null } = {}) {
           const lv = s.abilities[a.id];
           const cost = abilityCost(a.id, lv);
           const ok = lv < ABILITY_MAX && canAfford(s, cost);
+          // いまの効果と、+5 したときの効果を並べる
+          const now = abilityEffects(s, a.id, lv);
+          const next = abilityEffects(s, a.id, Math.min(ABILITY_MAX, lv + 5));
+          const raise = (n) => {
+            const before = rankOf(s.abilities[a.id]);
+            if (!raiseAbility(s, a.id, n)) return;
+            playSe('levelup');
+            const after = rankOf(s.abilities[a.id]);
+            if (after !== before) rankUp(a.name, after);
+            changed();
+          };
           return h('div', { class: 'ab-row' },
             h('span', { class: `rank r${rankOf(lv)}` }, rankOf(lv)),
-            h('div', { class: 'ab-main' }, h('b', {}, `${a.name} ${lv}`), h('div', { class: 'bar' }, h('i', { style: { width: `${lv}%` } })), h('small', {}, a.desc)),
+            h('div', { class: 'ab-main' }, h('b', {}, `${a.name} ${lv}`), h('div', { class: 'bar' }, h('i', { style: { width: `${lv}%` } })), h('small', {}, a.desc),
+              h('div', { class: 'ab-fx' }, ...now.map((e, i) => h('span', {}, `${e.label} `, h('b', {}, e.value), lv < ABILITY_MAX && next[i].value !== e.value ? h('em', {}, ` → ${next[i].value}`) : null)))),
             h('div', { class: 'ab-btns' },
-              h('button', { class: 'tree-btn mini', disabled: !ok, onclick: () => { if (raiseAbility(s, a.id, 1)) playSe('levelup'); changed(); } }, '+1'),
-              h('button', { class: 'tree-btn mini', disabled: !ok, onclick: () => { if (raiseAbility(s, a.id, 5)) playSe('levelup'); changed(); } }, '+5'),
+              h('button', { class: 'tree-btn mini', disabled: !ok, onclick: () => raise(1) }, '+1'),
+              h('button', { class: 'tree-btn mini', disabled: !ok, onclick: () => raise(5) }, '+5'),
               h('small', { class: 'cost-row' }, ...costText(cost)),
             ),
           );
@@ -399,6 +412,14 @@ export function openTree(s, onChange, { focus = null } = {}) {
       }
       renderAll(fresh, burst);
       onChange?.();
+    }
+
+    // 基礎能力のランクが上がったとき、画面いっぱいにランクの文字を出す
+    function rankUp(name, rank) {
+      const el = h('div', { class: 'rank-up' }, h('small', {}, `${name} RANK UP`), h('b', { class: `r${rank}` }, rank));
+      root.append(el);
+      playSe('stageup');
+      setTimeout(() => el.remove(), 1500);
     }
 
     // 中心から光の輪が広がる

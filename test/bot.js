@@ -7,7 +7,7 @@ import { buy, activeUnits, cardAvailable, listUnits, feeRate, sellToBuyer } from
 import { estimateUnit, priceOf, estimate } from '../src/engine/market.js';
 import { queueTargets, openLotteries } from '../src/engine/offers.js';
 import { ABILITIES, learnSkill, nodeState, raiseAbility, skillCost } from '../src/engine/abilities.js';
-import { SKILLS } from '../src/data/skills.js';
+import { SKILLS, SKILL_MAP } from '../src/data/skills.js';
 import { productOf, shippingCost } from '../src/data/products.js';
 import { repay } from '../src/engine/finance.js';
 import { finalResult } from '../src/engine/ending.js';
@@ -96,6 +96,12 @@ function growth(s) {
   for (const id of priorityFor(s)) {
     const st = nodeState(s, id);
     if (st === 'available' || st === 'red') learnSkill(s, id);
+  }
+  // 能力の前提で止まっているノードがあれば、その能力を優先して上げる（プレイヤーと同じく狙いを持って育てる）
+  for (const id of priorityFor(s).slice(0, 40)) {
+    const sk = SKILL_MAP[id];
+    if (!sk?.need || nodeState(s, id) !== 'locked') continue;
+    for (const [k, v] of Object.entries(sk.need)) if (s.abilities[k] < v) raiseAbility(s, k, v - s.abilities[k]);
   }
   // 次に狙うノード（コスト不足で取れなかったもの）の分を残して、余った経験点で基礎能力を上げる
   const target = priorityFor(s).find((id) => nodeState(s, id) === 'available');

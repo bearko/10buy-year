@@ -67,7 +67,7 @@ const MUL_DEFAULT = new Set(['storeStamina', 'pointsMult', 'estErr', 'buyers', '
 
 // 所有ノードが変わったときだけ計算し直す
 const cache = new WeakMap();
-const signature = (s) => `${s.skills.length}:${s.skills[s.skills.length - 1]}:${Object.values(s.nodeLv || {}).reduce((a, n) => a + n, 0)}`;
+const signature = (s) => `${(s.certs || []).length}:${s.skills.length}:${s.skills[s.skills.length - 1]}:${Object.values(s.nodeLv || {}).reduce((a, n) => a + n, 0)}`;
 
 export function perk(s, key) {
   const sig = signature(s);
@@ -92,6 +92,7 @@ function computePerk(s, key) {
     for (const e of list) if (lv >= e.lv) apply(e);
   }
   for (const id of s.skills) for (const e of NODE_PERKS[id] || []) apply(e);
+  if (s.certs?.includes('boki') && key === 'taxMult') v *= 0.97;
   // 段階的に強化するパネル：レベルの数だけ効果を重ねる
   for (const [id, lv] of Object.entries(s.nodeLv || {})) for (const e of PER_LV[id] || []) for (let i = 0; i < lv; i++) apply(e);
   return v;
@@ -102,7 +103,7 @@ export function routePerkText(route) {
   const names = {
     storeOffers: (e) => `店舗の仕入れ候補+${e.add}`, storeStamina: (e) => `店舗巡りの体力-${Math.round((1 - e.mul) * 100)}%`,
     onlineOffers: (e) => `電脳の仕入れ候補+${e.add}`, pointsMult: (e) => `ポイント還元+${Math.round((e.mul - 1) * 100)}%`,
-    estErr: (e) => `推定誤差-${Math.round((1 - e.mul) * 100)}%`, fakeDetect: (e) => (e.add >= 1 ? '鑑定眼（真贋がひと目で分かる）' : '見られる細部+1'),
+    estErr: (e) => `推定誤差-${Math.round((1 - e.mul) * 100)}%`, fakeDetect: (e) => (e.add >= 1 ? '鑑定眼（目利き×1%の確率で真贋が分かる）' : '見られる細部+1'),
     sellCenter: () => '少し高めでも売れやすい', buyers: (e) => `買い手+${Math.round((e.mul - 1) * 100)}%`,
     shipStamina: (e) => `発送の体力-${Math.round((1 - e.mul) * 100)}%`, monthlyFees: (e) => `月額費用-${Math.round((1 - e.mul) * 100)}%`,
     trouble: (e) => `トラブル-${Math.round((1 - e.mul) * 100)}%`, talkCheck: (e) => `交渉判定+${Math.round(e.add * 100)}%`,
