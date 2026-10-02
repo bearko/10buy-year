@@ -1,7 +1,7 @@
 // プロローグ
 import { yen } from '../engine/effects.js';
 import { MIN_PAYMENT } from '../engine/finance.js';
-import { bg, bgm, info, narr, talk } from '../engine/steps.js';
+import { bg, bgm, goal, info, narr, talk } from '../engine/steps.js';
 
 export function prologue(s) {
   return [
@@ -25,6 +25,7 @@ export function prologue(s) {
     talk('mine', '手数料や送料が引かれるから、思ったほどは残らないけどね。まずは「売る」ところから始めてみましょう。', 'smile'),
     talk('chris', 'よし…。一発逆転じゃなく、一個ずつ、確実に。借金を返してみせる！', 'guts'),
     talk('mine', `毎月末に最低${yen(MIN_PAYMENT)}の返済。3か月続けて払えなかったらアウトよ。経理とナビは私が手伝ってあげる。`, 'wink'),
-    info('10 buy year！', ['10年間の転売キャリアが始まる', `まずは借金 ${yen(s.debt)} の完済を目指そう`, '最初の目標：家の不用品を出品する（「在庫」を開く）'], 'good'),
+    info('10 buy year！', ['10年間の転売キャリアが始まる', `まずは借金 ${yen(s.debt)} の完済を目指そう`, '最初の目標：家の不用品を出品する（「出品」→「在庫を出品」）'], 'good'),
+    goal(),
   ];
 }

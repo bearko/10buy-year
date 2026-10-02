@@ -7,6 +7,13 @@ let textSpeed = 22; // ms / 文字
 let blinkTimer = null;
 let autoMode = false; // オート進行中はクリック待ちをせずに流す
 
+// 会話ログ：表示したメッセージを記録する先（main.js が設定する）
+let logger = null;
+export function setLogger(fn) {
+  logger = fn;
+}
+const log = (entry) => logger?.(entry);
+
 export function setAuto(v) {
   autoMode = v;
   document.body.classList.toggle('auto', v);
@@ -96,6 +103,7 @@ function waitAdvance() {
 }
 
 export async function say(who, text, pose) {
+  log({ who, text, kind: who === 'narr' ? 'narr' : 'talk' });
   const box = $('#message');
   box.classList.remove('info', 'good', 'bad');
   box.classList.toggle('narr', who === 'narr');
@@ -135,6 +143,7 @@ async function typewrite(text) {
 }
 
 export async function showInfo(title, lines, tone = 'normal') {
+  log({ who: title, text: lines.filter(Boolean).join('\n'), kind: 'info', tone });
   const box = $('#message');
   box.classList.remove('narr');
   box.classList.add('info');
@@ -161,6 +170,7 @@ export function choose(options, prompt) {
           onclick: (e) => {
             e.stopPropagation();
             clear(wrap);
+            log({ who: 'chris', text: `▶ ${o.label}`, kind: 'choice' });
             resolve(i);
           },
         }, h('span', {}, o.label), o.sub ? h('small', {}, o.sub) : null),
@@ -171,6 +181,7 @@ export function choose(options, prompt) {
 
 // メッセージを出してタップを待つ（ステージ側に何かを見せている間に使う）
 export async function hold(speaker, text) {
+  log({ who: speaker, text, kind: 'info' });
   const box = $('#message');
   box.classList.remove('info', 'good', 'bad', 'narr');
   $('#speaker').textContent = speaker;

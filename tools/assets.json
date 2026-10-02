@@ -114,5 +114,8 @@
   },
   "bgm_from_se": {
     "Actions/craft.mp3": "craft.mp3"
+  },
+  "vendor": {
+    "Data/Effects/GoldChest/confetti.js": "confetti.js"
   }
 }

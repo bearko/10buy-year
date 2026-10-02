@@ -102,7 +102,9 @@ export function offersModal(s, step, onChange) {
     if (!list.length) body.append(h('p', { class: 'empty' }, '目ぼしい商品は見つからなかった…'));
     const grid = h('div', { class: 'shop-grid' });
     for (const o of list) grid.append(gridItem(o));
-    body.append(grid, h('button', { class: 'btn primary shop-done', onclick: close }, '仕入れを終える'));
+    body.append(grid);
+    // 片手で押しやすいよう、画面下に固定
+    root.append(h('div', { class: 'shop-footer' }, h('button', { class: 'btn primary shop-done', onclick: close }, '仕入れを終える')));
   }
 
   function gridItem(o) {

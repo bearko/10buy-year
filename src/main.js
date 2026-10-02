@@ -16,10 +16,12 @@ import { playBgm, playSe, setSound, soundOn } from './ui/audio.js';
 import { $, clear, h, wait, yenFmt } from './ui/dom.js';
 import { renderHud, renderParams, renderTicker, setPreview } from './ui/hud.js';
 import { openModal, toast } from './ui/modal.js';
-import { choose, hidePartner, isAuto, say, setAuto, setBackground, setMessage, setTextSpeed, showChris, showInfo } from './ui/stage.js';
+import { choose, hidePartner, isAuto, say, setAuto, setBackground, setLogger, setMessage, setTextSpeed, showChris, showInfo } from './ui/stage.js';
 import { bizModal, menuModal } from './ui/status.js';
 import { openTree } from './ui/tree.js';
 import { groupItems, showItems } from './ui/loot.js';
+import { celebrate, goalPopup } from './ui/goal.js';
+import { logModal, pushLog } from './ui/log.js';
 import { offersModal } from './ui/shop.js';
 import { inventoryModal, marketModal, salesModal } from './ui/trade.js';
 
@@ -36,6 +38,7 @@ try {
   /* noop */
 }
 setTextSpeed(speed);
+setLogger((entry) => { if (state) pushLog(state, entry, isAuto()); });
 
 function showScreen(id) {
   for (const el of document.querySelectorAll('.screen')) el.hidden = el.id !== id;
@@ -63,6 +66,7 @@ async function playSteps(steps) {
         await flashGain(st.exp);
         break;
       case 'choice': {
+        if (isAuto()) toast('オートを止めた。それまでの出来事は「ログ」で読み返せる');
         stopAuto(); // 選択肢はプレイヤーが決める
         const idx = await choose(st.options, st.prompt);
         queue.unshift(...(st.options[idx].run() || []));
@@ -91,6 +95,12 @@ async function playSteps(steps) {
       case 'sfx':
         playSe(st.name);
         if (st.name === 'trouble') playBgm('pvp'); // トラブル・督促の間は緊迫した曲に
+        break;
+      case 'celebrate':
+        await celebrate(st.text, { quick: isAuto() });
+        break;
+      case 'goal':
+        await goalPopup(state, { quick: isAuto() });
         break;
       case 'bgm':
         playBgm(st.name);
@@ -343,6 +353,7 @@ function renderTabs() {
         onBiz: () => after(bizModal(state, refresh, playSteps)),
       }),
     },
+    { id: 'log', label: 'ログ', open: () => logModal(state) },
   ];
   for (const t of tabs) {
     nav.append(h('button', {

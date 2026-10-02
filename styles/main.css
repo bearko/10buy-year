@@ -204,7 +204,8 @@ body.busy #commands { opacity: 0.45; pointer-events: none; }
 .modal { width: 100%; max-width: 520px; max-height: 92dvh; background: var(--bg); border: 2px solid var(--line); border-bottom: none; border-radius: 14px 14px 0 0; display: flex; flex-direction: column; }
 .modal-title { padding: 10px 14px; font-size: 17px; color: var(--gold); border-bottom: 1px solid var(--line); }
 .modal-body { padding: 10px 12px; overflow-y: auto; flex: 1; }
-.modal-footer { padding: 10px 12px 16px; border-top: 1px solid var(--line); display: flex; justify-content: flex-end; }
+.modal-footer { padding: 8px 12px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); display: flex; }
+.modal-footer .btn { flex: 1; min-height: 46px; }
 @media (min-width: 560px) {
   .modal-backdrop { align-items: center; }
   .modal { border-radius: 14px; border-bottom: 2px solid var(--line); }
@@ -486,7 +487,8 @@ body.auto #message::after { content: 'オート進行中'; position: absolute; t
 .sh-memo { margin: 2px 8px 0; padding: 2px 6px; font-size: 11px; color: #5a4a00; background: #fff6c8; border-radius: 3px; align-self: flex-start; }
 .sh-memo .pos, .mm-row .pos { color: #0a8a3a; }
 .sh-memo .neg, .mm-row .neg { color: #d33; }
-.shop-done { display: block; margin: 16px auto 0; }
+.shop-footer { flex: none; padding: 8px 12px calc(10px + env(safe-area-inset-bottom)); background: #fff; border-top: 1px solid #ddd; }
+.shop-done { display: block; width: 100%; min-height: 48px; font-size: 16px; }
 
 .gallery { background: #eee; }
 .gallery .ph.big { aspect-ratio: 1; max-height: 58vh; margin: 0 auto; }
@@ -693,3 +695,52 @@ body.loot-show #side { display: none !important; }
 .stage-prog small { color: var(--muted); font-size: 11px; }
 .stage-prog .bar { margin: 4px 0; }
 .stage-prog .sp-row { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
+
+/* 会話ログ */
+.side-btn.log { grid-column: 2; }
+.log-tabs { position: sticky; top: -10px; z-index: 1; display: flex; gap: 6px; padding: 4px 0 8px; background: var(--bg); }
+.log-tabs button { font: inherit; font-size: 12px; padding: 4px 12px; border-radius: 99px; border: 1px solid var(--line); background: none; color: var(--muted); cursor: pointer; }
+.log-tabs button.on { background: var(--info); border-color: var(--info); color: #06243a; }
+.log-week { position: sticky; top: 26px; display: flex; align-items: center; gap: 8px; margin: 10px 0 4px; padding: 3px 8px; font-size: 12px; color: var(--gold); background: #182040f2; border-radius: 6px; }
+.log-auto { font-family: 'Orbitron', var(--font); font-size: 9px; padding: 1px 6px; border-radius: 4px; background: var(--info); color: #06243a; }
+.log-row { display: flex; flex-direction: column; gap: 1px; padding: 4px 8px; font-size: 13px; border-left: 2px solid transparent; white-space: pre-wrap; }
+.log-row b { font-size: 11px; color: var(--gold); font-weight: normal; }
+.log-row.k-narr span { color: #cfd6ff; font-style: italic; }
+.log-row.k-choice span { color: var(--info); }
+.log-row.k-info { border-left-color: var(--info); background: #0003; }
+.log-row.k-info.good { border-left-color: var(--good); }
+.log-row.k-info.bad { border-left-color: var(--bad); }
+
+/* HUD：ステージの目標（借金欄の位置） */
+.goal { width: 52%; max-width: 230px; display: flex; flex-direction: column; gap: 2px; padding: 3px 8px; border: 1px solid #f5c54266; border-radius: 8px; background: #2a210855; }
+.goal-top { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
+.goal-top small { font-size: 10px; color: var(--gold); white-space: nowrap; }
+.goal-top b { font-size: 12px; white-space: nowrap; }
+.goal-bar { height: 6px; background: #0007; border-radius: 99px; overflow: hidden; }
+.goal-bar i { display: block; height: 100%; background: linear-gradient(90deg, #f5a524, #ffe066); }
+.goal-note { font-size: 10px; color: var(--muted); text-align: right; }
+.goal.done { border-color: var(--good); }
+.goal.done .goal-bar i { background: linear-gradient(90deg, #3fcf7a, #b7f05a); }
+.debt-line { font-size: 11px; color: #ffc4c4; margin-top: -2px; }
+.debt-line b { font-size: 12px; }
+
+/* 達成の帯 */
+.celebrate { position: fixed; inset: 0; z-index: 95; display: grid; place-items: center; pointer-events: none; background: radial-gradient(circle, #f5c54233, transparent 60%); animation: cel-in 0.3s ease-out; }
+.celebrate.out { animation: cel-out 0.3s ease-in forwards; }
+.cel-band { width: 100%; padding: 18px 0; text-align: center; background: linear-gradient(90deg, transparent, #b8860bdd 15%, #f5c542f0 50%, #b8860bdd 85%, transparent); box-shadow: 0 0 40px #f5c542aa; transform: skewY(-4deg); }
+.cel-band small { display: block; font-family: 'Orbitron', var(--font); font-size: 12px; letter-spacing: 0.4em; color: #3a2a00; }
+.cel-band b { display: block; font-size: clamp(26px, 8vw, 44px); color: #fff; text-shadow: 0 3px 0 #7a5200, 0 0 18px #fff8; animation: cel-pop 0.5s cubic-bezier(0.2, 1.6, 0.4, 1); }
+@keyframes cel-in { from { opacity: 0; } }
+@keyframes cel-out { to { opacity: 0; transform: scale(1.05); } }
+@keyframes cel-pop { from { transform: scale(0.4); opacity: 0; } }
+
+/* 新しい目標のポップアップ */
+.goal-pop { position: fixed; inset: 0; z-index: 94; display: grid; place-items: center; padding: 16px; background: #000c; animation: cel-in 0.25s ease-out; }
+.gp-card { width: min(380px, 100%); text-align: center; padding: 18px 16px 16px; border-radius: 16px; border: 2px solid var(--gold); background: radial-gradient(circle at 50% 0%, #3a2f10, var(--bg) 70%); box-shadow: 0 0 30px #f5c54255; animation: cel-pop 0.45s cubic-bezier(0.2, 1.4, 0.4, 1); }
+.gp-kicker { font-family: 'Orbitron', var(--font); font-size: 12px; letter-spacing: 0.3em; color: var(--gold); }
+.gp-title { margin-top: 8px; font-size: 15px; color: var(--muted); }
+.gp-amount { display: block; margin: 2px 0 6px; font-size: clamp(36px, 12vw, 54px); color: #ffe066; text-shadow: 0 0 20px #f5c54288; font-variant-numeric: tabular-nums; }
+.gp-cond { margin: 0 0 10px; font-size: 14px; }
+.gp-mine { display: flex; align-items: center; gap: 8px; text-align: left; padding: 8px; margin-bottom: 12px; background: #0006; border-radius: 10px; font-size: 13px; }
+.gp-mine img { width: 44px; height: 44px; object-fit: cover; object-position: top; image-rendering: pixelated; }
+.gp-go { width: 100%; }

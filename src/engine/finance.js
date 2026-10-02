@@ -1,6 +1,6 @@
 // 月末の支払い（カードの引き落とし・借金の返済）
 import { addCash, addHate, addMood, hasSkill, record, setFlag, yen } from './effects.js';
-import { info, sfx, talk } from './steps.js';
+import { celebrate, info, sfx, talk } from './steps.js';
 import { monthlyNodeFees } from './abilities.js';
 import { addExpense, closeMonth, inventoryStats } from './kpi.js';
 import { checkPromotion, CORP_SOCIAL, LIVING_COST } from './career.js';
@@ -112,6 +112,7 @@ export function debtFreeSteps(s) {
   s.debt = 0;
   setFlag(s, 'debtFree', s.week);
   return [
+    celebrate('借金完済！'),
     sfx('win'),
     talk('chris', 'か、完済…！ 借金、ゼロになった！！', 'cheer'),
     talk('mine', 'おめでとう、クリス！ ……でも、ここで終わり？ 残りの期間でどこまで稼げるか、見せてちょうだい。', 'banzai'),

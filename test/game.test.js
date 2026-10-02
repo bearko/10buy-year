@@ -385,3 +385,33 @@ test('法人化の判断は売上ではなく直近12か月の純利益800万円
   s.monthly = Array.from({ length: 12 }, () => ({ revenue: 3_000_000, net: 700_000 }));
   assert.ok(checkPromotion(s).length > 0, '純利益840万円で出る');
 });
+
+test('借金を完済したあとは、借金を前提にしたセリフが出ない', () => {
+  const s = createGame(26);
+  s.debt = 0;
+  s.flags.debtFree = 1;
+  s.week = 60;
+  s.cash = 500000;
+  const texts = [];
+  const walk = (steps) => {
+    for (const st of steps || []) {
+      if (st.text) texts.push(st.text);
+      if (st.t === 'choice') for (const o of st.options) walk(o.run());
+    }
+  };
+  for (const ev of EVENTS) {
+    if (['final_week', 'month1_end'].includes(ev.id)) continue;
+    try { walk(ev.play(s, {})); } catch { /* 状態が合わないイベントは飛ばす */ }
+  }
+  const bad = texts.filter((x) => /借金を返さ|借金なんて|借金してる|借金まみれになった|借金のことは/.test(x));
+  assert.deepEqual(bad, []);
+  assert.ok(!EVENTS.find((e) => e.id === 'month1_end').cond({ ...s, week: 3 }), '完済していれば返済日の案内は出ない');
+});
+
+test('会話ログは最大300件で古いものから消える', async () => {
+  const { pushLog, LOG_MAX } = await import('../src/ui/log.js');
+  const s = createGame(27);
+  for (let i = 0; i < LOG_MAX + 20; i++) pushLog(s, { who: 'mine', text: `#${i}`, kind: 'talk' }, false);
+  assert.equal(s.log.length, LOG_MAX);
+  assert.equal(s.log[0].text, '#20');
+});

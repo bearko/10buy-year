@@ -1,7 +1,8 @@
 // キャリアステージ。副業スタート → 副業安定 → 専業 → 法人化・拡大 → 事業化・多角化
 import { addMood, setFlag, yen } from './effects.js';
-import { recentMonths, sumNet } from './kpi.js';
-import { choice, info, sfx, talk } from './steps.js';
+import { monthNet, recentMonths, sumNet } from './kpi.js';
+import { celebrate, choice, goal, info, sfx, talk } from './steps.js';
+import { netWorth, rankOf } from './ending.js';
 
 export const STAGES = [
   { id: 1, name: '副業スタート', period: '0〜1年目', goal: '家の不用品を売って、仕入れ→販売の流れをつかむ', next: '月の純利益5万円を2か月連続' },
@@ -36,6 +37,30 @@ export function stageProgress(s) {
     return { label: '直近12か月の純利益の合計（＋外注3種）', value: sumNet(m), target: 18000000, months: m.length, need: 12 };
   }
   return null;
+}
+
+// HUD と目標のポップアップに出す「いまの目標」。今月（途中）も含めた見込みで進み具合を出す
+export function goalOf(s) {
+  const cur = monthNet(s.cur);
+  const prev = (n) => recentMonths(s, n);
+  if (s.stage === 1) {
+    const last = prev(1)[0];
+    const streak = last && last.net >= 50000 ? 1 : 0;
+    return { stage: 1, title: '月の純利益 5万円を2か月連続', short: '月の純利益', value: cur, target: 50000, note: `連続 ${streak}/2か月`, mine: 'まずは月5万円。家の物と店舗せどりで、毎月コツコツ積み上げましょう。' };
+  }
+  if (s.stage === 2) {
+    return { stage: 2, title: '3か月で純利益 90万円（各月20万円以上）', short: '3か月の純利益', value: sumNet(prev(2)) + cur, target: 900000, note: '専業になれるライン', mine: '月30万円が安定したら、バイトを辞めて専業になれるわ。' };
+  }
+  if (s.stage === 3) {
+    return { stage: 3, title: '12か月で純利益 800万円', short: '12か月の純利益', value: sumNet(prev(11)) + cur, target: 8000000, note: '法人化の判断', mine: '1年で800万円残せたら、会社にする話が出てくるわ。' };
+  }
+  if (s.stage === 4) {
+    const out = ['out_list', 'out_ship', 'out_buy'].filter((id) => s.skills.includes(id)).length;
+    return { stage: 4, title: '12か月で純利益 1,800万円＋外注3種', short: '12か月の純利益', value: sumNet(prev(11)) + cur, target: 18000000, note: `外注 ${out}/3`, mine: '外注で仕組みを作って、自分が動かなくても回る会社にしましょう。' };
+  }
+  const nw = netWorth(s);
+  const next = [50000000, 20000000, 8000000].reverse().find((m) => m > nw) || 100000000;
+  return { stage: 5, title: `最終査定までに純資産 ${Math.round(next / 10000).toLocaleString()}万円`, short: '純資産', value: nw, target: next, note: `いまのランク ${rankOf(nw).rank}`, mine: '最後は純資産で査定されるわ。10年の集大成よ。' };
 }
 
 // 月末に呼ぶ。昇格イベントがあれば steps を返す
@@ -81,7 +106,7 @@ function promote(s, to) {
       talk('chris', '自分が動かなくても回る仕組みができた…。次は、自分たちの商品を作る番だ。', 'sparkle'),
     ],
   }[to];
-  return [sfx('stageup'), ...lines, info(`ステージ${to}：${st.name}`, [st.goal, 'スキルツリーで新しいパネルを解放できるようになった'], 'good')];
+  return [celebrate(`ステージ${to} 到達！`), sfx('stageup'), ...lines, info(`ステージ${to}：${st.name}`, [st.goal, 'スキルツリーで新しいパネルを解放できるようになった'], 'good'), goal()];
 }
 
 function fulltimeChoice(s) {
@@ -98,10 +123,12 @@ function fulltimeChoice(s) {
           s.actionsPerWeek = 2;
           setFlag(s, 'fulltimeWeek', s.week);
           return [
+            celebrate('ステージ3 専業へ！'),
             sfx('stageup'),
             talk('chris', '店長、今までありがとうございました…！ 今日から僕は専業せどらーだ！', 'cheer'),
             talk('mine', '自由だけど不自由な毎日の始まりね。体を壊さないように。', 'wink'),
             info('ステージ3：専業', ['行動が週2回になった（バイトは選べない）', `毎月末に生活費 ${yen(LIVING_COST)}`, 'スキルツリーで外注のパネルを解放できるようになった'], 'good'),
+            goal(),
           ];
         },
       },
@@ -131,9 +158,11 @@ function corpChoice(s) {
           s.corp = true;
           addMood(s, 1);
           return [
+            celebrate('ステージ4 法人化！'),
             sfx('stageup'),
             talk('chris', '合同会社クリス物販、設立！ 名刺の肩書きが「代表社員」だって。', 'cheer'),
             info('ステージ4：法人化・拡大', ['税金が法人税（簡易計算で25%）に', `毎月の社会保険 ${yen(CORP_SOCIAL)}`, 'スキルツリーで問屋取引・外注仕入れ・物流倉庫を解放できるようになった'], 'good'),
+            goal(),
           ];
         },
       },
