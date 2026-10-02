@@ -6,6 +6,9 @@ export const choice = (options, prompt) => ({ t: 'choice', options, prompt });
 export const sfx = (name) => ({ t: 'sfx', name });
 export const bg = (name) => ({ t: 'bg', name });
 export const bgm = (name) => ({ t: 'bgm', name });
+// 目標の達成（紙吹雪と大きな帯）と、新しい目標の発表（大きなポップアップ）
+export const celebrate = (text) => ({ t: 'celebrate', text });
+export const goal = () => ({ t: 'goal' });
 export const gain = (exp, extras = []) => ({ t: 'gain', exp, extras });
 export const info = (title, lines, tone = 'normal') => ({ t: 'info', title, lines, tone });
 export const offers = (list, title, note) => ({ t: 'offers', offers: list, title, note });

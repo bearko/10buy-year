@@ -99,7 +99,7 @@ export function openTree(s, onChange, { focus = null } = {}) {
     // 経験点。選んだパネルのコストぶんを「−10」と並べ、足りない分は赤くする
     function renderExp() {
       const sk = selected ? SKILL_MAP[selected] : null;
-      const cost = sk && !owns(s, sk.id) && nodeVisible(s, sk.id) ? skillCost(s, sk.id) : {};
+      const cost = sk && nodeVisible(s, sk.id) && nodeState(s, sk.id) === 'available' ? skillCost(s, sk.id) : {}; // 段階強化のパネルは Lv1 以上でも次のレベルのコストを出す
       clear(expSide).append(
         h('div', { class: 'tes-h' }, '経験点'),
         ...EXP_TYPES.map((e) => {

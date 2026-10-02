@@ -63,6 +63,8 @@ def main() -> None:
     for rel, name in manifest["se"].items():
         copy(SRC / f"Audio/SE/{rel}", OUT / f"audio/se/{name}")
 
+    for rel, name in manifest.get("vendor", {}).items():
+        copy(SRC / rel, OUT / f"vendor/{name}")
     shutil.copyfile(SRC / "Data/Characters/metadata.json", OUT / "characters/metadata.json")
     print(f"assets/ を再生成しました（参照元: {SRC}）")
 

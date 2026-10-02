@@ -2,7 +2,7 @@ import { TOTAL_WEEKS, weekLabel } from '../engine/calendar.js';
 import { EXP_TYPES } from '../engine/abilities.js';
 import { MOOD_LABELS } from '../engine/effects.js';
 import { MIN_PAYMENT } from '../engine/finance.js';
-import { stageOf } from '../engine/career.js';
+import { goalOf, stageOf } from '../engine/career.js';
 import { currentMission } from '../engine/tutorial.js';
 import { $, clear, h, yenFmt } from './dom.js';
 
@@ -34,6 +34,18 @@ function staminaBar(s) {
   );
 }
 
+// 右上の「ステージの目標」欄（借金完済後も役割を持ち続ける）
+const man = (v) => (Math.abs(v) >= 10000 ? `${(Math.round(v / 1000) / 10).toLocaleString('ja-JP')}万` : `${Math.round(v).toLocaleString('ja-JP')}`);
+function goalBox(s) {
+  const g = goalOf(s);
+  const pct = Math.max(0, Math.min(100, (g.value / g.target) * 100));
+  return h('div', { class: `goal ${pct >= 100 ? 'done' : ''}`, title: `${g.title}（${g.note}）` },
+    h('div', { class: 'goal-top' }, h('small', {}, `目標 ${g.short}`), h('b', {}, `${man(g.value)}/${man(g.target)}`)),
+    h('div', { class: 'goal-bar' }, h('i', { style: { width: `${pct}%` } })),
+    h('small', { class: 'goal-note' }, g.note),
+  );
+}
+
 export function renderHud(s) {
   const el = clear($('#hud'));
   const weeksLeft = TOTAL_WEEKS - s.week;
@@ -51,8 +63,9 @@ export function renderHud(s) {
     h('div', { class: 'hud-row money' },
       h('div', { class: 'cash' }, h('img', { src: 'assets/icons/gum.png', alt: '' }), h('span', { class: s.cash < 0 ? 'neg' : '' }, yenFmt(s.cash)),
         preview?.cash ? h('small', { class: `cash-d ${preview.cash < 0 ? 'lose' : 'gain'}` }, `${preview.cash > 0 ? '+' : '−'}${Math.abs(preview.cash).toLocaleString('ja-JP')}`) : null),
-      s.debt > 0 ? h('div', { class: 'debt' }, '借金 ', h('b', {}, yenFmt(s.debt))) : h('div', { class: 'debt clear' }, '借金なし'),
+      goalBox(s),
     ),
+    s.debt > 0 ? h('div', { class: 'debt-line' }, '借金 ', h('b', {}, yenFmt(s.debt))) : null,
     h('div', { class: 'hud-row bars' },
       staminaBar(s),
       h('div', { class: 'chips' },

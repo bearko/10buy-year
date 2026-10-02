@@ -19,6 +19,8 @@ import { fiscalIncome, MIN_PAYMENT, taxFor } from '../engine/finance.js';
 import { choice, gain, info, items, narr, sfx, talk } from '../engine/steps.js';
 import { perk } from '../engine/perks.js';
 
+// 借金があるときと、完済したあとでセリフを変える
+const debtLine = (s, withDebt, noDebt) => (s.debt > 0 ? withDebt : noDebt);
 const hold = (s, pid) => s.inventory.filter((u) => u.pid === pid && u.arrive <= s.week);
 const profit = (s) => s.stats.revenue - s.stats.fees - s.stats.shipping - s.stats.cogs;
 const hint = (s, id, lv, heroName) => {
@@ -39,7 +41,7 @@ export const EVENTS = [
   {
     id: 'month1_end',
     trigger: 'calendar',
-    cond: (s) => s.week === 3,
+    cond: (s) => s.week === 3 && s.debt > 0,
     play: (s) => [
       talk('mine', `今週末は最初の返済日よ。最低返済額は${yen(MIN_PAYMENT)}。いまの所持金は${yen(s.cash)}。`, 'arms'),
       talk('chris', s.cash >= MIN_PAYMENT ? 'なんとか払えそう…！' : '足りない…！ 今週は売ることに集中するか、バイトで稼ぐか…', s.cash >= MIN_PAYMENT ? 'smile' : 'sad'),
@@ -292,7 +294,7 @@ export const EVENTS = [
           label: '「物販の仕事をしてる」と正直に言う',
           run: () => {
             addExp(s, { mind: 8 });
-            return [narr('「物販？ …よくわからないけど、体だけは壊さないでね」'), talk('chris', '（借金のことは、まだ言えなかった）', 'sad'), gain({ mind: 8 })];
+            return [narr('「物販？ …よくわからないけど、体だけは壊さないでね」'), talk('chris', debtLine(s, '（借金のことは、まだ言えなかった）', '（借金を返し終えたことは、まだ照れくさくて言えなかった）'), 'sad'), gain({ mind: 8 })];
           },
         },
         {
@@ -403,7 +405,7 @@ export const EVENTS = [
       talk('chris', '……。', 'arms'),
       talk('mine', '転売は法律で禁止されているものを除けば違法じゃない。でも、買えなかった人がいるのも事実。どう向き合うかはあなた次第よ。', 'talk'),
       choice([
-        { label: 'それでも商売は商売だ', run: () => [gain(addExp(s, { mind: 12 })), talk('chris', '僕にも返さなきゃいけない借金がある。割り切るしかない。', 'guts')] },
+        { label: 'それでも商売は商売だ', run: () => [gain(addExp(s, { mind: 12 })), talk('chris', debtLine(s, '僕にも返さなきゃいけない借金がある。割り切るしかない。', '僕にも守りたい暮らしがある。割り切るしかない。'), 'guts')] },
         {
           label: 'せめて値付けは控えめにしよう',
           run: () => {
@@ -497,7 +499,7 @@ export const EVENTS = [
     play: (s) => [
       talk('satoshi', 'クリスくん…。$SAOコインが底を打ったらしい。今が最後の買い場だよ。', ),
       talk('chris', '（あの日、全力ロングで溶かしたコイン…。今なら取り返せるかも…？）', 'arms'),
-      talk('mine', 'クリス、あなたなんで借金してるか覚えてる？', 'arms'),
+      talk('mine', debtLine(s, 'クリス、あなたなんで借金してるか覚えてる？', 'クリス、借金で苦しんだこと、もう忘れたの？'), 'arms'),
       choice([
         {
           label: `手元資金の8割（${yen(s.cash * 0.8)}）を突っ込む`,
@@ -597,7 +599,7 @@ export const EVENTS = [
         talk('marie', `あなたが「${productOf(pid).name}」をお持ちの方？ 相場の2割増し、${yen(price)}で買ってさしあげますわ。`),
         talk('chris', 'ほ、本当に！？ でも、そんな大金どうやって…', 'sparkle'),
         talk('marie', 'お金がないなら、借りればいいじゃない。'),
-        talk('chris', '（それで僕は借金まみれになったんだけど…）', 'sad'),
+        talk('chris', debtLine(s, '（それで僕は借金まみれになったんだけど…）', '（借りるのは、もうこりごりだ…）'), 'sad'),
         choice([
           {
             label: `${yen(price)}で売る`,
@@ -661,7 +663,7 @@ export const EVENTS = [
     chance: 0.3,
     cond: (s) => s.week >= 32 && s.eventsSeen.satoshi_1 && s.cash >= 100000,
     play: (s) => [
-      talk('satoshi', '今度はレバレッジ100倍の先物だ。10万円が1,000万円になる。借金なんて一瞬で消えるよ。'),
+      talk('satoshi', debtLine(s, '今度はレバレッジ100倍の先物だ。10万円が1,000万円になる。借金なんて一瞬で消えるよ。', '今度はレバレッジ100倍の先物だ。10万円が1,000万円になる。その資金、10倍にしたくないかい？')),
       choice([
         {
           label: '10万円だけ…やってみる',
@@ -733,7 +735,7 @@ export const EVENTS = [
       addAffinity(s, 'ino');
       return [
         talk('ino', 'おぬし、店の棚をずいぶん熱心に見ておるな。'),
-        talk('chris', 'ワゴンセールを探してるんです。借金を返さなきゃいけなくて…。', 'sad'),
+        talk('chris', debtLine(s, 'ワゴンセールを探してるんです。借金を返さなきゃいけなくて…。', 'ワゴンセールを探してるんです。もっと稼げる店を見つけたくて。'), debtLine(s, 'sad', 'smile')),
         talk('ino', 'わしは商人として財を成したあと、五十で隠居してから日本中を歩いて地図を作った。人生、遅すぎることはない。'),
         talk('ino', '足で稼げ。どの店がいつ値引きするか、どの棚に何が眠っておるか。歩いた者にしか見えぬ地図がある。'),
         expStep(s, { act: 12, mind: 5 }),
@@ -954,7 +956,7 @@ export const EVENTS = [
     play: (s) => [
       talk('ryoma', 'おまん、物販で食うちゅうがか！ わしも海援隊ゆう、日本で最初の会社みたいなもんを作ったぜよ。'),
       talk('ryoma', '個人の小商いで終わるか、仕組みにするか。会社にして、人を雇うて、船を出す。日本の夜明けは近いぜよ！'),
-      talk('chris', '会社…！ 借金を返したら、その先があるのかもしれない。', 'sparkle'),
+      talk('chris', debtLine(s, '会社…！ 借金を返したら、その先があるのかもしれない。', '会社…！ 借金を返した今こそ、その先へ行けるのかもしれない。'), 'sparkle'),
       expStep(s, { social: 12, mind: 12 }),
     ],
   },
@@ -998,8 +1000,8 @@ export const EVENTS = [
     cond: (s) => s.week >= 5,
     play: (s) => [
       talk('nostra', '1999年…いや、来月、ある商品の相場が必ず爆上がりする。私のサロンではそれを「予言」しておる。'),
-      talk('nostra', '「相場大予言サロン」月額たったの98,000円。会員の9割が月収100万を達成（※個人の感想です）。'),
-      talk('chris', '（予言が当たれば借金なんてすぐ返せる…？）', 'arms'),
+      talk('nostra', debtLine(s, '「相場大予言サロン」月額たったの98,000円。会員の9割が借金を完済（※個人の感想です）。', '「相場大予言サロン」月額たったの98,000円。会員の9割が資産倍増を達成（※個人の感想です）。')),
+      talk('chris', debtLine(s, '（予言が当たれば借金なんてすぐ返せる…？）', '（老後資金2,000万円も、予言で一気に…？）'), 'arms'),
       choice([
         {
           label: '入会する（98,000円）',
