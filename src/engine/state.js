@@ -39,6 +39,8 @@ export function createGame(seed = (Date.now() ^ (Math.random() * 1e9)) >>> 0) {
     mood: 2,
     rating: 50,
     hate: 0,
+    toku: 100, // TOKU（徳）
+    underworld: false,
     sick: 0,
     banWeeks: 0,
     amaBan: 0,

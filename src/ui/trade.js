@@ -1,9 +1,9 @@
 // 仕入れ・販売まわりの画面（オファー、週の売上、在庫と出品、相場）
-import { productImage, productOf, shippingCost } from '../data/products.js';
+import { productImage, productOf, shipFor, shippingCost } from '../data/products.js';
 import { weekLabel, yearOf } from '../engine/calendar.js';
 import { flag, hasSkill } from '../engine/effects.js';
 import {
-  activeUnits, buybackQuote, capacity, feeRate, groupInventory, hardCapacity, listedUnits, listingCap, listUnits, platformFee, platformsFor, PLATFORMS, sellToBuyer, spaceUsed, unlistUnits,
+  activeUnits, buybackQuote, capacity, feeRate, groupInventory, platformMult, platformOpen, hardCapacity, listedUnits, listingCap, listUnits, platformFee, platformsFor, PLATFORMS, sellToBuyer, spaceUsed, unlistUnits,
 } from '../engine/inventory.js';
 import { confidenceLabel, estimateAt, estimateUnit, isReleased, roundPrice, visibleProducts } from '../engine/market.js';
 import { openLotteries } from '../engine/offers.js';
@@ -22,7 +22,7 @@ const estLabel = (s) => (hasSkill(s, 'eye_market') ? '推定相場' : '相場（
 
 // 手数料と送料を引いた見込み利益（1個あたり）
 export function expectedProfit(s, pid, sellPrice, cost, platform = 'merc') {
-  const ship = platform === 'ama' ? 0 : shippingCost(productOf(pid));
+  const ship = shipFor(platform, productOf(pid));
   return Math.round(sellPrice - platformFee(s, platform, sellPrice) - ship - cost);
 }
 
@@ -87,12 +87,12 @@ export function inventoryModal(s, onChange) {
   let selecting = false;
   let showInfo = false;
   // 停止中の売り先は避けて開く
-  const open = Object.values(PLATFORMS).filter((pf) => hasSkill(s, pf.node) && !banned(s, pf.id));
+  const open = Object.values(PLATFORMS).filter((pf) => platformOpen(s, pf) && !banned(s, pf.id));
   if (banned(s, market) && open.length) market = open[0].id;
   const askConfirm = () => s.settings.confirmBuyback !== false;
 
   return openModal('在庫・出品', (body, api) => {
-    const markets = Object.values(PLATFORMS).filter((pf) => hasSkill(s, pf.node));
+    const markets = Object.values(PLATFORMS).filter((pf) => platformOpen(s, pf));
     if (!markets.some((pf) => pf.id === market)) market = markets[0]?.id || 'merc';
     const pf = PLATFORMS[market];
     const cap = listingCap(s);
@@ -108,10 +108,11 @@ export function inventoryModal(s, onChange) {
     // 商品ごとの値付け・個数と、そこから決まる金額
     function plan(g) {
       const u0 = g.units[0];
-      const est = estimateUnit(s, u0);
+      const platform = g.listing ? g.listing.platform : market;
+      // 販路の倍率（海外ECの為替・裏市場）を推定相場にかけて見せる
+      const est = Math.round(estimateUnit(s, u0) * platformMult(s, platform));
       const cur = pick.get(g.key) || { mult: g.listing ? g.listing.price / Math.max(1, est) : 1, qty: g.units.length };
       pick.set(g.key, cur);
-      const platform = g.listing ? g.listing.platform : market;
       const p = productOf(g.pid);
       return {
         est,
@@ -173,7 +174,7 @@ export function inventoryModal(s, onChange) {
           h('p', {}, pf.desc),
           h('div', { class: 'nums' },
             h('span', {}, `手数料 ${Math.round(feeRate(s, market) * 100)}%${pf.perUnit ? `＋${pf.perUnit}円/個` : ''}`),
-            h('span', {}, market === 'ama' ? '送料：倉庫から出荷（不要）' : '送料：出品者負担'),
+            h('span', {}, market === 'ama' ? '送料：倉庫から出荷（不要）' : market === 'exp' ? `送料：3倍／為替 ×${(s.fx || 1).toFixed(2)}` : market === 'black' ? '送料：手渡し（不要）' : '送料：出品者負担'),
             market === 'auc' ? h('span', {}, '価格は最低落札価格') : null,
           ),
         )

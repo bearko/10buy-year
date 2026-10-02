@@ -11,7 +11,7 @@ import { $, clear, h } from './dom.js';
 import { toast } from './modal.js';
 
 const UNIT = 108; // 1マスのピクセル
-const RING_R = 1.7 + 0.9; // 中心から1段目と、その先の「？」が収まる距離（マス）
+const RING_R = 2.6 + 0.9; // 中心から1段目と、その先の「？」が収まる距離（マス）
 const SVGNS = 'http://www.w3.org/2000/svg';
 const KIND_LABEL = { root: 'はじまり', starter: '解放', unlock: '解放', perk: '常時', repeat: '強化', gold: '偉人の奥義', record: '記録', capstone: '到達点' };
 
@@ -167,7 +167,7 @@ export function openTree(s, onChange, { focus = null } = {}) {
       for (const r of ROUTES) {
         const depth = Math.max(...TREE_NODES.filter((n) => n.route === r.id).map((n) => n.depth));
         const a = (r.angle * Math.PI) / 180;
-        const p = px({ x: Math.cos(a) * (1.7 + depth * 1.6), y: Math.sin(a) * (1.7 + depth * 1.6) });
+        const p = px({ x: Math.cos(a) * (2.6 + depth * 1.7), y: Math.sin(a) * (2.6 + depth * 1.7) });
         const t = svg('text', { x: p.x, y: p.y, class: 'route-label', fill: r.color, 'text-anchor': 'middle' });
         t.textContent = r.name;
         links.append(t);

@@ -13,6 +13,8 @@ import { repay } from '../src/engine/finance.js';
 import { finalResult } from '../src/engine/ending.js';
 import { checkTutorial, currentMission } from '../src/engine/tutorial.js';
 import { autoBuy, bestPlatform, reserveNeeded } from '../src/engine/automation.js';
+import { openCourses } from '../src/engine/courses.js';
+import { LOCATIONS } from '../src/engine/mystore.js';
 
 export function play(s, steps, policy) {
   const queue = [...steps];
@@ -31,8 +33,21 @@ export function play(s, steps, policy) {
 
 const RISKY = /突っ込む|入会する|^買う$|5倍|やってみる|捨てアカ|無視|有料記事|福袋を買う|まだ/;
 
+// 方針（spec 10.6）：light = 表（寄付で徳を積み、正道ルートを取る）、dark = 魔道（裏の人間になって走り切る）、wash = 魔道 → 蜘蛛の糸で足を洗う
+const route = (s) => (s.botRoute === 'wash' && s.flags.spiderThread !== undefined ? 'light' : s.botRoute || 'light');
+
 export const smartPolicy = {
   choose: (s, st) => {
+    const labels = st.options.map((o) => o.label);
+    const find = (re) => labels.findIndex((l) => re.test(l));
+    if (find(/足を洗う/) >= 0) return route(s) === 'wash' ? find(/足を洗う/) : labels.findIndex((l) => !/足を洗う/.test(l));
+    if (find(/義援金/) >= 0) return s.cash > 4000000 ? find(/義援金/) : s.cash > 1000000 ? find(/子ども食堂/) : 0;
+    if (route(s) !== 'light' && find(/捨てアカ/) >= 0) return find(/捨てアカ/);
+    if (route(s) !== 'light' && find(/^無視する$/) >= 0) return find(/^無視する$/);
+    // 資格講座：目当ての講座を選ぶ。店の立地は商店街（コレクター品が強い）
+    const want = wantedCourse(s);
+    if (want && find(new RegExp(`^${want.name}（`)) >= 0) return find(new RegExp(`^${want.name}（`));
+    if (find(/^商店街（/) >= 0) return find(/^商店街（/);
     const idx = st.options.findIndex((o) => !RISKY.test(o.label));
     return idx >= 0 ? idx : st.options.length - 1;
   },
@@ -67,6 +82,20 @@ export const smartPolicy = {
   },
 };
 
+// C の仕組み（spec 9）：ステージ3で輸出と新ジャンル、ステージ4で店舗経営の講座を取る
+const WANT_COURSES = ['export', 'know_game', 'know_antique', 'store_mgmt'];
+function wantedCourse(s) {
+  if (s.course) return null;
+  return openCourses(s).find((c) => WANT_COURSES.includes(c.id)) || null;
+}
+
+// 店がある間は、立地の客層に合う品を少しのあいだ店頭に並べる（出品しない）
+const forShelf = (s, u) => {
+  if (!s.shop || s.week - u.week >= 4) return false;
+  const loc = LOCATIONS[s.shop.loc], p = productOf(u.pid);
+  return loc.likes.includes(p.kind) || (p.know && loc.know.includes(p.know));
+};
+
 export function manageListings(s) {
   // 売れない在庫（酒類の出品停止、半年以上の滞留）は買取業者で損切り
   const dump = activeUnits(s).filter((u) => (productOf(u.pid).alcohol && s.flags.noAlcohol) || s.week - u.week > 26);
@@ -74,6 +103,7 @@ export function manageListings(s) {
   for (const u of activeUnits(s)) {
     const p = productOf(u.pid);
     if (p.alcohol && s.flags.noAlcohol) continue;
+    if (!u.listing && forShelf(s, u)) continue;
     const pf = bestPlatform(s, u);
     if (!pf) continue;
     const est = process.env.ORACLE ? priceOf(s, u.pid) : estimateUnit(s, u);
@@ -87,9 +117,11 @@ export function manageListings(s) {
 const ESSENTIAL = ['eye_calc', 'eye_market', 'src_online', 'license', 'src_used', 'ch_miime', 'ch_amacri', 'src_lottery', 'kpi_mid', 'net_meetup', 'src_queue', 'slots', 'price_tool', 'warehouse', 'routine', 'out_ship', 'out_list', 'out_buy', 'warehouse2', 'kpi_pro', 'ch_shops'];
 const ROUTE_PLANS = [['store', 'system'], ['online', 'sales'], ['vintage', 'system'], ['sales', 'manage'], ['store', 'online'], ['network', 'system']];
 function priorityFor(s) {
-  const plan = ROUTE_PLANS[s.seed % ROUTE_PLANS.length];
+  const plan = [...ROUTE_PLANS[s.seed % ROUTE_PLANS.length], route(s) === 'light' ? 'trade' : 'dark'];
   const inPlan = SKILLS.filter((x) => plan.includes(x.route)).sort((a, b) => a.depth - b.depth).map((x) => x.id);
-  return [...ESSENTIAL, ...inPlan, ...SKILLS.map((x) => x.id)];
+  const all = [...ESSENTIAL, ...inPlan, ...SKILLS.map((x) => x.id)];
+  // 表の方針なら魔道のパネルは取らない
+  return route(s) === 'light' ? all.filter((id) => SKILL_MAP[id]?.route !== 'dark') : all;
 }
 
 function growth(s) {
@@ -128,6 +160,10 @@ function chooseCommand(s) {
   const last = s.monthly.slice(-3);
   const rev = last.length ? last.reduce((a, m) => a + (m.revenue || 0), 0) / last.length : 0;
   if (has('card_up') && tier && tier.limit <= 1000000 && rev >= tier.revenue && s.stage >= (tier.stage || 1) && !s.delinquency) return 'card_up';
+  // 表の方針：お金に余裕ができたら寄付で徳を積む（正道ルートのパネルの条件）
+  if (route(s) === 'light' && has('donate') && s.toku < 175 && s.week % 4 === 2 && (s.cash > 4000000 || s.stage >= 3)) return 'donate';
+  if (has('course') && s.cash > 1500000 && (s.course ? WANT_COURSES.includes(s.course.id) : wantedCourse(s)) && s.week % 2 === 0) return 'course';
+  if (has('open_shop') && s.cash > 4000000) return 'open_shop';
   if (has('queue') && queueTargets(s).length && s.stamina >= 60) return 'queue';
   const fresh = has('lottery') ? openLotteries(s).filter((p) => !(s.botEntered ||= []).includes(`${p.id}@${Math.floor(s.week / 48)}`)) : [];
   if (fresh.length) {
@@ -145,8 +181,9 @@ function chooseCommand(s) {
   return (s.week + (s.actionsLeft || 0)) % 2 ? 'store' : 'online';
 }
 
-export function runGame(seed, policy = smartPolicy, { weeks = Infinity } = {}) {
+export function runGame(seed, policy = smartPolicy, { weeks = Infinity, route = process.env.BOT_ROUTE } = {}) {
   const s = createGame(seed);
+  if (route) s.botRoute = route;
   while (!s.over && s.week < weeks) {
     play(s, startWeek(s), policy);
     play(s, checkTutorial(s), policy);

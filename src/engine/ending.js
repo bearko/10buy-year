@@ -40,6 +40,7 @@ const KIND_TITLES = {
 };
 
 export function titleOf(s) {
+  if (s.underworld) return '裏社会の帝王';
   if (s.hate >= 60) return '炎上系セラー';
   const main = mainRoutes(s)[0];
   if (main && (routeCounts(s)[main] || 0) >= 4) return ROUTE_MAP[main].title;
@@ -90,6 +91,21 @@ const ENDINGS = {
     lines: ['本業のかたわら、週末だけ仕入れて売る。', '大きくは稼げなかったけれど、借金は返し終えた。', '押し入れは、いつの間にか空っぽになっていた。'],
     pose: 'smile',
   },
+  vanished: {
+    title: '闇に消えるEND',
+    lines: ['恨みは、金では消えなかった。', 'ある夜を境に、クリスの部屋の明かりは二度とつかなかった。', '残された段ボールの中身が何だったのか、知る者はいない。'],
+    pose: 'wail',
+  },
+  kingpin: {
+    title: '裏社会の帝王END',
+    lines: ['10年、裏の道を走り切った。', '表の人間が一生かかっても稼げない金を、クリスは数年で動かした。', 'ただ、夜道で背後を振り返る癖だけは、最後まで抜けなかった。'],
+    pose: 'laugh',
+  },
+  spider: {
+    title: '蜘蛛の糸END',
+    lines: ['一度は闇に堕ちた。すべてを捨てて、糸をつかんだ。', '押し入れの本を1冊売るところから、もう一度やり直した。', '「ありがとう」の取引メッセージが、こんなに重いとは知らなかった。'],
+    pose: 'smile',
+  },
   continuing: {
     title: '返済はつづくよEND',
     lines: ['10年が経った。借金はまだ残っている。', '売れると思った物が売れ残り、計算ミスで赤字を出し、それでも毎月の返済だけは続けてきた。', '「来月も、店を回るか」'],
@@ -102,6 +118,9 @@ export function finalResult(s) {
   let id;
   if (s.over === 'arrested') id = 'arrested';
   else if (s.over === 'bankrupt') id = 'bankrupt';
+  else if (s.over === 'vanished') id = 'vanished';
+  else if (s.underworld) id = 'kingpin';
+  else if (flag(s, 'spiderThread') !== undefined) id = 'spider';
   else if (s.debt > 0) id = 'continuing';
   else if (flag(s, 'cryptoWin')) id = 'crypto';
   else if (s.stage >= 5) id = 'tycoon';
@@ -109,7 +128,7 @@ export function finalResult(s) {
   else if (flag(s, 'santaHelped') && s.hate < 25) id = 'honest';
   else if (s.stage === 3) id = 'pro';
   else id = 'side';
-  const rank = ['arrested', 'bankrupt'].includes(id) ? RANKS[RANKS.length - 1] : rankOf(nw);
+  const rank = ['arrested', 'bankrupt', 'vanished'].includes(id) ? RANKS[RANKS.length - 1] : rankOf(nw);
   const st = STAGES[s.stage - 1];
   return {
     ending: { id, ...ENDINGS[id] },

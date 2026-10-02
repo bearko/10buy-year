@@ -1,7 +1,7 @@
 // 取引トラブル。現実のフリマ・オークションで「よくある」ものをマイクリのエネミーに擬人化している。
 import { productOf } from './products.js';
 import { chance } from '../engine/rng.js';
-import { addExp, addHate, addMood, addRating, addStamina, hasSkill, yen } from '../engine/effects.js';
+import { addExp, addHate, addMood, addRating, addStamina, addToku, hasSkill, yen } from '../engine/effects.js';
 import { cancelSale, finalizeSale, partialRefund, restoreUnit } from '../engine/sales.js';
 import { perk } from '../engine/perks.js';
 import { choice, gain, info, narr, sfx, talk } from '../engine/steps.js';
@@ -188,7 +188,9 @@ export function troubleSteps(s, trouble) {
         ];
       }
       addRating(s, -15);
-      addHate(s, 10);
+      // 知らずに売った偽物：炎上は大きいが、徳は少しだけ下がる
+      addHate(s, 10, false);
+      addToku(s, -3);
       addMood(s, -1);
       s.warnings++;
       const banned = s.warnings >= 2;

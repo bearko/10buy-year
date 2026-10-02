@@ -73,6 +73,8 @@ export function applyShock(s, pid, mult, text, news) {
 // 週の頭に呼ぶ。相場を1週分進めて、発生したニュースを返す。
 export function updateMarket(s) {
   const news = [];
+  // 為替（海外ECの売値の倍率）。1.1 あたりを中心にゆっくり動く
+  s.fx = Math.max(0.9, Math.min(1.35, (s.fx || 1.1) + (1.1 - (s.fx || 1.1)) * 0.1 + gauss(s) * 0.03));
   const w = woy(s.week);
   for (const p of PRODUCTS) {
     const m = s.market[p.id];
@@ -244,4 +246,4 @@ export function confidenceLabel(s) {
 }
 
 // 相場画面に並べる商品（発表済み・流通中のもの）
-export const visibleProducts = (s) => PRODUCTS.filter((p) => isAnnounced(s, p));
+export const visibleProducts = (s) => PRODUCTS.filter((p) => isAnnounced(s, p) && (!p.know || (s.certs || []).includes(`know_${p.know}`)));

@@ -467,3 +467,91 @@ test('資格講座：受講料を払って通い、酒類販売業免許でお�
   assert.ok(!s.flags.noAlcohol, 'お酒を出品できる');
   assert.equal(s.course, null);
 });
+
+test('TOKU：悪いことで下がり、正道は高く・魔道は低くないと取れない。0で裏の人間に', async () => {
+  const { addHate, addToku } = await import('../src/engine/effects.js');
+  const { platformsFor } = await import('../src/engine/inventory.js');
+  const s = createGame(31);
+  openTree(s);
+  s.exp = { info: 9999, act: 9999, tech: 9999, social: 9999, mind: 9999 };
+  assert.equal(s.toku, 100);
+  addHate(s, 10);
+  assert.equal(s.toku, 90, '炎上するようなことをすると徳も下がる');
+  assert.equal(nodeState(s, 'tr_fair'), 'locked', '正道はTOKU110以上');
+  assert.equal(nodeState(s, 'dk_bot'), 'locked', '魔道はTOKU80未満');
+  addToku(s, 30);
+  assert.ok(learnSkill(s, 'tr_fair'));
+  addToku(s, -60);
+  assert.ok(learnSkill(s, 'dk_bot'));
+  assert.equal(s.toku, 45, '魔道のパネルは取るたびにTOKUが下がる');
+  for (const id of ['dk_crew', 'dk_names', 'dk_fakes']) assert.ok(learnSkill(s, id), id);
+  assert.ok(s.underworld, 'TOKUが0になると裏の人間に');
+  assert.equal(nodeState(s, 'tr_agent'), 'locked', '裏の人間は正道を歩めない');
+  const u = s.inventory[0];
+  assert.deepEqual(platformsFor(s, u).map((p) => p.id), ['black'], '表の販路は凍結、裏市場だけ');
+});
+
+test('TOKU：ふだんの商売の炎上では動かず、寄付で積める', async () => {
+  const { addHate } = await import('../src/engine/effects.js');
+  const s = createGame(33);
+  addHate(s, 3, false);
+  addHate(s, -2, false);
+  assert.equal(s.toku, 100, '行列・高値の転売・自然に冷める分は徳に響かない');
+  s.stage = 2;
+  s.cash = 2_000_000;
+  assert.ok(availableCommands(s).some((c) => c.id === 'donate'), 'ステージ2から寄付できる');
+  const steps = performCommand(s, 'donate');
+  const pick = steps.find((x) => x.t === 'choice').options.find((o) => o.label.includes('義援金'));
+  pick.run();
+  assert.equal(s.toku, 115, '100万円の義援金で TOKU +15');
+  assert.ok(s.cash <= 1_000_000);
+});
+
+test('蜘蛛の糸：足を洗うと財産とパネルを失い、基礎能力だけ残る', async () => {
+  const { washHands } = await import('../src/engine/underworld.js');
+  const { fallUnderworld } = await import('../src/engine/effects.js');
+  const s = createGame(32);
+  s.cash = 9_000_000;
+  s.abilities.eye = 77;
+  s.skills.push('src_home', 'src_store', 'bargain', 'dk_bot');
+  fallUnderworld(s);
+  washHands(s);
+  assert.equal(s.cash, 0);
+  assert.equal(s.inventory.length, 0);
+  assert.ok(!s.skills.includes('bargain') && !s.skills.includes('dk_bot'));
+  assert.equal(s.abilities.eye, 77);
+  assert.equal(s.toku, 50);
+  assert.ok(!s.underworld && s.probation > 0);
+  const { finalResult } = await import('../src/engine/ending.js');
+  assert.equal(finalResult(s).ending.id, 'spider');
+});
+
+test('新ジャンルはステージ3以降、講座で知識を得るまで仕入れ候補に出ず「未知のジャンル」で見える', async () => {
+  const { storeOffers } = await import('../src/engine/offers.js');
+  const s = createGame(33);
+  s.stage = 3;
+  s.flags.license = 1;
+  s.skills.push('src_home', 'src_store', 'src_used');
+  const seen = () => { const set = new Set(); let unknown = 0; for (let i = 0; i < 60; i++) for (const o of storeOffers(s)) { set.add(o.pid); if (o.unknown) unknown++; } return { set, unknown }; };
+  let r = seen();
+  assert.ok(!['art_print', 'retro_pc', 'rocking', 'harp_box', 'lacquer'].some((p) => r.set.has(p)));
+  assert.ok(r.unknown > 0);
+  s.certs = ['know_antique'];
+  r = seen();
+  assert.ok(['rocking', 'harp_box', 'lacquer'].some((p) => r.set.has(p)), 'アンティークを学ぶと仕入れられる');
+});
+
+test('自分の店：出品していない在庫が店頭で売れ、家賃がかかる', async () => {
+  const { shopWeek, shopMonthly } = await import('../src/engine/mystore.js');
+  const s = createGame(34);
+  s.stage = 4;
+  s.shop = { loc: 'station', renov: 0, staff: true, counter: false, opened: 0 };
+  s.cash = 1_000_000;
+  for (let i = 0; i < 20; i++) buy(s, { oid: 500 + i, pid: 'boots', price: 9000, maxQty: 1, points: 0, fakeRate: 0 }, 1, 'cash');
+  let sold = 0;
+  for (let w = 0; w < 4; w++) { s.week++; sold += shopWeek(s).sold; }
+  assert.ok(sold > 0, '駅前で定番品が売れる');
+  const cash = s.cash;
+  shopMonthly(s);
+  assert.equal(cash - s.cash, 400000 + 250000);
+});

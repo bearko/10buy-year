@@ -48,6 +48,14 @@ export const PRODUCTS = [
 
   { id: 'kaeru', name: 'カエルキッズ', genre: 'ブラインドボックスぬいぐるみ', ext: 2125, kind: 'boom', retail: 3500, size: 'S', demand: 3.4, boomFrom: 10, boomTo: 20, peak: 6.0, base: 0.9, fakeRisk: 0.6, fakeNote: 'パチモン「ケロキッズ」' },
 
+  // ---- ステージ3以降の新ジャンル（know：そのジャンルの知識＝目利き講座が必要）----
+  { id: 'art_print', name: '神絵師の筆パレ', genre: '人気作家の版画', ext: 3104, kind: 'collect', retail: 120000, size: 'M', demand: 0.5, base: 1.0, drift: 0.005, used: true, fakeRisk: 0.4, know: 'art', stage: 3 },
+  { id: 'retro_pc', name: 'APC1984', genre: 'レトロPC', ext: 4159, kind: 'collect', retail: 80000, size: 'M', demand: 0.7, base: 1.0, drift: 0.006, used: true, fakeRisk: 0.15, know: 'game', stage: 3 },
+  { id: 'rocking', name: 'ロッキングチェア', genre: 'アンティーク家具', ext: 3170, kind: 'collect', retail: 150000, size: 'L', demand: 0.4, base: 1.0, drift: 0.004, used: true, fakeRisk: 0.2, know: 'antique', stage: 3 },
+  { id: 'harp_box', name: 'ハープを弾く貴婦人', genre: 'アンティークオルゴール', ext: 4165, kind: 'collect', retail: 90000, size: 'M', demand: 0.5, base: 1.0, drift: 0.005, used: true, fakeRisk: 0.25, know: 'antique', stage: 3 },
+  { id: 'lacquer', name: '華やか二段重箱', genre: '輪島塗の重箱', ext: 4142, kind: 'collect', retail: 60000, size: 'M', demand: 0.6, base: 1.0, drift: 0.004, used: true, fakeRisk: 0.2, know: 'antique', stage: 3 },
+  { id: 'scarf', name: '闇色のリボン', genre: 'ブランドスカーフ', ext: 3110, kind: 'staple', retail: 45000, size: 'S', demand: 1.4, base: 0.95, fakeRisk: 0.45, know: 'fashion', stage: 3 },
+  { id: 'moai', name: '財宝ゴールデンモアイ', genre: '美術品・彫刻', ext: 5106, kind: 'luxury', retail: 2500000, size: 'L', demand: 0.3, base: 1.4, fakeRisk: 0.4, know: 'art', stage: 4 },
   { id: 'queen_watch', name: '王妃の黄金時計', genre: '高級腕時計', ext: 5111, kind: 'luxury', retail: 1280000, size: 'S', demand: 0.45, base: 1.55, fakeRisk: 0.5 },
 ];
 
@@ -77,6 +85,13 @@ const DESC = {
   hina: '雛人形。季節もので、3月を過ぎると売れなくなる。',
   choux: '催事限定スイーツ。賞味期限があり、すぐ売らないと傷む。',
   kaeru: '謎のブームで大人気のぬいぐるみ。ブームはある日突然終わる。',
+  art_print: '人気作家の限定版画。真贋の見極めが命。ジャンルの知識がないと手が出せない。',
+  retro_pc: '往年の名機。動作品はコレクターに高く売れる。',
+  rocking: 'アンティークの揺り椅子。大きくて置き場所を取るが、店舗の目玉になる。',
+  harp_box: '貴婦人がハープを弾く精巧なオルゴール。状態で値段が大きく変わる。',
+  lacquer: '伝統工芸の重箱。外国人観光客に人気がある。',
+  scarf: 'ブランドのスカーフ。回転は速いが、偽物も多い。',
+  moai: '黄金の彫刻。美術品の世界では、桁がひとつ違う。',
   queen_watch: '高級腕時計。正規店でまれに定価で買える。資産として持つ人も多い。',
 };
 for (const p of PRODUCTS) p.desc = DESC[p.id] || p.genre;
@@ -94,6 +109,12 @@ export const SIZE_INFO = {
 export function shippingCost(product) {
   const base = SIZE_INFO[product.size].ship;
   return product.retail >= 100000 ? Math.max(base, 1500) : base;
+}
+
+// 販路ごとの送料（アマクリは倉庫から・裏市場は手渡しで0、海外ECは3倍）
+export function shipFor(platform, product) {
+  if (platform === 'ama' || platform === 'black') return 0;
+  return shippingCost(product) * (platform === 'exp' ? 3 : 1);
 }
 
 export const productImage = (product) => `assets/extensions/${product.ext}.png`;

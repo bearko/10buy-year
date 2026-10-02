@@ -761,3 +761,14 @@ body.loot-show #side { display: none !important; }
 .rt-line input { width: 100%; accent-color: var(--gold); }
 .rt-line b { text-align: right; color: var(--gold); }
 .rt-btns { display: grid; grid-template-columns: 1fr 1.6fr; gap: 8px; margin-top: 14px; }
+
+.sh-item.unknown .sh-img { background: repeating-linear-gradient(45deg, #e6e6ec 0 10px, #dcdce4 10px 20px); display: grid; place-items: center; }
+.sh-q { font: 700 64px/1 'Orbitron', sans-serif; color: #b0b0bc; }
+
+/* TOKU（徳） */
+.chip.toku { font-family: 'Orbitron', var(--font); font-size: 10px; }
+.chip.toku.high { background: #1f3a2a; color: #b7f5c9; }
+.chip.toku.low { background: #3a1f24; color: #ffb3b3; }
+.chip.toku.dark { background: #2a0a0a; color: #ff4d4d; border: 1px solid #b91c1c; }
+
+.menu-main .shop-btn { grid-column: 1 / -1; border-color: var(--gold); }

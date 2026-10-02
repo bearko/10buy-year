@@ -6,9 +6,11 @@ import { beforeRelease, estimate, estimateUpcoming, inBoom, inPreSale, isRelease
 import { woy, yearOf } from './calendar.js';
 import { perk } from './perks.js';
 import { buildListing } from './listing.js';
+import { knowsGenre, unknownGenres } from './courses.js';
 
 let oidSeq = 1;
-const byKind = (kind) => PRODUCTS.filter((p) => p.kind === kind);
+// 新ジャンル（know）はここでは除き、genreOffer で知っているものだけ出す
+const byKind = (kind) => PRODUCTS.filter((p) => p.kind === kind && !p.know);
 // 定価10万円以上の高額品は、ステージ2になるまで仕入れ候補に出てこない（序盤の一攫千金を防ぐ）
 const affordableTier = (s, p) => p.retail < 100000 || s.stage >= 2;
 const round10 = (v) => Math.max(10, Math.round(v / 10) * 10);
@@ -121,9 +123,10 @@ export function storeOffers(s) {
       make: () => makeOffer(s, 'jewel', { source: 'luxury', label: 'ショーウィンドウの憧れの品', price: productOf('jewel').retail, maxQty: 1, scarce: true, brandNew: true }),
     },
   ];
+  gens.push(genreGen(s, 'used', 0.6, 0.85));
   const offers = generate(s, gens, n);
   if (!s.stats.purchases) offers.unshift(firstWagon(s));
-  return offers;
+  return withUnknown(s, offers);
 }
 
 // 初めての店舗せどりでは、わかりやすく利益の出るワゴン品を必ず1つ出す
@@ -163,7 +166,7 @@ export function onlineOffers(s) {
     {
       weight: hasLicense(s) && hasSkill(s, 'src_flea') ? 2.5 : 0,
       make: () => {
-        const cands = PRODUCTS.filter((p) => isReleased(s, p) && ['hype', 'collect', 'boom'].includes(p.kind) && affordableTier(s, p));
+        const cands = PRODUCTS.filter((p) => isReleased(s, p) && ['hype', 'collect', 'boom'].includes(p.kind) && affordableTier(s, p) && knowsGenre(s, p));
         const p = pick(s, cands);
         return makeOffer(s, p.id, {
           source: 'flea',
@@ -177,7 +180,7 @@ export function onlineOffers(s) {
     {
       weight: 1.5,
       make: () => {
-        const cands = PRODUCTS.filter((p) => isReleased(s, p) && (p.kind === 'hype' || inBoom(s, p.id) || p.kind === 'luxury') && affordableTier(s, p));
+        const cands = PRODUCTS.filter((p) => isReleased(s, p) && (p.kind === 'hype' || inBoom(s, p.id) || p.kind === 'luxury') && affordableTier(s, p) && knowsGenre(s, p));
         if (!cands.length) return null;
         const p = pick(s, cands);
         return makeOffer(s, p.id, {
@@ -190,9 +193,10 @@ export function onlineOffers(s) {
       },
     },
   ];
+  gens.push(genreGen(s, 'flea', 0.65, 0.9));
   const offers = generate(s, gens, n);
   for (const o of offers) if (o.price === 0) o.price = productOf(o.pid).retail;
-  return offers;
+  return withUnknown(s, offers);
 }
 
 function generate(s, gens, n) {
@@ -227,7 +231,7 @@ export function queueTargets(s) {
 }
 
 export function queueSuccessRate(s, crowd = 1) {
-  let r = 0.35 + s.abilities.buy / 250 + (hasSkill(s, 'early_bird') ? 0.25 : 0) + (s.mood - 2) * 0.03;
+  let r = 0.35 + s.abilities.buy / 250 + (hasSkill(s, 'early_bird') ? 0.25 : 0) + (hasSkill(s, 'dk_crew') ? 0.3 : 0) + (s.mood - 2) * 0.03;
   return Math.max(0.05, Math.min(0.95, r / crowd));
 }
 
@@ -263,7 +267,7 @@ export function giftOffer(s, pid, fields) {
 // ---- 業者オークション（古物商だけが参加できる市場）----
 export function auctionOffers(s) {
   const n = 4 + Math.floor(s.abilities.buy / 30);
-  const pool = PRODUCTS.filter((p) => (['collect', 'luxury'].includes(p.kind) || (p.kind === 'hype' && isReleased(s, p))) && affordableTier(s, p));
+  const pool = PRODUCTS.filter((p) => (['collect', 'luxury'].includes(p.kind) || (p.kind === 'hype' && isReleased(s, p))) && affordableTier(s, p) && knowsGenre(s, p));
   const gens = pool.map((p) => ({
     weight: p.kind === 'collect' ? 3 : 1,
     make: () => makeOffer(s, p.id, {
@@ -291,4 +295,31 @@ export function wholesaleOffers(s) {
     }),
   }));
   return generate(s, gens, n);
+}
+
+// ---- ステージ3以降の新ジャンル ----
+function genreGen(s, source, lo, hi) {
+  const known = PRODUCTS.filter((p) => p.know && knowsGenre(s, p));
+  return {
+    weight: known.length ? 2 : 0,
+    make: () => {
+      const p = pick(s, known);
+      return makeOffer(s, p.id, {
+        source,
+        label: source === 'used' ? 'リサイクルショップの掘り出し物' : 'フリマで相場より安い出品',
+        price: roundPrice(priceOf(s, p.id) * randRange(s, lo, hi)),
+        maxQty: 1,
+        fakeRate: p.fakeRisk * 0.35,
+      });
+    },
+  };
+}
+
+// 知らないジャンルが並んでいることだけ見せる（買えない）
+function withUnknown(s, offers) {
+  const unk = unknownGenres(s);
+  if (!unk.length || !chance(s, 0.6)) return offers;
+  const [g, name] = pick(s, unk);
+  offers.push({ oid: oidSeq++, unknown: true, genreName: name, know: g, pid: 'novice_book', price: 0, est: 0, maxQty: 0, label: '未知のジャンル' });
+  return offers;
 }

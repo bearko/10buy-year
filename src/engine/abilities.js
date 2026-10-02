@@ -1,6 +1,6 @@
 import { CAPSTONE_NEED, SKILLS, SKILL_MAP, TREE_NODES } from '../data/skills.js';
 import { mainRoutes, perk, routeCounts } from './perks.js';
-import { giveSkill, removeSkill } from './effects.js';
+import { addToku, giveSkill, removeSkill } from './effects.js';
 
 export const EXP_TYPES = [
   { id: 'info', name: '情報' },
@@ -110,6 +110,9 @@ export function nodeBlockers(s, skillId) {
   if (sk.kind === 'gold' && !(s.hints[skillId] > 0)) out.push('偉人からコツを教わる必要がある');
   // 基礎能力の前提：パネルだけでなく、能力そのものを育てる意味を持たせる
   for (const [k, v] of Object.entries(sk.need || {})) if (s.abilities[k] < v) out.push(`${ABILITY_NAME[k]}${v}以上（いま${s.abilities[k]}）`);
+  // TOKU（徳）：正道は高くないと、魔道は低くないと取れない。裏の人間は正道を歩めない
+  if (sk.toku?.min !== undefined) out.push(...(s.underworld ? ['裏の人間には歩めない道'] : (s.toku ?? 100) < sk.toku.min ? [`TOKU${sk.toku.min}以上（いま${Math.round(s.toku ?? 100)}）`] : []));
+  if (sk.toku?.max !== undefined && !s.underworld && (s.toku ?? 100) >= sk.toku.max) out.push(`TOKU${sk.toku.max}未満（いま${Math.round(s.toku ?? 100)}）`);
   // 序盤は選択肢を絞る：売上・仕入れの実績やチュートリアルの進み具合で、各ルートの入口が順に開く
   for (const g of sk.gate || []) {
     if (g.flag && !s.flags[g.flag]) out.push(g.label);
@@ -164,6 +167,7 @@ export function grantSkill(s, skillId) {
   }
   giveSkill(s, skillId);
   applyGrant(s, sk.grant);
+  if (sk.tokuDelta) addToku(s, sk.tokuDelta);
 }
 
 // パネルを取ったときに、そのまま上がるパラメータ（基礎能力・体力の上限）

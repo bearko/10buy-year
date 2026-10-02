@@ -12,10 +12,28 @@ export const PLATFORMS = {
   merc: { id: 'merc', node: 'ch_punsea', name: 'プンシー', fee: 0.1, desc: 'フリマ。手数料10%。値付け次第ですぐ売れるが、値下げ交渉とトラブルが多い' },
   auc: { id: 'auc', node: 'ch_miime', name: 'ミィーム', fee: 0.1, desc: 'オークション。手数料10%。1週間で落札。コレクター品は競り上がりやすいが、入札ゼロもある' },
   ama: { id: 'ama', node: 'ch_amacri', name: 'アマクリ', fee: 0.15, perUnit: 300, desc: '大手EC・倉庫委託。手数料15%＋納品料300円/個。新品だけ出品でき、買い手が多く発送の手間がない' },
+  exp: { id: 'exp', cert: 'export', name: '海外EC', fee: 0.13, desc: '海外のECサイト。手数料13%、送料3倍。為替で売値が変わり、円安の週は高く売れる' },
+  black: { id: 'black', underworld: true, name: '裏市場', fee: 0.2, desc: '裏のサービス。仲介料20%。表の数倍の値で売れるが、表の人間には使えない' },
 };
 
+// その販路が使えるか（表の販路はスキル・資格、裏市場は裏の人間だけ）
+export function platformOpen(s, pf) {
+  if (s.underworld) return !!pf.underworld;
+  if (pf.underworld) return false;
+  if (pf.cert) return !!s.certs?.includes(pf.cert);
+  return hasSkill(s, pf.node);
+}
+
+// 販路ごとの売値の倍率（海外ECは為替、裏市場は表の数倍）
+export function platformMult(s, platform) {
+  if (platform === 'exp') return s.fx || 1;
+  if (platform === 'black') return 2.5 * (hasSkill(s, 'cap_dark') ? 1.2 : 1);
+  return 1;
+}
+
 export function feeRate(s, platform = 'merc') {
-  const base = PLATFORMS[platform]?.fee ?? 0.1;
+  // 保護観察中（足を洗った直後）は表の販路の手数料が高い
+  const base = (PLATFORMS[platform]?.fee ?? 0.1) + (s.probation > 0 && platform !== 'black' ? 0.08 : 0);
   return hasSkill(s, 'tenka') ? base - 0.03 : base;
 }
 
@@ -26,7 +44,7 @@ export function platformFee(s, platform, price) {
 // その在庫を出品できる販路
 export function platformsFor(s, u) {
   return Object.values(PLATFORMS).filter((pf) => {
-    if (!hasSkill(s, pf.node)) return false;
+    if (!platformOpen(s, pf)) return false;
     if (pf.id === 'ama' && (u?.used || u?.home || u?.damaged)) return false;
     return true;
   });

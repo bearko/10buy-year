@@ -1,7 +1,7 @@
 // 週に1〜2回選ぶ「行動」。育成シミュレーションの「練習メニュー」にあたる。
 import { productOf } from '../data/products.js';
 import { chance, pick, randInt } from './rng.js';
-import { addCash, addExp, addHate, addMood, addStamina, clamp, flag, hasSkill, removeSkill, setFlag, yen } from './effects.js';
+import { addCash, addExp, addHate, addMood, addStamina, addToku, clamp, flag, hasSkill, removeSkill, setFlag, yen } from './effects.js';
 import { auctionOffers, lotteryEntries, lotteryWinRate, onlineOffers, openLotteries, queueOffer, queueSuccessRate, queueTargets, storeOffers, wholesaleOffers } from './offers.js';
 import { addExpense, addHours } from './kpi.js';
 import { perk } from './perks.js';
@@ -10,6 +10,7 @@ import { inBoom, priceOf } from './market.js';
 import { addUnits, overCapacity } from './inventory.js';
 import { drawEvents } from './events.js';
 import { attendCourse, courseAvailable } from './courses.js';
+import { openShopSteps } from './mystore.js';
 import { bg, choice, gain, info, items, narr, offers, sfx, talk } from './steps.js';
 
 const E = (id) => `assets/extensions/${id}.png`;
@@ -40,6 +41,8 @@ export const COMMANDS = [
   { id: 'rest', group: 'rest', icon: I('sleep.png'), name: '休む', desc: '一日中寝る', stamina: 0, heal: 45, exp: {}, hours: 0, bg: 'home' },
   { id: 'clinic', group: 'out', icon: I('resurrection.png'), name: '通院・治療', desc: '病院・整骨院でケガや体調不良を治す（治療費あり）', stamina: -10, exp: { mind: 2 }, hours: 3, bg: 'study' },
   { id: 'course', group: 'out', icon: E(4016), name: '資格講座に通う', desc: '受講料を払って通い、資格を取る（ステージ2から）', stamina: 12, exp: { act: 8, mind: 10, info: 6 }, hours: 4, bg: 'study' },
+  { id: 'open_shop', group: 'out', icon: E(3170), name: '店を開く', desc: '立地を選んで自分の店を開く（店舗経営講座の修了が必要）', stamina: 10, exp: { social: 10, info: 6 }, hours: 6, bg: 'event' },
+  { id: 'donate', group: 'out', icon: I('resurrection.png'), name: '寄付・地域の手伝い', desc: '寄付や地域のイベントの手伝いで徳を積む（TOKUが上がる・ステージ2から）', stamina: 8, exp: { social: 6, mind: 4 }, hours: 4, bg: 'event' },
   { id: 'card_up', group: 'out', icon: I('cp.png'), name: 'カード増枠の申請', desc: 'カード会社に利用枠の引き上げを申し込む。審査あり', stamina: 3, exp: { mind: 2 }, hours: 1, bg: 'study' },
   { id: 'license', group: 'out', icon: E(4016), node: 'license', name: '古物商許可を申請', desc: '警察署へ。許可まで約6週間', stamina: 8, exp: { info: 5, mind: 3 }, cost: 19000, hours: 3, bg: 'study' },
 ];
@@ -64,6 +67,8 @@ export function availableCommands(s) {
     if (c.id === 'parttime') return !s.fulltime;
     if (c.id === 'clinic') return ailments(s).length > 0;
     if (c.id === 'course') return courseAvailable(s);
+    if (c.id === 'open_shop') return !s.shop && !!s.certs?.includes('store_mgmt') && !s.underworld;
+    if (c.id === 'donate') return s.stage >= 2 && !s.underworld;
     if (c.id === 'card_up') return nextCardTier(s) !== null && s.week >= (flag(s, 'cardApplied') ?? -99) + 8;
     return true;
   });
@@ -219,7 +224,10 @@ const HANDLERS = {
         {
           label: '捨てアカを量産して応募（+6口）',
           sub: '規約違反',
-          run: () => [talk('mine', '……それ、完全に規約違反よ。バレたら当選取り消しじゃ済まないかも。', 'arms'), ...register('multi', 6)],
+          run: () => {
+            addToku(s, -4);
+            return [talk('mine', '……それ、完全に規約違反よ。バレたら当選取り消しじゃ済まないかも。', 'arms'), ...register('multi', 6)];
+          },
         },
       ]),
     ];
@@ -227,14 +235,14 @@ const HANDLERS = {
   queue(s) {
     const targets = queueTargets(s);
     if (!targets.length) {
-      addHate(s, 1);
+      addHate(s, 1, false);
       return [narr('早朝から家電量販店の開店待ちに並んでみた…が、今日は目玉商品がなかった。'), talk('chris', '情報収集不足だった…。「相場」画面のニュースを見てから並ぶべきだった。', 'sad')];
     }
     const t = targets[0];
     const p = productOf(t.pid);
     const crowd = p.kind === 'perishable' ? 0.9 : inBoom(s, p.id) ? 1.3 : 1.1;
     const rate = queueSuccessRate(s, crowd);
-    addHate(s, 3);
+    addHate(s, 3, false);
     const steps = [narr(`${t.reason}の「${p.name}」を狙って、始発で店へ向かった。すでに長い列ができている…。`)];
     if (chance(s, rate)) {
       const qty = hasSkill(s, 'early_bird') && chance(s, 0.5) ? 2 : 1;
@@ -284,8 +292,27 @@ const HANDLERS = {
     if (s.sick > 0) s.sick--;
     return lines;
   },
+  open_shop(s) {
+    return openShopSteps(s);
+  },
   course(s) {
     return attendCourse(s);
+  },
+  donate(s) {
+    const give = (amount, toku, line) => () => {
+      if (s.cash < amount) return [talk('chris', `寄付するお金が足りない…（${yen(amount)}必要）`, 'sad')];
+      if (amount) addExpense(s, amount, '寄付');
+      addToku(s, toku);
+      return [narr(line), info('徳を積んだ', [`TOKU +${toku}（いま ${Math.round(s.toku)}）`], 'good')];
+    };
+    return [
+      talk('chris', '稼がせてもらってる分、少しは世の中に返さないとな…。'),
+      choice([
+        { label: '地域のイベントを手伝う（無料）', sub: 'TOKU +2', run: give(0, 2, '商店街のお祭りで、テントの設営と片付けを手伝った。「助かったよ、兄ちゃん」') },
+        { label: `子ども食堂に寄付する（${yen(100000)}）`, sub: 'TOKU +3', run: give(100000, 3, '近所の子ども食堂に寄付をした。お礼の手紙が届いた。') },
+        { label: `災害の義援金を送る（${yen(1000000)}）`, sub: 'TOKU +15', run: give(1000000, 15, '被災地へ義援金を送った。名前は出さないでほしいと伝えた。') },
+      ]),
+    ];
   },
   clinic(s) {
     const list = ailments(s);

@@ -2,7 +2,7 @@
 // 外注はお金を払って体力を使わない分、ルーティンは自分の手で回す分（出品の体力を使う）
 import { productOf, shippingCost, SIZE_INFO } from '../data/products.js';
 import { hasSkill } from './effects.js';
-import { activeUnits, buy, capacity, cardAvailable, feeRate, listUnits, platformsFor, sellToBuyer, spaceUsed } from './inventory.js';
+import { activeUnits, buy, capacity, cardAvailable, feeRate, listUnits, platformMult, platformsFor, sellToBuyer, spaceUsed } from './inventory.js';
 import { estimateUnit } from './market.js';
 import { suspicion } from './listing.js';
 import { bestPlatform, reserveNeeded } from './automation.js';
@@ -63,7 +63,7 @@ export function routineList(s, cfg = routineCfg(s)) {
     const pf = cfg.market !== 'auto' && ok.includes(cfg.market) ? cfg.market : bestPlatform(s, u);
     if (!pf) continue;
     const est = estimateUnit(s, u);
-    n += listUnits(s, [u.uid], pf, Math.max(100, est * cfg.mult * (pf === 'auc' ? 0.75 : 1)));
+    n += listUnits(s, [u.uid], pf, Math.max(100, est * platformMult(s, pf) * cfg.mult * (pf === 'auc' ? 0.75 : 1)));
   }
   return n;
 }
