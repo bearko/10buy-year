@@ -744,3 +744,20 @@ body.loot-show #side { display: none !important; }
 .gp-mine { display: flex; align-items: center; gap: 8px; text-align: left; padding: 8px; margin-bottom: 12px; background: #0006; border-radius: 10px; font-size: 13px; }
 .gp-mine img { width: 44px; height: 44px; object-fit: cover; object-position: top; image-rendering: pixelated; }
 .gp-go { width: 100%; }
+
+/* 基礎能力：効果の予告とランクアップ */
+.ab-fx { display: flex; flex-direction: column; gap: 1px; margin-top: 3px; font-size: 11px; color: var(--t-ink2); }
+.ab-fx b { color: var(--t-ink); font-weight: normal; }
+.ab-fx em { font-style: normal; color: var(--t-ok); }
+.rank-up { position: absolute; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; background: radial-gradient(circle, #f5c54244, transparent 60%); animation: rank-in 1.5s ease-out forwards; }
+.rank-up small { font-family: 'Orbitron', monospace; letter-spacing: 0.3em; color: #F5C542; font-size: 14px; }
+.rank-up b { font-family: 'Orbitron', monospace; font-size: 120px; line-height: 1; color: #fff; text-shadow: 0 0 30px #F5C542, 0 0 60px #F5C54288; animation: cel-pop 0.5s cubic-bezier(0.2, 1.6, 0.4, 1); }
+@keyframes rank-in { 0% { opacity: 0; } 10%, 75% { opacity: 1; } 100% { opacity: 0; } }
+
+/* ルーティン設定 */
+.rt-seg { flex-wrap: wrap; margin: 4px 0 6px; }
+.rt-l { display: block; color: var(--muted); font-size: 11px; margin-top: 4px; }
+.rt-line { display: grid; grid-template-columns: 1fr 5em; align-items: center; gap: 8px; }
+.rt-line input { width: 100%; accent-color: var(--gold); }
+.rt-line b { text-align: right; color: var(--gold); }
+.rt-btns { display: grid; grid-template-columns: 1fr 1.6fr; gap: 8px; margin-top: 14px; }

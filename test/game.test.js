@@ -194,7 +194,8 @@ test('序盤は行動が絞られていて、チュートリアルで順に解�
 });
 
 // 序盤の制限をすべて外す（ツリーの仕組みだけを確かめるテスト用）
-function openTree(s) {
+function openTree(s, { abilities = 99 } = {}) {
+  s.abilities = { eye: abilities, buy: abilities, list: abilities, talk: abilities, pack: abilities };
   s.skills.push('src_home');
   s.flags.tutorialDone = true;
   s.stats.soldUnits = 99;
@@ -340,7 +341,7 @@ test('仕入れ画面：偽物かどうかは直接書かず、手がかりと�
 
 test('段階的に強化するパネル：レベルごとに効果が重なり、パラメータも上がる', () => {
   const s = createGame(22);
-  openTree(s);
+  openTree(s, { abilities: 50 });
   s.exp = { info: 9999, act: 9999, tech: 9999, social: 9999, mind: 9999 };
   s.skills.push('src_store', 'src_online');
   const offers0 = perk(s, 'storeOffers');
@@ -414,4 +415,55 @@ test('会話ログは最大300件で古いものから消える', async () => {
   for (let i = 0; i < LOG_MAX + 20; i++) pushLog(s, { who: 'mine', text: `#${i}`, kind: 'talk' }, false);
   assert.equal(s.log.length, LOG_MAX);
   assert.equal(s.log[0].text, '#20');
+});
+
+test('基礎能力：主要なパネルには能力の前提があり、効果は数値で見える', async () => {
+  const { abilityEffects } = await import('../src/engine/abilityfx.js');
+  const s = createGame(28);
+  openTree(s, { abilities: 20 });
+  s.exp = { info: 9999, act: 9999, tech: 9999, social: 9999, mind: 9999 };
+  s.skills.push('eye_market');
+  assert.equal(nodeState(s, 'eye_fake'), 'locked', '目利き30が必要');
+  s.abilities.eye = 30;
+  assert.equal(nodeState(s, 'eye_fake'), 'available');
+  const lo = abilityEffects(s, 'eye', 20)[0].value;
+  const hi = abilityEffects(s, 'eye', 80)[0].value;
+  assert.notEqual(lo, hi, '目利きを上げると誤差が変わる');
+});
+
+test('ルーティン：ルールに合う候補だけ仕入れ、すぐ出品し、売れ残りは値下げ・即決買取', async () => {
+  const { routineBuy, routineList, routineStale, DEFAULT_ROUTINE } = await import('../src/engine/routine.js');
+  const s = createGame(29);
+  s.cash = 1_000_000;
+  const cfg = { ...DEFAULT_ROUTINE, minMargin: 0.15, maxQty: 2, dumpWeeks: 6 };
+  const good = { oid: 1, pid: 'boots', price: 6000, est: 12000, maxQty: 5, points: 0, fakeRate: 0 };
+  const thin = { oid: 2, pid: 'scroll', price: 5400, est: 5600, maxQty: 5, points: 0, fakeRate: 0 };
+  const got = routineBuy(s, [good, thin], cfg);
+  assert.deepEqual(got.map((x) => [x.pid, x.qty]), [['boots', 2]], '利益率の低い候補は買わず、最大個数を守る');
+  assert.equal(routineList(s, cfg), s.inventory.filter((u) => !u.listing || u.listing).length);
+  assert.ok(s.inventory.every((u) => u.listing), 'すぐ出品する');
+  const before = s.inventory.find((u) => u.pid === 'boots').listing.price;
+  s.week += cfg.cutWeeks;
+  const r = routineStale(s, cfg);
+  assert.ok(r.cut > 0 && s.inventory.find((u) => u.pid === 'boots').listing.price < before, '売れ残りを値下げ');
+  s.week += 10;
+  const r2 = routineStale(s, cfg);
+  assert.ok(r2.dumped > 0 && !s.inventory.some((u) => u.pid === 'boots'), '長く売れなければ即決買取');
+});
+
+test('資格講座：受講料を払って通い、酒類販売業免許でお酒をまた出品できる', () => {
+  const s = createGame(30);
+  s.stage = 2;
+  s.cash = 500_000;
+  s.flags.noAlcohol = 1;
+  assert.ok(availableCommands(s).some((c) => c.id === 'course'));
+  const steps = performCommand(s, 'course');
+  const ch = steps.find((x) => x.t === 'choice');
+  const idx = ch.options.findIndex((o) => o.label.startsWith('酒類販売業免許'));
+  ch.options[idx].run();
+  assert.equal(s.course.done, 1);
+  for (let i = 0; i < 3; i++) performCommand(s, 'course');
+  assert.ok(s.certs.includes('liquor'));
+  assert.ok(!s.flags.noAlcohol, 'お酒を出品できる');
+  assert.equal(s.course, null);
 });

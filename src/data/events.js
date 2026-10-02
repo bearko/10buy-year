@@ -454,7 +454,7 @@ export const EVENTS = [
     id: 'alcohol_warning',
     trigger: 'weekStart',
     chance: 1,
-    cond: (s) => s.stats.alcoholSold >= 3,
+    cond: (s) => s.stats.alcoholSold >= 3 && !s.certs?.includes('liquor'),
     play: (s) => {
       setFlag(s, 'noAlcohol');
       s.inventory.forEach((u) => {

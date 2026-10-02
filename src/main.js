@@ -23,14 +23,18 @@ import { groupItems, showItems } from './ui/loot.js';
 import { celebrate, goalPopup } from './ui/goal.js';
 import { logModal, pushLog } from './ui/log.js';
 import { offersModal } from './ui/shop.js';
+import { routineModal } from './ui/routine.js';
+import { routineBuy, routineList, routineListStamina, routineStale } from './engine/routine.js';
+import { addStamina } from './engine/effects.js';
 import { inventoryModal, marketModal, salesModal } from './ui/trade.js';
 
-const AUTO_WEEKS = 4;
 let state = null;
 let busy = false;
 let speed = 22;
 let autoWeeks = 0;
 let autoCmd = null;
+// ルーティン実行中の記録（始めたときの成績と、週ごとのまとめ）
+let routineRun = null;
 try {
   const v = window.localStorage.getItem('10buy-year:speed');
   if (v !== null) speed = Number(v);
@@ -66,8 +70,9 @@ async function playSteps(steps) {
         await flashGain(st.exp);
         break;
       case 'choice': {
-        if (isAuto()) toast('オートを止めた。それまでの出来事は「ログ」で読み返せる');
+        if (isAuto()) toast('ルーティンを止めた。それまでの出来事は「ログ」で読み返せる');
         stopAuto(); // 選択肢はプレイヤーが決める
+        await endRoutine();
         const idx = await choose(st.options, st.prompt);
         queue.unshift(...(st.options[idx].run() || []));
         break;
@@ -76,6 +81,7 @@ async function playSteps(steps) {
         if (hasSkill(state, 'out_buy') && state.settings.autoBuy) st.autoBought = autoBuy(state, st.offers);
         if (isAuto()) {
           if (st.autoBought?.length) toast(`外注が${st.autoBought.length}件を仕入れた`, 'good');
+          if (routineRun) routineRun.week.bought.push(...routineBuy(state, st.offers, routineRun.cfg));
         } else {
           const got = await offersModal(state, st, refresh);
           refresh();
@@ -147,6 +153,43 @@ function refresh() {
   if (!document.body.classList.contains('gain-flash')) renderParams(state);
   renderTicker(state);
   renderTabs();
+}
+
+// ---------------- ルーティン ----------------
+const emptyRoutineWeek = () => ({ bought: [], listed: 0, cut: 0, dumped: 0, dumpTotal: 0 });
+
+function startRoutine(cfg) {
+  const st = state.stats;
+  routineRun = { cfg, weeks: 0, start: { sold: st.soldUnits, revenue: st.revenue, bought: st.boughtUnits, spent: st.spent }, week: emptyRoutineWeek() };
+}
+
+// 週ごとの1行まとめをログに残す
+function logRoutineWeek() {
+  const w = routineRun.week;
+  if (w.logged) return;
+  w.logged = true;
+  routineRun.weeks++;
+  const units = w.bought.reduce((a, x) => a + x.qty, 0);
+  const cost = w.bought.reduce((a, x) => a + x.cost, 0);
+  const parts = [`${COMMAND_MAP[routineRun.cfg.cmd].name}：${units}点仕入れ ${yenFmt(cost)}`, `出品 ${w.listed}件`];
+  if (w.cut) parts.push(`値下げ ${w.cut}件`);
+  if (w.dumped) parts.push(`即決買取 ${w.dumped}点 ${yenFmt(w.dumpTotal)}`);
+  pushLog(state, { who: 'ルーティン', text: parts.join('／'), kind: 'info' }, true);
+}
+
+// 終わったら、期間のまとめを見せる
+async function endRoutine() {
+  if (!routineRun) return;
+  logRoutineWeek(); // 途中で止まった週も記録する
+  const r = routineRun;
+  routineRun = null;
+  const st = state.stats;
+  await showInfo('ルーティンのまとめ', [
+    `${r.weeks}週・${COMMAND_MAP[r.cfg.cmd].name}`,
+    `仕入れ ${st.boughtUnits - r.start.bought}点（${yenFmt(st.spent - r.start.spent)}）`,
+    `売れた ${st.soldUnits - r.start.sold}点（売上 ${yenFmt(st.revenue - r.start.revenue)}）`,
+    '週ごとの記録は「ログ」で見られる',
+  ], 'good');
 }
 
 // ---------------- コマンド ----------------
@@ -242,19 +285,22 @@ function waitForCommand(mode) {
       } else {
         head.append(h('span', {}, night ? '夜' : `今週${count}`));
       }
-      if (!night && !group && hasSkill(state, 'routine') && state.lastCommand && cmds.some((c) => c.id === state.lastCommand)) {
-        const last = COMMAND_MAP[state.lastCommand];
+      if (!night && !group && hasSkill(state, 'routine')) {
         head.append(h('button', {
           class: 'cmd-auto',
-          title: `「${last.name}」を${AUTO_WEEKS}週くり返す（選択肢で止まる）`,
-          onclick: () => {
+          title: '仕入れ→出品→売却→値下げのサイクルを回す',
+          onclick: async () => {
             if (busy) return;
-            autoWeeks = AUTO_WEEKS;
-            autoCmd = last.id;
+            const cfg = await routineModal(state);
+            if (!cfg) return;
+            state.routine = cfg;
+            autoWeeks = cfg.weeks;
+            autoCmd = cfg.cmd;
+            startRoutine(cfg);
             setAuto(true);
-            pickCmd(last.id);
+            pickCmd(cmds.some((c) => c.id === cfg.cmd) ? cfg.cmd : 'rest');
           },
-        }, `⟳ ${last.name}×${AUTO_WEEKS}`));
+        }, '⟳ ルーティン'));
       }
       nav.append(head);
 
@@ -385,6 +431,7 @@ async function loop() {
   while (!state.over) {
     if (state.phase === 'weekStart') {
       drawIdleCommands();
+      if (routineRun) routineRun.week = { ...emptyRoutineWeek(), ...routineStale(state, routineRun.cfg) };
       await playSteps(startWeek(state));
       await tutorialStep();
       saveGame(state);
@@ -396,6 +443,12 @@ async function loop() {
       state.actionsLeft--;
       await playSteps(performCommand(state, cmd));
       await tutorialStep();
+      if (routineRun) {
+        const n = routineList(state, routineRun.cfg);
+        routineRun.week.listed += n;
+        if (n) addStamina(state, -routineListStamina(state, n));
+        refresh();
+      }
     }
     if (state.nightLeft > 0 && state.sick <= 0 && !state.over) {
       const cmd = await nextCommand('night');
@@ -407,7 +460,11 @@ async function loop() {
     }
     await playSteps(endWeek(state));
     await tutorialStep();
-    if (autoWeeks > 0 && --autoWeeks === 0) setAuto(false);
+    if (routineRun) logRoutineWeek();
+    if (autoWeeks > 0 && --autoWeeks === 0) {
+      setAuto(false);
+      await endRoutine();
+    }
   }
   stopAuto();
   clearSave();
