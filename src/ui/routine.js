@@ -1,7 +1,6 @@
 // ルーティンの設定画面。仕入れ・出品・売れ残りのルールを決めて、何週回すかを選ぶ
 import { COMMAND_MAP, availableCommands } from '../engine/commands.js';
-import { PLATFORMS } from '../engine/inventory.js';
-import { hasSkill } from '../engine/effects.js';
+import { PLATFORMS, platformOpen } from '../engine/inventory.js';
 import { DEFAULT_ROUTINE, ROUTINE_CMDS, routineCfg } from '../engine/routine.js';
 import { h } from './dom.js';
 import { openModal } from './modal.js';
@@ -18,7 +17,7 @@ export function routineModal(s) {
     const slider = (key, min, max, step, fmt) => h('div', { class: 'rt-line' },
       h('input', { type: 'range', min, max, step, value: String(cfg[key]), oninput: (e) => { cfg[key] = Number(e.target.value); e.target.nextSibling.textContent = fmt(cfg[key]); } }),
       h('b', {}, fmt(cfg[key])));
-    const markets = [['auto', 'おまかせ'], ...Object.values(PLATFORMS).filter((p) => hasSkill(s, p.node)).map((p) => [p.id, p.name])];
+    const markets = [['auto', 'おまかせ'], ...Object.values(PLATFORMS).filter((p) => platformOpen(s, p)).map((p) => [p.id, p.name])];
     body.append(
       h('p', { class: 'note' }, '仕入れ → 出品 → 売却 → 値下げのサイクルを毎週回す。選択肢・トラブルが出たら止まる。'),
       h('div', { class: 'sub' }, '① 仕入れ'),

@@ -70,11 +70,15 @@ export function renderHud(s) {
       staminaBar(s),
       h('div', { class: 'chips' },
         h('span', { class: 'chip', title: 'セラー評価' }, `評価 ${Math.round(s.rating)}`),
-        h('span', { class: `chip ${s.hate >= 50 ? 'warn' : ''}`, title: '炎上度' }, `炎上 ${Math.round(s.hate)}`),
+        s.underworld
+          ? h('span', { class: 'chip toku dark', title: '裏の人間（TOKU のゲージは消えた）' }, '裏')
+          : h('span', { class: `chip toku ${s.toku >= 120 ? 'high' : s.toku < 80 ? 'low' : ''}`, title: 'TOKU（徳）基準100。高いと正道、低いと魔道のパネルが開く' }, `TOKU ${Math.round(s.toku ?? 100)}`),
       ),
     ),
-    s.sick > 0 || s.banWeeks > 0 || s.delinquency > 0
+    s.sick > 0 || s.banWeeks > 0 || s.delinquency > 0 || s.hate >= 50 || s.probation > 0
       ? h('div', { class: 'hud-row chips warn-row' },
+        s.hate >= 50 ? h('span', { class: 'chip warn' }, `炎上中 ${Math.round(s.hate)}`) : null,
+        s.probation > 0 ? h('span', { class: 'chip warn' }, `保護観察 あと${s.probation}週`) : null,
         s.sick > 0 ? h('span', { class: 'chip warn' }, '体調不良') : null,
         s.banWeeks > 0 ? h('span', { class: 'chip warn' }, `プンシー停止${s.banWeeks}週`) : null,
         s.delinquency > 0 ? h('span', { class: 'chip warn' }, `滞納${s.delinquency}`) : null,

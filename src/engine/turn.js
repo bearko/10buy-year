@@ -1,4 +1,5 @@
 // 1週間の進行。startWeek →（行動 × actionsPerWeek）→ endWeek → 次の週 …
+import { shopWeek } from './mystore.js';
 import { productOf } from '../data/products.js';
 import { TOTAL_WEEKS, isMonthEnd, isYearEnd, weekLabel, woy, yearOf } from './calendar.js';
 import { addHate, addStamina, flag, record, setFlag, yen } from './effects.js';
@@ -87,6 +88,9 @@ export function endWeek(s) {
   for (const n of sales.negotiations) steps.push(...negotiationSteps(s, n));
   for (const t of sales.troubles) steps.push(...troubleSteps(s, t));
 
+  const shop = shopWeek(s);
+  if (shop) steps.push(info('自分の店', [`来客 ${shop.visitors}人・${shop.sold}点売れた（${yen(shop.revenue)}）`, shop.bought ? `買取カウンターで${shop.bought}点を買い取った` : ''], shop.sold ? 'good' : 'normal'));
+
   const lot = resolveLotteries(s);
   steps.push(...lot.steps);
   if (lot.wins.length) {
@@ -102,7 +106,7 @@ export function endWeek(s) {
 function closeWeek(s) {
   const steps = [];
   addStamina(s, overCapacity(s) ? 3 : 6);
-  addHate(s, -2);
+  addHate(s, -2, false);
   if (s.banWeeks > 0) s.banWeeks--;
   if (s.amaBan > 0) s.amaBan--;
   if (isMonthEnd(s.week)) steps.push(...monthEnd(s));

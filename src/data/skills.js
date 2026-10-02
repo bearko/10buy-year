@@ -19,12 +19,14 @@
 
 export const ROUTES = [
   { id: 'store', name: '店舗せどり', title: '店舗の鬼', color: '#22C55E', angle: -90, desc: '足で稼ぐ。ワゴン、行列、店ごとのクセ' },
-  { id: 'online', name: '電脳・ポイ活', title: '電脳の覇者', color: '#06B6D4', angle: -38.57, desc: 'ネットとポイントで利益を作る。予約と抽選' },
-  { id: 'vintage', name: '古物・目利き', title: '鑑定士', color: '#A78BFA', angle: 12.86, desc: '中古・ヴィンテージ・真贋。相場を読む目' },
-  { id: 'sales', name: '販路・出品', title: '売れっ子セラー', color: '#EC4899', angle: 64.29, desc: '売り先を増やし、高く早く売る' },
-  { id: 'system', name: '仕組み化', title: '物販会社', color: '#4A8FE8', angle: 115.71, desc: 'ツール・倉庫・外注。自分が動かなくても回る' },
-  { id: 'network', name: '人脈・発信', title: '業界の顔', color: '#F97316', angle: 167.14, desc: '仲間・評価・トラブル対応。そして発信する側へ' },
-  { id: 'manage', name: '経営', title: '経営者', color: '#EAB308', angle: 218.57, desc: '数字を読む。KPI・税金・事業化' },
+  { id: 'online', name: '電脳・ポイ活', title: '電脳の覇者', color: '#06B6D4', angle: -50, desc: 'ネットとポイントで利益を作る。予約と抽選' },
+  { id: 'vintage', name: '古物・目利き', title: '鑑定士', color: '#A78BFA', angle: -10, desc: '中古・ヴィンテージ・真贋。相場を読む目' },
+  { id: 'sales', name: '販路・出品', title: '売れっ子セラー', color: '#EC4899', angle: 30, desc: '売り先を増やし、高く早く売る' },
+  { id: 'system', name: '仕組み化', title: '物販会社', color: '#4A8FE8', angle: 70, desc: 'ツール・倉庫・外注。自分が動かなくても回る' },
+  { id: 'network', name: '人脈・発信', title: '業界の顔', color: '#F97316', angle: 110, desc: '仲間・評価・トラブル対応。そして発信する側へ' },
+  { id: 'manage', name: '経営', title: '経営者', color: '#EAB308', angle: 150, desc: '数字を読む。KPI・税金・事業化' },
+  { id: 'trade', name: '正道・商社', title: '総合商社', color: '#E5E7EB', angle: 190, desc: '徳を積んで、信用で大きくなる。TOKUが高くないと取れない', toku: 'high' },
+  { id: 'dark', name: '魔道', title: '裏社会の帝王', color: '#B91C1C', angle: 230, desc: '利益だけを追う裏の道。安く強いが、引き返せない', toku: 'low' },
 ];
 export const ROUTE_MAP = Object.fromEntries(ROUTES.map((r) => [r.id, r]));
 
@@ -132,6 +134,23 @@ export const SKILLS = [
   { id: 'cap_manage', route: 'manage', parent: 'kpi_pro', depth: 4, lane: 0, kind: 'capstone', name: '経営者の眼', desc: '税額-15%、カードの利用枠+100万円、獲得する経験点+10%', cost: { info: 150, mind: 60 }, need: { talk: 50 }, icon: E(4016) },
   { id: 'div_brand', route: 'manage', parent: 'kpi_pro', depth: 4, lane: 1, kind: 'perk', name: '自社ブランド', desc: 'せどりで掴んだ売れ筋をもとにOEM商品を作る。毎月、評価に応じた利益', cost: { info: 150, tech: 80 }, stage: 4, icon: E(3112) },
 
+  // ---- 正道・商社（TOKU が高いと取れる。健全な事業として大きくなる）----
+  { id: 'tr_fair', route: 'trade', parent: 'src_home', depth: 1, lane: 0, kind: 'perk', name: '公正な取引', desc: '取引トラブル-10%、買い手+5%', cost: { social: 40, mind: 30 }, toku: { min: 110 }, gate: [{ flag: 'tutorialDone', label: 'チュートリアルを終える' }], icon: I('resurrection.png') },
+  { id: 'tr_agent', route: 'trade', parent: 'tr_fair', depth: 2, lane: 0, kind: 'perk', stage: 3, name: '正規代理店契約', desc: 'メーカーの正規代理店に。買い手+10%、高めでも売れやすい', cost: { social: 80, info: 50 }, toku: { min: 120 }, icon: E(1016) },
+  { id: 'tr_credit', route: 'trade', parent: 'tr_fair', depth: 2, lane: 1, kind: 'perk', stage: 3, name: '事業の信用', desc: 'カードの利用枠+200万円、税額-5%', cost: { info: 60, mind: 40 }, toku: { min: 120 }, icon: I('cp.png') },
+  { id: 'tr_staff', route: 'trade', parent: 'tr_agent', depth: 3, lane: 0, kind: 'perk', stage: 4, name: '従業員の育成', desc: '月額費用-15%、獲得する経験点+10%', cost: { social: 100, mind: 60 }, toku: { min: 140 }, icon: H(5008) },
+  { id: 'tr_maker', route: 'trade', parent: 'tr_credit', depth: 3, lane: 1, kind: 'perk', stage: 4, name: 'メーカー直取引の拡大', desc: '店舗・電脳の仕入れ候補+2', cost: { social: 90, info: 70 }, toku: { min: 140 }, icon: E(1058) },
+  { id: 'tr_trust', route: 'trade', parent: 'tr_staff', depth: 4, lane: -1, kind: 'perk', stage: 4, name: '業界の信頼', desc: '評価が下がりにくく、毎月の事業収入+50万円', cost: { social: 120, mind: 80 }, toku: { min: 150 }, icon: E(3112) },
+  { id: 'cap_trade', route: 'trade', parent: 'tr_staff', depth: 4, lane: 0, kind: 'capstone', stage: 5, name: '総合商社', desc: '物販の総合商社へ。毎月の事業収入+150万円、買い手+20%', cost: { social: 200, info: 150 }, toku: { min: 170 }, icon: I('mch_icon.png') },
+
+  // ---- 魔道（TOKU が低いと取れる。安く強いが、取るたびに TOKU が下がる）----
+  { id: 'dk_bot', route: 'dark', parent: 'src_home', depth: 1, lane: 0, kind: 'perk', name: '転売ボット', desc: '抽選の当選率1.5倍、電脳の仕入れ候補+2。TOKU-15', cost: { info: 15 }, toku: { max: 80 }, tokuDelta: -15, icon: I('dbf_int.png') },
+  { id: 'dk_crew', route: 'dark', parent: 'dk_bot', depth: 2, lane: -1, kind: 'perk', name: '並び屋の手配', desc: '行列の成功率が大きく上がり、店舗の仕入れ候補+2。TOKU-15', cost: { act: 15 }, toku: { max: 80 }, tokuDelta: -15, icon: I('dbf_phy.png') },
+  { id: 'dk_names', route: 'dark', parent: 'dk_bot', depth: 2, lane: 1, kind: 'perk', name: '名義の大量取得', desc: '抽選の当選率さらに1.5倍。TOKU-15', cost: { info: 20 }, toku: { max: 80 }, tokuDelta: -15, icon: I('dbf_agi.png') },
+  { id: 'dk_fakes', route: 'dark', parent: 'dk_crew', depth: 3, lane: -1, kind: 'perk', name: '偽物の卸', desc: '毎月の裏の収入+30万円。偽物の手がかりを気にしなくなる。TOKU-15', cost: { social: 20 }, toku: { max: 80 }, tokuDelta: -15, icon: I('poison.png') },
+  { id: 'dk_stolen', route: 'dark', parent: 'dk_names', depth: 3, lane: 1, kind: 'perk', name: '盗品の買い取り', desc: '中古の仕入れ値-30%。TOKU-15', cost: { act: 20 }, toku: { max: 80 }, tokuDelta: -15, icon: I('bleed.png') },
+  { id: 'cap_dark', route: 'dark', parent: 'dk_fakes', depth: 4, lane: 0, kind: 'capstone', name: '裏社会の帝王', desc: '裏の人間になる（TOKUのゲージが消える）。裏市場の売値がさらに上がり、毎月の裏の収入+100万円', cost: { social: 40, mind: 20 }, toku: { max: 80 }, tokuDelta: -100, icon: I('fear.png') },
+
   // ---- 不調（マイナス。ツリーには出さない） ----
   { id: 'optimist', route: null, kind: 'red', name: '楽観主義', desc: '相場を1割高く見積もってしまう', cost: { mind: 30 } },
   { id: 'tendon', route: null, kind: 'red', name: '腱鞘炎', desc: '発送の体力消費が1.5倍', cost: { act: 20, mind: 20 } },
@@ -146,8 +165,8 @@ export const INITIAL_SKILLS = SKILLS.filter((s) => s.kind === 'initial').map((s)
 export const TREE_NODES = SKILLS.filter((s) => s.kind === 'root' || s.route);
 
 // 画面上の座標（1 = 1マス）。中心から各ルートの角度方向に段数ぶん伸ばし、lane で横にずらす
-const RING = 1.7;
-const STEP = 1.6;
+const RING = 2.6;
+const STEP = 1.7;
 const LANE = 0.98;
 export function nodePos(sk) {
   if (sk.kind === 'root') return { x: 0, y: 0 };

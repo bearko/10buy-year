@@ -108,6 +108,14 @@ export function offersModal(s, step, onChange) {
   }
 
   function gridItem(o) {
+    // 知識のないジャンル：何かがあることだけ見せる
+    if (o.unknown) {
+      return h('button', { class: 'sh-item unknown', onclick: () => toast(`「${o.genreName}の基礎講座」（資格講座）で学ぶと仕入れられる`, 'bad') },
+        h('div', { class: 'sh-img' }, h('div', { class: 'sh-q' }, '？')),
+        h('div', { class: 'sh-name' }, '未知のジャンル'),
+        h('div', { class: 'sh-meta' }, h('span', {}, '？？？')),
+        h('div', { class: 'sh-memo' }, '目利きできない'));
+    }
     const p = productOf(o.pid);
     const site = siteOf(o);
     const sold = o.maxQty < (o.minQty || 1);

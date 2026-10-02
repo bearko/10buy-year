@@ -1,9 +1,9 @@
 // 週末の販売処理。出品中の在庫が売れたかどうか、発送、トラブル発生を判定する。
-import { PRODUCTS, productOf, shippingCost, SIZE_INFO } from '../data/products.js';
+import { PRODUCTS, productOf, shipFor, shippingCost, SIZE_INFO } from '../data/products.js';
 import { chance, gauss, poisson, randRange, weightedPick } from './rng.js';
 import { addHate, addRating, addStamina, hasSkill } from './effects.js';
 import { demandOf, roundPrice, unitPrice } from './market.js';
-import { platformFee, removeUnit } from './inventory.js';
+import { platformFee, platformMult, removeUnit } from './inventory.js';
 import { addExpense, addHours, recordSale } from './kpi.js';
 import { perk } from './perks.js';
 
@@ -26,11 +26,11 @@ export function unitValue(s, u) {
 }
 
 // 「買い手の人数」を決めて、安い出品から順に売れるか判定する（プンシー・アマクリ共通）
-function fixedPriceMarket(s, units, buyers, platform, out, allowNego) {
+function fixedPriceMarket(s, units, buyers, platform, out, allowNego, mult = 1) {
   const boost = s.listBoost ? 1.25 : 1;
   const rf = ratingFactor(s);
   for (const u of units.sort((a, b) => a.listing.price - b.listing.price)) {
-    const ratio = u.listing.price / Math.max(1, unitPrice(s, u));
+    const ratio = u.listing.price / Math.max(1, unitPrice(s, u) * mult);
     if (buyers > 0 && chance(s, Math.min(0.97, sellChance(s, ratio) * Math.min(1.15, rf * boost)))) {
       buyers--;
       out.sold.push(makeSale(u, u.listing.price, platform));
@@ -58,6 +58,12 @@ export function resolveSales(s) {
     // アマクリ（大手EC）：新品の買い手が多い。値下げ交渉はない
     const ama = units.filter((u) => u.listing.platform === 'ama');
     if (ama.length) fixedPriceMarket(s, ama, poisson(s, d * 3 * rf * (s.amaBan > 0 ? 0 : 1)), 'ama', out, false);
+
+    // 海外EC（為替で売値が変わる）と裏市場（表の数倍）
+    const exp = units.filter((u) => u.listing.platform === 'exp');
+    if (exp.length) fixedPriceMarket(s, exp, poisson(s, d * 0.9 * rf), 'exp', out, false, platformMult(s, 'exp'));
+    const black = units.filter((u) => u.listing.platform === 'black');
+    if (black.length) fixedPriceMarket(s, black, poisson(s, d * 1.5), 'black', out, false, platformMult(s, 'black'));
 
     // ミィーム（オークション）：入札者数で落札価格が決まる。最低落札価格に届かなければ流れる
     for (const u of units.filter((x) => x.listing.platform === 'auc')) {
@@ -122,7 +128,7 @@ export function finalizeSale(s, sale, out) {
   const u = sale.unit;
   const product = productOf(sale.pid);
   sale.fee = platformFee(s, sale.platform, sale.price);
-  sale.ship = sale.platform === 'ama' ? 0 : shippingCost(product);
+  sale.ship = shipFor(sale.platform, product);
   sale.net = sale.price - sale.fee - sale.ship;
   sale.cost = u.cost;
   sale.profit = sale.net - u.cost;
@@ -148,7 +154,7 @@ export function finalizeSale(s, sale, out) {
   bp.n++;
   bp.revenue += sale.price;
   bp.profit += sale.profit;
-  if (sale.price > product.retail * 2 && !product.used) addHate(s, 1);
+  if (sale.price > product.retail * 2 && !product.used) addHate(s, 1, false);
   addRating(s, hasSkill(s, 'quick_reply') ? 0.9 : 0.6);
 
   // 配送破損（倉庫出荷はプロの梱包なので起きない）
@@ -170,6 +176,7 @@ function rollTrouble(s, sale) {
   if (hasSkill(s, 'quick_reply')) rate *= 0.85;
   if (s.rating < 30) rate *= 1.3;
   if (sale.platform === 'ama') rate *= 0.5;
+  if (sale.platform === 'black') return null; // 裏の取引に「評価」はない
   rate *= perk(s, 'trouble');
   if (sale.delayed) rate += 0.15;
   if (!chance(s, rate)) return null;

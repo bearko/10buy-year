@@ -26,7 +26,9 @@ export function loadGame() {
     const raw = storage()?.getItem(SAVE_KEY);
     if (!raw) return null;
     const s = JSON.parse(raw);
-    return s.version === SAVE_VERSION ? s : null;
+    if (s.version !== SAVE_VERSION) return null;
+    if (s.toku === undefined) s.toku = Math.max(1, 100 - Math.round(s.hate || 0)); // 炎上度から TOKU へ
+    return s;
   } catch {
     return null;
   }

@@ -58,6 +58,16 @@ const NODE_PERKS = {
   rec_post: [{ key: 'shipStamina', mul: 0.85 }],
   rec_network: [{ key: 'trouble', mul: 0.9 }],
   rec_manage: [{ key: 'expGain', mul: 1.1 }],
+  tr_fair: [{ key: 'trouble', mul: 0.9 }, { key: 'buyers', mul: 1.05 }],
+  tr_agent: [{ key: 'buyers', mul: 1.1 }, { key: 'sellCenter', add: 0.02 }],
+  tr_credit: [{ key: 'cardLimitAdd', add: 2000000 }, { key: 'taxMult', mul: 0.95 }],
+  tr_staff: [{ key: 'monthlyFees', mul: 0.85 }, { key: 'expGain', mul: 1.1 }],
+  tr_maker: [{ key: 'storeOffers', add: 2 }, { key: 'onlineOffers', add: 2 }],
+  cap_trade: [{ key: 'buyers', mul: 1.2 }],
+  dk_bot: [{ key: 'lotteryMult', mul: 1.5 }, { key: 'onlineOffers', add: 2 }],
+  dk_crew: [{ key: 'storeOffers', add: 2 }],
+  dk_names: [{ key: 'lotteryMult', mul: 1.5 }],
+  dk_stolen: [{ key: 'usedPrice', mul: 0.7 }],
   cashflow: [{ key: 'cardLimitAdd', add: 300000 }, { key: 'taxMult', mul: 0.95 }],
 };
 

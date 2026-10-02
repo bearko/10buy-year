@@ -1,5 +1,7 @@
 // 月末の支払い（カードの引き落とし・借金の返済）
-import { addCash, addHate, addMood, hasSkill, record, setFlag, yen } from './effects.js';
+import { UNDERWORLD_LIVING } from './underworld.js';
+import { shopMonthly } from './mystore.js';
+import { addCash, addHate, addMood, addToku, hasSkill, record, setFlag, yen } from './effects.js';
 import { celebrate, info, sfx, talk } from './steps.js';
 import { monthlyNodeFees } from './abilities.js';
 import { addExpense, closeMonth, inventoryStats } from './kpi.js';
@@ -22,9 +24,14 @@ export function monthEnd(s) {
     s.cash += passive.total;
     s.cur.passive += passive.total;
     record(s, `事業収入（${passive.names.join('・')}）`, passive.total);
-    if (hasSkill(s, 'div_consult')) addHate(s, 4);
+    if (hasSkill(s, 'div_consult')) addHate(s, 4, false);
   }
   if (s.fulltime) addCash(s, -LIVING_COST, '生活費（家賃・食費・国保・年金）');
+  shopMonthly(s);
+  // 丁寧な取引を続けている（評価が高い）と、少しずつ徳が積まれる
+  if (s.rating >= 95) addToku(s, 1);
+  if (s.underworld) addCash(s, -UNDERWORLD_LIVING, '裏の暮らし（金銭感覚の麻痺）');
+  if (s.probation > 0) s.probation = Math.max(0, s.probation - 4);
   const rec = closeMonth(s);
   steps.push(monthReport(s, rec, fees, passive));
 
@@ -132,6 +139,22 @@ export function passiveIncome(s) {
     total += 200000 + Math.round(inventoryStats(s).cost * 0.05);
     names.push('買取事業');
   }
+  if (hasSkill(s, 'tr_trust')) {
+    total += 500000;
+    names.push('業界の信頼');
+  }
+  if (hasSkill(s, 'cap_trade')) {
+    total += 1500000;
+    names.push('総合商社');
+  }
+  if (hasSkill(s, 'dk_fakes')) {
+    total += 300000;
+    names.push('裏の卸');
+  }
+  if (hasSkill(s, 'cap_dark')) {
+    total += 1000000;
+    names.push('裏の仕事');
+  }
   if (hasSkill(s, 'div_consult')) {
     total += 250000;
     names.push('情報発信');
@@ -177,6 +200,7 @@ export function taxFor(s, income) {
 // 今年度（4月〜）の事業所得
 export function fiscalIncome(s) {
   const y = yearOf(s.week);
-  const months = s.monthly.filter((m) => m.year === y);
+  // 裏の稼ぎは申告しない（足を洗う前の月は数えない）
+  const months = s.monthly.filter((m) => m.year === y && m.week > (s.flags.spiderThread ?? -1));
   return months.reduce((a, m) => a + m.net, 0) + (s.cur.salesProfit - s.cur.expenses + s.cur.passive);
 }

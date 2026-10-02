@@ -13,6 +13,17 @@ export const COURSES = [
   { id: 'boki', name: '簿記3級', desc: '経営画面の指標が1段増え、税額-3%', fee: 10000, sessions: 3, stage: 2 },
   ...GENRES.map(([cat, name]) => ({ id: `appraise_${cat}`, cat, name: `${name}の目利き講座`, desc: `${name}の推定相場の誤差-20%、偽物の細部チェック+1か所`, fee: 20000, sessions: 3, stage: 2 })),
 ];
+// ステージ3以降の新ジャンル。知識がないと仕入れ候補に出てこない
+export const KNOW_GENRES = [['art', 'アート・美術品'], ['game', 'レトロゲーム・PC'], ['antique', 'アンティーク'], ['fashion', 'ブランド小物']];
+COURSES.push(
+  ...KNOW_GENRES.map(([g, name]) => ({ id: `know_${g}`, know: g, name: `${name}の基礎講座`, desc: `${name}のジャンルを仕入れられるようになる`, fee: 40000, sessions: 3, stage: 3 })),
+  { id: 'export', name: '輸出入の基礎', desc: '海外の販路「海外EC」が使える。円安の週は高く売れる', fee: 50000, sessions: 4, stage: 3 },
+  { id: 'store_mgmt', name: '店舗経営講座', desc: '自分の店を開ける（外出「店を開く」）', fee: 100000, sessions: 5, stage: 4 },
+);
+export const knowsGenre = (s, p) => !p.know || (s.stage >= (p.stage || 3) && !!s.certs?.includes(`know_${p.know}`));
+// まだ知らない新ジャンルがあるか（仕入れ画面に「未知のジャンル」を出す）
+export const unknownGenres = (s) => (s.stage >= 3 ? KNOW_GENRES.filter(([g]) => !s.certs?.includes(`know_${g}`)) : []);
+
 export const COURSE_MAP = Object.fromEntries(COURSES.map((c) => [c.id, c]));
 
 export const hasCert = (s, id) => !!s.certs?.includes(id);

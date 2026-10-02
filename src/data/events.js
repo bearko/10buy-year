@@ -11,13 +11,20 @@ import { SKILL_MAP } from './skills.js';
 import { TOTAL_WEEKS, weekAt, woy } from '../engine/calendar.js';
 import { chance, pick, randInt } from '../engine/rng.js';
 import {
-  addAffinity, addCash, addExp, addHate, addMood, addRating, addStamina, affinity, flag, giveHint, giveSkill, hasSkill, setFlag, yen,
+  addAffinity, addCash, addExp, addHate, addToku, fallUnderworld, addMood, addRating, addStamina, affinity, flag, giveHint, giveSkill, hasSkill, setFlag, yen,
 } from '../engine/effects.js';
 import { applyShock, inBoom, isReleased, priceOf } from '../engine/market.js';
 import { addUnits, overCapacity } from '../engine/inventory.js';
 import { fiscalIncome, MIN_PAYMENT, taxFor } from '../engine/finance.js';
-import { choice, gain, info, items, narr, sfx, talk } from '../engine/steps.js';
+import { bgm, choice, gain, info, items, narr, sfx, talk } from '../engine/steps.js';
+import { washHands } from '../engine/underworld.js';
 import { perk } from '../engine/perks.js';
+
+// 徳を積む選択：TOKU を上げて、何も表示しないステップを返す
+const addTokuStep = (s, n) => {
+  addToku(s, n);
+  return { t: 'noop' };
+};
 
 // 借金があるときと、完済したあとでセリフを変える
 const debtLine = (s, withDebt, noDebt) => (s.debt > 0 ? withDebt : noDebt);
@@ -180,7 +187,7 @@ export const EVENTS = [
     id: 'tax_return',
     trigger: 'calendar',
     yearly: true,
-    cond: (s) => woy(s.week) === weekAt(2, 3),
+    cond: (s) => woy(s.week) === weekAt(2, 3) && !s.underworld,
     play: (s) => {
       const income = Math.max(0, fiscalIncome(s));
       let tax = taxFor(s, income);
@@ -374,7 +381,7 @@ export const EVENTS = [
     chance: 0.08,
     cond: (s) => s.week >= 4,
     play: (s) => {
-      const cands = PRODUCTS.filter((p) => ['staple', 'collect', 'hype'].includes(p.kind) && isReleased(s, p));
+      const cands = PRODUCTS.filter((p) => ['staple', 'collect', 'hype'].includes(p.kind) && isReleased(s, p) && !p.know);
       const p = pick(s, cands);
       applyShock(s, p.id, 1.35, null, null);
       s.news.push({ pid: p.id, text: `【テレビ】情報番組で「${p.name}」が紹介され、相場が上昇`, kind: 'up' });
@@ -429,6 +436,7 @@ export const EVENTS = [
           label: '公式リセールで定価で出す',
           run: () => {
             addExp(s, { mind: 8, info: 6 });
+            addToku(s, 10);
             return [talk('chris', '公式リセールなら定価で、行きたい人にちゃんと届く。これが正解だ。', 'smile'), gain({ mind: 8, info: 6 })];
           },
         },
@@ -526,6 +534,81 @@ export const EVENTS = [
       ]),
     ],
   },
+  // ---- 裏の人間 ----
+  {
+    id: 'underworld_fall',
+    trigger: 'calendar',
+    cond: (s) => s.underworld,
+    play: (s) => [
+      bgm('pvp'),
+      narr('ある朝、プンシーにもミィームにもログインできなくなっていた。「規約違反により、アカウントを永久に停止しました」'),
+      talk('chris', '……もう、表には戻れないのか。', 'sad'),
+      talk('goemon', 'ようこそ、こっち側へ。表の何倍も稼げるぜ。そのかわり、背中には気をつけな。'),
+      info('裏の人間になった', ['TOKU のゲージが消えた', '表の販路はすべて凍結。売買は「裏市場」だけ（売値は表の数倍）', `毎月の暮らしに ${yen(350000)}（金銭感覚の麻痺）`, '報復や襲撃に遭うことがある'], 'bad'),
+    ],
+  },
+  {
+    id: 'underworld_revenge',
+    trigger: 'weekStart',
+    chance: 0.07,
+    once: false,
+    cond: (s) => s.underworld,
+    play: (s) => {
+      const lost = s.inventory.filter((_, i) => i % 5 === 0);
+      s.inventory = s.inventory.filter((u) => !lost.includes(u));
+      s.sick = Math.max(s.sick, 2);
+      addMood(s, -1);
+      return [sfx('damage'), narr('帰り道、暗がりで囲まれた。「よくもうちのシマを荒らしてくれたな」'), info('報復', ['袋叩きにあって2週間動けない', `在庫を${lost.length}点奪われた`], 'bad')];
+    },
+  },
+  {
+    id: 'underworld_assault',
+    trigger: 'weekStart',
+    chance: 0.006,
+    once: false,
+    cond: (s) => s.underworld,
+    play: (s) => {
+      s.over = 'vanished';
+      return [sfx('lose'), narr('その夜を最後に、クリスの姿を見た者はいない。')];
+    },
+  },
+  {
+    id: 'spider_thread',
+    trigger: 'weekStart',
+    chance: 0.2,
+    once: false,
+    cond: (s) => s.underworld && s.week >= (s.flags.underworldWeek || 0) + 24 && s.week >= (s.flags.spiderCool || 0),
+    play: (s) => [
+      narr('寺の前で、ひとりの和尚に呼び止められた。'),
+      talk('ikkyu', '地獄にも、一本だけ蜘蛛の糸が垂れておる。つかむかどうかは、おぬし次第じゃ。'),
+      talk('ikkyu', 'ただし、糸を登るなら、いま持っているものはすべて置いていくことになる。金も、品も、築いた仕組みもな。'),
+      choice([
+        {
+          label: '足を洗う（財産をすべて失う）',
+          sub: '残るのは基礎能力だけ',
+          run: () => [
+            talk('chris', '（この暮らしを捨てるのか…？ 毎月何百万も入ってくる、この暮らしを…）', 'sad'),
+            choice([
+              {
+                label: 'それでも、足を洗う',
+                run: () => {
+                  washHands(s);
+                  return [
+                    bgm('pve'),
+                    narr('クリスは、すべてを置いて糸をつかんだ。'),
+                    talk('mine', '……おかえり。また、押し入れの本1冊からね。', 'teary'),
+                    info('蜘蛛の糸', ['所持金・在庫・スキルツリーをすべて失った（基礎能力は残る）', 'TOKU 50から再出発', '保護観察：しばらく表の販路の手数料が高い'], 'good'),
+                  ];
+                },
+              },
+              { label: 'やっぱり、やめる', run: () => { s.flags.spiderCool = s.week + 12; return [talk('ikkyu', '糸はまた垂れることもあろう。……垂れぬこともあろうがな。')]; } },
+            ]),
+          ],
+        },
+        { label: 'このまま裏で生きる', run: () => { s.flags.spiderCool = s.week + 12; return [talk('chris', '……今さら、戻れるかよ。', 'arms')]; } },
+      ]),
+    ],
+  },
   // ---- 憧れの品「マリーアントワネット・ブルー」：序盤は見るだけ。いつかは取り扱いたい ----
   {
     id: 'tv_jewel',
@@ -577,6 +660,7 @@ export const EVENTS = [
           {
             label: '断る',
             run: () => [
+              addTokuStep(s, 3),
               talk('chris', '……定価の3割なんて、話がうますぎる。やめておきます。', 'arms'),
               talk('mine', '正解。本物を扱うのは、ちゃんとしたルートと目利きを身につけてからよ。', 'wink'),
               gain(addExp(s, { mind: 6, info: 4 })),
@@ -678,7 +762,7 @@ export const EVENTS = [
             return [sfx('lose'), info('ロスカット', ['数分で10万円が消えた'], 'bad'), talk('chris', '知ってた…知ってたよ…。', 'wail')];
           },
         },
-        { label: '断る', run: () => [talk('chris', '僕はもう、地に足のついた商売をするって決めたんだ。', 'guts'), gain(addExp(s, { mind: 20 }))] },
+        { label: '断る', run: () => [addTokuStep(s, 3), talk('chris', '僕はもう、地に足のついた商売をするって決めたんだ。', 'guts'), gain(addExp(s, { mind: 20 }))] },
       ]),
     ],
   },
@@ -818,7 +902,7 @@ export const EVENTS = [
           },
           {
             label: '断る',
-            run: () => [talk('chris', '出所の言えない品は扱いません。', 'arms'), talk('goemon', 'ケッ、つまらねえ。'), gain(addExp(s, { mind: 15, info: 5 }))],
+            run: () => [addTokuStep(s, 8), talk('chris', '出所の言えない品は扱いません。', 'arms'), talk('goemon', 'ケッ、つまらねえ。'), gain(addExp(s, { mind: 15, info: 5 }))],
           },
         ]),
       ];
@@ -1013,7 +1097,7 @@ export const EVENTS = [
             return [talk('nostra', 'ようこそ。予言は来週から届くであろう。'), narr('クリスはサロンに入会した。')];
           },
         },
-        { label: '断る', run: () => [talk('chris', '本当に儲かるなら、人に教えずに自分でやるよね。', 'arms'), gain(addExp(s, { mind: 10, info: 5 }))] },
+        { label: '断る', run: () => [addTokuStep(s, 3), talk('chris', '本当に儲かるなら、人に教えずに自分でやるよね。', 'arms'), gain(addExp(s, { mind: 10, info: 5 }))] },
       ]),
     ],
   },

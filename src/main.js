@@ -23,6 +23,7 @@ import { groupItems, showItems } from './ui/loot.js';
 import { celebrate, goalPopup } from './ui/goal.js';
 import { logModal, pushLog } from './ui/log.js';
 import { offersModal } from './ui/shop.js';
+import { myStoreModal } from './ui/mystore.js';
 import { routineModal } from './ui/routine.js';
 import { routineBuy, routineList, routineListStamina, routineStale } from './engine/routine.js';
 import { addStamina } from './engine/effects.js';
@@ -397,6 +398,7 @@ function renderTabs() {
         newsCount: state.news.length,
         onMarket: () => after(marketModal(state)),
         onBiz: () => after(bizModal(state, refresh, playSteps)),
+        onShop: () => after(myStoreModal(state, refresh)),
       }),
     },
     { id: 'log', label: 'ログ', open: () => logModal(state) },
@@ -563,7 +565,7 @@ function showEnding() {
   });
   const el = clear($('#ending-screen'));
   playBgm('land');
-  playSe(['arrested', 'bankrupt'].includes(r.ending.id) ? 'lose' : 'win');
+  playSe(['arrested', 'bankrupt', 'vanished'].includes(r.ending.id) ? 'lose' : 'win');
   el.append(
     h('div', { class: 'ending' },
       h('p', { class: 'kicker' }, '最終査定'),
