@@ -3,6 +3,7 @@ import { COMMAND_MAP, availableCommands } from '../engine/commands.js';
 import { PLATFORMS, platformOpen } from '../engine/inventory.js';
 import { DEFAULT_ROUTINE, ROUTINE_CMDS, routineCfg } from '../engine/routine.js';
 import { h } from './dom.js';
+import { dealControls } from './dealpolicy.js';
 import { openModal } from './modal.js';
 
 const pct = (v) => `${Math.round(v * 100)}%`;
@@ -19,7 +20,7 @@ export function routineModal(s) {
       h('b', {}, fmt(cfg[key])));
     const markets = [['auto', 'おまかせ'], ...Object.values(PLATFORMS).filter((p) => platformOpen(s, p)).map((p) => [p.id, p.name])];
     body.append(
-      h('p', { class: 'note' }, '仕入れ → 出品 → 売却 → 値下げのサイクルを毎週回す。選択肢・トラブルが出たら止まる。'),
+      h('p', { class: 'note' }, '仕入れ → 出品 → 売却 → 値下げのサイクルを毎週回す。値下げ交渉・トラブルは④で決めた答えで進み、それ以外の選択肢が出たら止まる。'),
       h('div', { class: 'sub' }, '① 仕入れ'),
       seg('cmd', cmds.map((id) => [id, COMMAND_MAP[id].name])),
       h('small', { class: 'rt-l' }, '見込み利益率がこれ以上なら買う'), slider('minMargin', 0.05, 0.4, 0.01, pct),
@@ -33,7 +34,9 @@ export function routineModal(s) {
       h('small', { class: 'rt-l' }, 'この週数売れなければ値下げ（推定相場の70%まで）'), slider('cutWeeks', 1, 6, 1, (v) => `${v}週`),
       h('small', { class: 'rt-l' }, '値下げ幅'), slider('cutRate', 0.03, 0.2, 0.01, pct),
       h('small', { class: 'rt-l' }, 'この週数持っていたら即決買取（0＝しない）'), slider('dumpWeeks', 0, 20, 1, (v) => (v ? `${v}週` : 'しない')),
-      h('div', { class: 'sub' }, '④ 期間'),
+      h('div', { class: 'sub' }, '④ 取引の対応（値下げ交渉・トラブル）'),
+      ...dealControls(s, () => m.refresh()),
+      h('div', { class: 'sub' }, '⑤ 期間'),
       seg('weeks', [[4, '4週'], [8, '8週'], [12, '12週']]),
       h('div', { class: 'rt-btns' },
         h('button', { class: 'btn', onclick: () => { Object.assign(cfg, DEFAULT_ROUTINE, { cmd: cmds[0] }); m.refresh(); } }, '初期設定に戻す'),
