@@ -39,7 +39,7 @@ const man = (v) => (Math.abs(v) >= 10000 ? `${(Math.round(v / 1000) / 10).toLoca
 function goalBox(s) {
   const g = goalOf(s);
   const pct = Math.max(0, Math.min(100, (g.value / g.target) * 100));
-  return h('div', { class: `goal ${pct >= 100 ? 'done' : ''}`, title: `${g.title}（${g.note}）` },
+  return h('div', { class: `goal ${pct >= 100 && !g.warn ? 'done' : ''} ${g.warn ? 'warn' : ''}`, title: `${g.title}（${g.note}）` },
     h('div', { class: 'goal-top' }, h('small', {}, `目標 ${g.short}`), h('b', {}, `${man(g.value)}/${man(g.target)}`)),
     h('div', { class: 'goal-bar' }, h('i', { style: { width: `${pct}%` } })),
     h('small', { class: 'goal-note' }, g.note),

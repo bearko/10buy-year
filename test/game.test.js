@@ -18,7 +18,7 @@ import { ROUTES, ROUTE_MAP, SKILLS as TREE_SKILLS, TREE_NODES, nodePos } from '.
 import { perk, routeLevel } from '../src/engine/perks.js';
 import { titleOf } from '../src/engine/ending.js';
 import { checkTutorial, MISSIONS, treeOpen } from '../src/engine/tutorial.js';
-import { checkPromotion, stageProgress } from '../src/engine/career.js';
+import { checkPromotion, goalOf, stageProgress } from '../src/engine/career.js';
 import { kpiLevel } from '../src/engine/kpi.js';
 import { taxFor } from '../src/engine/finance.js';
 import { monthEnd, MIN_PAYMENT } from '../src/engine/finance.js';
@@ -284,6 +284,29 @@ test('キャリア：月5万円を2か月でステージ2、月30万円が安定
   assert.equal(s.stage, 3);
   assert.equal(s.actionsPerWeek, 2);
   assert.ok(s.fulltime);
+});
+
+test('専業の判断：合計90万円なら月ごとの波があっても判断に進む。赤字の月があれば理由を説明する', () => {
+  const s = createGame(15);
+  s.stage = 2;
+  // 実際のプレイで起きた形：合計は90万円を超えているが、ひと月だけ少ない
+  s.monthly = [{ net: 650000, month: 11 }, { net: 30000, month: 12 }, { net: 645000, month: 1 }];
+  assert.ok(checkPromotion(s).some((x) => x.t === 'choice'), '合計90万円・赤字なしなら専業化の選択肢が出る');
+  s.monthly = [{ net: 1200000, month: 11 }, { net: -100000, month: 12 }, { net: 230000, month: 1 }];
+  const steps = checkPromotion(s);
+  assert.ok(!steps.some((x) => x.t === 'choice'), '赤字の月があると判断に進まない');
+  assert.ok(steps.some((x) => x.t === 'talk' && x.text.includes('12月が赤字')), '理由をマインが説明する');
+  assert.equal(goalOf(s).warn, true, 'HUD でも赤字の月を警告する');
+});
+
+test('HUD の目標の見込みは月末の固定費・事業収入を含む', () => {
+  const s = createGame(16);
+  s.stage = 2;
+  s.monthly = [{ net: 400000 }, { net: 400000 }];
+  s.cur.salesProfit = 120000;
+  assert.equal(goalOf(s).value, 920000);
+  s.corp = true; // 社会保険料が月末にかかる
+  assert.ok(goalOf(s).value < 920000);
 });
 
 test('KPIの見え方は「利益率と回転」「資金効率と時間単価」で増える', () => {

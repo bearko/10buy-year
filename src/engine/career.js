@@ -3,10 +3,11 @@ import { addMood, setFlag, yen } from './effects.js';
 import { monthNet, recentMonths, sumNet } from './kpi.js';
 import { celebrate, choice, goal, info, sfx, talk } from './steps.js';
 import { netWorth, rankOf } from './ending.js';
+import { monthEndForecast } from './finance.js';
 
 export const STAGES = [
   { id: 1, name: '副業スタート', period: '0〜1年目', goal: '家の不用品を売って、仕入れ→販売の流れをつかむ', next: '月の純利益5万円を2か月連続' },
-  { id: 2, name: '副業安定', period: '1〜3年目', goal: 'ジャンルと販路を広げ、専業にできるか見極める', next: '月の純利益30万円を安定して3か月（平均30万円・各月20万円以上）で専業化の判断' },
+  { id: 2, name: '副業安定', period: '1〜3年目', goal: 'ジャンルと販路を広げ、専業にできるか見極める', next: '直近3か月の純利益の合計90万円（赤字の月なし）で専業化の判断' },
   { id: 3, name: '専業', period: '3〜5年目', goal: 'バイトを辞めて専業に。外注とツールで仕組み化を始める', next: '直近12か月の純利益（売上ではない）800万円で法人化の判断' },
   { id: 4, name: '法人化・拡大', period: '5〜8年目', goal: '会社にして外注・倉庫・問屋仕入れで規模を広げる', next: '直近12か月の純利益1,800万円＋外注3種（出品・発送・仕入れ）で仕組み化' },
   { id: 5, name: '事業化・多角化', period: '8〜10年目', goal: 'せどりを通過点に、自社ブランド・買取・発信へ', next: '—' },
@@ -26,7 +27,7 @@ export function stageProgress(s) {
   }
   if (s.stage === 2) {
     const m = last(3);
-    return { label: '直近3か月の純利益の合計（90万円・各月20万円以上）', value: sumNet(m), target: 900000, months: m.length, need: 3 };
+    return { label: '直近3か月の純利益の合計（90万円・赤字の月なし）', value: sumNet(m), target: 900000, months: m.length, need: 3 };
   }
   if (s.stage === 3) {
     const m = last(12);
@@ -39,9 +40,13 @@ export function stageProgress(s) {
   return null;
 }
 
-// HUD と目標のポップアップに出す「いまの目標」。今月（途中）も含めた見込みで進み具合を出す
+// 専業化の判断：直近3か月の合計90万円、かつ赤字の月がない
+export const FULLTIME_TARGET = 900000;
+const fulltimeOk = (m) => m.length === 3 && sumNet(m) >= FULLTIME_TARGET && m.every((x) => x.net >= 0);
+
+// HUD と目標のポップアップに出す「いまの目標」。今月（途中）に月末の固定費・事業収入を足した見込みで進み具合を出す
 export function goalOf(s) {
-  const cur = monthNet(s.cur);
+  const cur = monthNet(s.cur) + monthEndForecast(s);
   const prev = (n) => recentMonths(s, n);
   if (s.stage === 1) {
     const last = prev(1)[0];
@@ -49,7 +54,10 @@ export function goalOf(s) {
     return { stage: 1, title: '月の純利益 5万円を2か月連続', short: '月の純利益', value: cur, target: 50000, note: `連続 ${streak}/2か月`, mine: 'まずは月5万円。家の物と店舗せどりで、毎月コツコツ積み上げましょう。' };
   }
   if (s.stage === 2) {
-    return { stage: 2, title: '3か月で純利益 90万円（各月20万円以上）', short: '3か月の純利益', value: sumNet(prev(2)) + cur, target: 900000, note: '専業になれるライン', mine: '月30万円が安定したら、バイトを辞めて専業になれるわ。' };
+    const red = prev(2).some((m) => m.net < 0) || cur < 0;
+    const wait = (s.flags.fulltimeRetry || 0) - s.week;
+    const note = red ? '赤字の月があると判断できない' : wait > 0 ? `専業の判断は${wait}週後から` : '赤字の月なしで専業の判断';
+    return { stage: 2, title: '3か月で純利益 90万円（赤字の月なし）', short: '3か月の純利益', value: sumNet(prev(2)) + cur, target: FULLTIME_TARGET, note, warn: red, mine: '3か月で90万円、赤字の月を出さずに稼げたら、バイトを辞めて専業になれるわ。' };
   }
   if (s.stage === 3) {
     return { stage: 3, title: '12か月で純利益 800万円', short: '12か月の純利益', value: sumNet(prev(11)) + cur, target: 8000000, note: '法人化の判断', mine: '1年で800万円残せたら、会社にする話が出てくるわ。' };
@@ -71,9 +79,13 @@ export function checkPromotion(s) {
     if (m.length === 2 && m.every((x) => x.net >= 50000)) return promote(s, 2);
   }
   if (s.stage === 2 && s.week >= (s.flags.fulltimeRetry || 0)) {
-    // 「月30万円を安定して3か月」：3か月平均30万円以上、かつどの月も20万円以上
+    // 「月30万円を安定して3か月」：直近3か月の合計90万円以上、かつ赤字の月がない
     const m = last(3);
-    if (m.length === 3 && sumNet(m) >= 900000 && m.every((x) => x.net >= 200000)) return fulltimeChoice(s);
+    if (fulltimeOk(m)) return fulltimeChoice(s);
+    if (m.length === 3 && sumNet(m) >= FULLTIME_TARGET) {
+      const red = m.filter((x) => x.net < 0).map((x) => `${x.month}月`).join('・');
+      return [talk('mine', `3か月の合計は${yen(sumNet(m))}。でも${red}が赤字だったから、まだ「安定している」とは言えないわ。赤字の月を出さずに3か月で90万円よ。`, 'arms')];
+    }
   }
   if (s.stage === 3 && s.week >= (s.flags.corpRetry || 0)) {
     const m = last(12);

@@ -721,6 +721,7 @@ body.loot-show #side { display: none !important; }
 .goal-note { font-size: 10px; color: var(--muted); text-align: right; }
 .goal.done { border-color: var(--good); }
 .goal.done .goal-bar i { background: linear-gradient(90deg, #3fcf7a, #b7f05a); }
+.goal.warn .goal-note { color: var(--bad); font-weight: bold; }
 .debt-line { font-size: 11px; color: #ffc4c4; margin-top: -2px; }
 .debt-line b { font-size: 12px; }
 
