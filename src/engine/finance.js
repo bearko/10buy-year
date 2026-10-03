@@ -1,6 +1,6 @@
 // 月末の支払い（カードの引き落とし・借金の返済）
 import { UNDERWORLD_LIVING } from './underworld.js';
-import { shopMonthly } from './mystore.js';
+import { shopMonthly, shopMonthlyCost } from './mystore.js';
 import { addCash, addHate, addMood, addToku, hasSkill, record, setFlag, yen } from './effects.js';
 import { celebrate, info, sfx, talk } from './steps.js';
 import { monthlyNodeFees } from './abilities.js';
@@ -128,6 +128,12 @@ export function debtFreeSteps(s) {
 }
 
 // ステージ5の多角化ノードによる毎月の収入
+// 月末に純利益へ加わる分の見込み（事業収入 − 固定費・社会保険料・店の家賃）。HUD の目標の見込みに使う
+export function monthEndForecast(s) {
+  const fees = monthlyNodeFees(s).reduce((a, f) => a + f.amount, 0);
+  return passiveIncome(s).total - fees - (s.corp ? CORP_SOCIAL : 0) - shopMonthlyCost(s);
+}
+
 export function passiveIncome(s) {
   const names = [];
   let total = 0;

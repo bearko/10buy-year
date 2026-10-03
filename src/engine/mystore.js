@@ -94,6 +94,9 @@ function sellInShop(s, u, price) {
   s.cur.daysSum += Math.max(0, (s.week - u.week) * 7);
 }
 
+// 月末にかかる店の費用（家賃＋スタッフの給料）
+export const shopMonthlyCost = (s) => (s.shop ? LOCATIONS[s.shop.loc].rent + (s.shop.staff ? STAFF_COST : 0) : 0);
+
 // 月末：家賃とスタッフの給料
 export function shopMonthly(s) {
   if (!s.shop) return [];
