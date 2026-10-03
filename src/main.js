@@ -25,6 +25,8 @@ import { logModal, pushLog } from './ui/log.js';
 import { offersModal } from './ui/shop.js';
 import { myStoreModal } from './ui/mystore.js';
 import { routineModal } from './ui/routine.js';
+import { autoPick } from './engine/dealpolicy.js';
+import { dealPolicyModal } from './ui/dealpolicy.js';
 import { routineBuy, routineList, routineListStamina, routineStale } from './engine/routine.js';
 import { addStamina } from './engine/effects.js';
 import { inventoryModal, marketModal, salesModal } from './ui/trade.js';
@@ -71,6 +73,13 @@ async function playSteps(steps) {
         await flashGain(st.exp);
         break;
       case 'choice': {
+        // 取引の対応で答えを決めてあれば、止まらずにその答えを選ぶ
+        const picked = autoPick(state, st, isAuto() || !!routineRun);
+        if (picked >= 0) {
+          if (routineRun) routineRun.week.deals = (routineRun.week.deals || 0) + 1;
+          queue.unshift({ t: 'talk', who: 'narr', text: `（決めておいた対応：${st.options[picked].label}）` }, ...(st.options[picked].run() || []));
+          break;
+        }
         if (isAuto()) toast('ルーティンを止めた。それまでの出来事は「ログ」で読み返せる');
         stopAuto(); // 選択肢はプレイヤーが決める
         await endRoutine();
@@ -174,6 +183,7 @@ function logRoutineWeek() {
   const cost = w.bought.reduce((a, x) => a + x.cost, 0);
   const parts = [`${COMMAND_MAP[routineRun.cfg.cmd].name}：${units}点仕入れ ${yenFmt(cost)}`, `出品 ${w.listed}件`];
   if (w.cut) parts.push(`値下げ ${w.cut}件`);
+  if (w.deals) parts.push(`取引の対応 ${w.deals}件`);
   if (w.dumped) parts.push(`即決買取 ${w.dumped}点 ${yenFmt(w.dumpTotal)}`);
   pushLog(state, { who: 'ルーティン', text: parts.join('／'), kind: 'info' }, true);
 }
@@ -399,6 +409,7 @@ function renderTabs() {
         onMarket: () => after(marketModal(state)),
         onBiz: () => after(bizModal(state, refresh, playSteps)),
         onShop: () => after(myStoreModal(state, refresh)),
+        onDeal: () => after(dealPolicyModal(state)),
       }),
     },
     { id: 'log', label: 'ログ', open: () => logModal(state) },

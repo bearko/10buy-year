@@ -6,6 +6,9 @@ import { cancelSale, finalizeSale, partialRefund, restoreUnit } from '../engine/
 import { perk } from '../engine/perks.js';
 import { choice, gain, info, narr, sfx, talk } from '../engine/steps.js';
 
+// 「取引の対応」で答えを決めておける選択肢（engine/dealpolicy.js）
+const tagged = (policy, options, ctx) => ({ ...choice(options), policy, ctx });
+
 // 交渉判定。交渉力と「このはし渡るべからず」で成功率が上がる。
 export function talkCheck(s, base = 0.25) {
   const p = base + s.abilities.talk / 200 + (hasSkill(s, 'tonchi') ? 0.3 : 0) + perk(s, 'talkCheck');
@@ -52,8 +55,9 @@ export function troubleSteps(s, trouble) {
       }
       return [
         ...intro,
-        choice([
+        tagged('swap', [
           {
+            key: 'fight',
             label: '事務局に相談して争う',
             sub: '交渉判定',
             run: () => {
@@ -65,7 +69,7 @@ export function troubleSteps(s, trouble) {
               return [talk('mine', '証拠が足りなくて、返品に応じるしかなかったみたい…', 'teary'), ...loseLines()];
             },
           },
-          { label: '揉めたくない。返金に応じる', run: loseLines },
+          { key: 'refund', label: '揉めたくない。返金に応じる', run: loseLines },
         ]),
       ];
     }
@@ -74,8 +78,9 @@ export function troubleSteps(s, trouble) {
         sfx('trouble'),
         talk('claimer', `「${name}」に傷があるんだけど？ 説明文に書いてなかったよね？ 半額返金してくれたら評価は勘弁してあげる`),
         talk('chris', sale.delayed ? '（発送が遅れたせいで、相手はかなりご立腹だ…）' : '（写真ではちゃんと伝えたはずなんだけど…）', 'sad'),
-        choice([
+        tagged('claimer', [
           {
+            key: 'explain',
             label: '誠実に説明する',
             sub: '交渉判定',
             run: () => {
@@ -92,6 +97,7 @@ export function troubleSteps(s, trouble) {
             },
           },
           {
+            key: 'half',
             label: '要求どおり半額返金する',
             run: () => {
               partialRefund(s, sale, Math.floor(sale.price * 0.5));
@@ -100,6 +106,7 @@ export function troubleSteps(s, trouble) {
             },
           },
           {
+            key: 'ignore',
             label: '無視する',
             run: () => {
               addRating(s, -8);
@@ -114,8 +121,9 @@ export function troubleSteps(s, trouble) {
       return [
         talk('nego', `「${name}」、なんか思ってたのと違ったので返品したいです〜`),
         talk('mine', 'いわゆる「イメージ違い」ね。プロフに「返品不可」って書いてても、揉めると事務局の判断次第よ。', 'arms'),
-        choice([
+        tagged('return', [
           {
+            key: 'accept',
             label: '返品を受け付ける',
             sub: '送料は自腹',
             run: () => {
@@ -127,6 +135,7 @@ export function troubleSteps(s, trouble) {
             },
           },
           {
+            key: 'refuse',
             label: 'ノークレーム・ノーリターンです！',
             run: () => {
               addRating(s, -4);
@@ -222,12 +231,14 @@ export function negotiationSteps(s, nego) {
   };
   return [
     talk('nego', `はじめまして♪「${name}」、${yen(nego.offer)}になりませんか？ 即決します🙏`),
-    choice([
+    tagged('nego', [
       {
+        key: 'sell',
         label: `${yen(nego.offer)}で売る`,
         run: () => [sfx('sale'), info('交渉成立', [`「${name}」が${yen(nego.offer)}で売れた`], 'good'), ...sell(nego.offer)],
       },
       {
+        key: 'firm',
         label: '「値下げは考えていません」',
         sub: '交渉判定',
         run: () => {
@@ -236,7 +247,7 @@ export function negotiationSteps(s, nego) {
           return [talk('nego', 'そうですか〜（ブロック）'), narr('（相手は去っていった）')];
         },
       },
-      { label: 'スルーする', run: () => [narr('（コメントは見なかったことにした）')] },
-    ]),
+      { key: 'ignore', label: 'スルーする', run: () => [narr('（コメントは見なかったことにした）')] },
+    ], { offer: nego.offer, price: nego.price }),
   ];
 }

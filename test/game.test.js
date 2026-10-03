@@ -309,6 +309,29 @@ test('HUD の目標の見込みは月末の固定費・事業収入を含む', (
   assert.ok(goalOf(s).value < 920000);
 });
 
+test('取引の対応：値下げ交渉・トラブルは決めておいた答えで進む（初期設定はルーティン中だけ）', async () => {
+  const { autoPick, setDeal } = await import('../src/engine/dealpolicy.js');
+  const { negotiationSteps, troubleSteps } = await import('../src/data/troubles.js');
+  const s = createGame(17);
+  s.cash = 1_000_000;
+  buy(s, { pid: 'novice_book', price: 500, maxQty: 5 }, 2);
+  const [u, u2] = s.inventory.filter((x) => x.pid === 'novice_book' && !x.home);
+  listUnits(s, [u.uid, u2.uid], 'merc', 1000);
+  const nego = (offer) => negotiationSteps(s, { uid: u.uid, pid: u.pid, price: 1000, offer }).find((x) => x.t === 'choice');
+  assert.equal(autoPick(s, nego(880), false), -1, '手で遊ぶときは毎回決める');
+  assert.equal(nego(880).options[autoPick(s, nego(880), true)].key, 'sell', '出品価格の85%以上なら売る');
+  assert.equal(nego(800).options[autoPick(s, nego(800), true)].key, 'firm', '85%未満なら断る');
+  setDeal(s, 'scope', 'always');
+  assert.ok(autoPick(s, nego(880), false) >= 0, '「いつも」なら手で遊ぶときも');
+  setDeal(s, 'nego', 'ask');
+  assert.equal(autoPick(s, nego(880), true), -1, '「毎回決める」ならルーティン中でも止まる');
+  for (const kind of ['claimer', 'return', 'swap']) {
+    const st = troubleSteps(s, { kind, sale: { id: 1, uid: u2.uid, pid: u2.pid, price: 1000, ship: 200, platform: 'merc', unit: u2 } }).find((x) => x.t === 'choice');
+    assert.equal(st.policy, kind);
+    assert.ok(autoPick(s, st, true) >= 0, `${kind} に答えが決まっている`);
+  }
+});
+
 test('KPIの見え方は「利益率と回転」「資金効率と時間単価」で増える', () => {
   const s = createGame(13);
   assert.equal(kpiLevel(s), 1);
