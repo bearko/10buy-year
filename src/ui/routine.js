@@ -40,9 +40,14 @@ export function routineModal(s) {
       seg('weeks', [[4, '4週'], [8, '8週'], [12, '12週']]),
       h('div', { class: 'rt-btns' },
         h('button', { class: 'btn', onclick: () => { Object.assign(cfg, DEFAULT_ROUTINE, { cmd: cmds[0] }); m.refresh(); } }, '初期設定に戻す'),
-        h('button', { class: 'btn primary big', disabled: !cmds.length, onclick: () => { started = { ...cfg }; m.close(); } }, `${cfg.weeks}週 回す`),
       ),
     );
-  }, { closeLabel: 'やめる' });
+  }, {
+    // 「やめる」と「回す」をフッターに並べる。回すほうを目立たせる
+    footer: (m) => [
+      h('button', { class: 'btn', onclick: () => m.close() }, 'やめる'),
+      h('button', { class: 'btn primary', disabled: !cmds.length, onclick: () => { started = { ...cfg }; m.close(); } }, `⟳ ${cfg.weeks}週 回す`),
+    ],
+  });
   return api.closed.then(() => started);
 }
