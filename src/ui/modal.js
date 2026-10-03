@@ -1,7 +1,8 @@
 import { $, clear, h } from './dom.js';
 
 // モーダル。render(body, api) で中身を描画し、api.refresh() で再描画できる。
-export function openModal(title, render, { closeLabel = '閉じる', onRefresh } = {}) {
+// footer を渡すと、閉じるボタンの代わりにフッターのボタンを並べる（refresh のたびに描き直す）
+export function openModal(title, render, { closeLabel = '閉じる', onRefresh, footer: renderFooter } = {}) {
   let resolveClosed;
   const closed = new Promise((r) => (resolveClosed = r));
   const body = h('div', { class: 'modal-body' });
@@ -13,6 +14,10 @@ export function openModal(title, render, { closeLabel = '閉じる', onRefresh }
       clear(body);
       render(body, api);
       body.scrollTop = y;
+      if (renderFooter) {
+        clear(footer);
+        footer.append(...renderFooter(api));
+      }
       onRefresh?.();
     },
     close() {
@@ -25,7 +30,7 @@ export function openModal(title, render, { closeLabel = '閉じる', onRefresh }
   const onKey = (e) => {
     if (e.key === 'Escape') api.close();
   };
-  footer.append(h('button', { class: 'btn primary', onclick: () => api.close() }, closeLabel));
+  if (!renderFooter) footer.append(h('button', { class: 'btn primary', onclick: () => api.close() }, closeLabel));
   window.addEventListener('keydown', onKey);
   $('#modal-root').append(root);
   api.refresh();
