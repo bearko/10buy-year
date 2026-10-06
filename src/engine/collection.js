@@ -67,7 +67,7 @@ export function deptSteps(s) {
 
 // 美術画廊に並ぶ品：まだ持っていない品から。ランクが上がるほど上の希少度まで並ぶ
 export function galleryItems(s) {
-  const top = ['R', 'E', 'E', 'L'][deptRank(s)]; // 一般はレアまで、会員からエピック、特選顧客でレジェンド
+  const top = ['R', 'E', 'L', 'L'][deptRank(s)]; // 一般はレアまで、会員からエピック、外商顧客からレジェンド
   const pool = PIECES.filter((p) => !owned(s, p.ext) && RARITY.indexOf(p.rarity) <= RARITY.indexOf(top));
   const n = Math.min(pool.length, 4 + deptRank(s));
   const out = [];

@@ -4,6 +4,7 @@ import { monthNet, recentMonths, sumNet } from './kpi.js';
 import { celebrate, choice, goal, info, sfx, talk } from './steps.js';
 import { netWorth, rankOf } from './ending.js';
 import { monthEndForecast } from './finance.js';
+import { visionGoal } from './visions.js';
 
 export const STAGES = [
   { id: 1, name: '副業スタート', period: '0〜1年目', goal: '家の不用品を売って、仕入れ→販売の流れをつかむ', next: '月の純利益5万円を2か月連続' },
@@ -66,6 +67,9 @@ export function goalOf(s) {
     const out = ['out_list', 'out_ship', 'out_buy'].filter((id) => s.skills.includes(id)).length;
     return { stage: 4, title: '12か月で純利益 1,800万円＋外注3種', short: '12か月の純利益', value: sumNet(prev(11)) + cur, target: 18000000, note: `外注 ${out}/3`, mine: '外注で仕組みを作って、自分が動かなくても回る会社にしましょう。' };
   }
+  // 志を決めていれば、志の次の目標を出す
+  const vg = visionGoal(s);
+  if (vg) return { stage: 5, ...vg };
   const nw = netWorth(s);
   const next = [50000000, 20000000, 8000000].reverse().find((m) => m > nw) || 100000000;
   return { stage: 5, title: `最終査定までに純資産 ${Math.round(next / 10000).toLocaleString()}万円`, short: '純資産', value: nw, target: next, note: `いまのランク ${rankOf(nw).rank}`, mine: '最後は純資産で査定されるわ。10年の集大成よ。' };

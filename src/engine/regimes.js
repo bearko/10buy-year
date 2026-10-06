@@ -138,6 +138,16 @@ function enforce(s, r) {
   return steps;
 }
 
+// 業界の年表から：対策を直接起こす（まだ出ていなければ）。来週に施行
+export function forceRegime(s, id) {
+  if (known(s, id)) return false;
+  const def = REGIMES[id];
+  const reg = { id, announced: s.week, start: s.week + 1 };
+  if (def.relax) reg.end = reg.start + def.relax;
+  (s.regimes ||= []).push(reg);
+  return true;
+}
+
 // ---- 月末：目立ち度が冷める。ライバルも業界を目立たせる ----
 export function regimeMonthly(s, rivals = []) {
   for (const k of Object.keys(s.heat || {})) s.heat[k] *= 0.9;

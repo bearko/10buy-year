@@ -7,6 +7,7 @@ import { mainRoutes, routeCounts } from './perks.js';
 import { ROUTE_MAP } from '../data/skills.js';
 import { grossProfit } from './state.js';
 import { collectionValue } from './collection.js';
+import { visionDone, visionEnding, VISIONS } from './visions.js';
 
 export const INVENTORY_RATE = 0.7;
 
@@ -130,10 +131,14 @@ export function finalResult(s) {
   else if (flag(s, 'santaHelped') && s.hate < 25) id = 'honest';
   else if (s.stage === 3) id = 'pro';
   else id = 'side';
+  // 志を成し遂げた（または途中まで届いた）なら、志のエンディング
+  const ve = ['tycoon', 'ceo', 'pro', 'honest', 'side', 'crypto'].includes(id) ? visionEnding(s) : null;
+  if (ve) id = ve.id;
   const rank = ['arrested', 'bankrupt', 'vanished'].includes(id) ? RANKS[RANKS.length - 1] : rankOf(nw);
   const st = STAGES[s.stage - 1];
   return {
-    ending: { id, ...ENDINGS[id] },
+    ending: ve ? { ...ve } : { id, ...ENDINGS[id] },
+    vision: s.vision ? { name: VISIONS[s.vision.id].name, done: visionDone(s) } : null,
     netWorth: nw,
     rank: rank.rank,
     rankLabel: rank.label,

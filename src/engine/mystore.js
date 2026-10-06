@@ -82,7 +82,7 @@ export function shopWeek(s) {
   return s.shop.last;
 }
 
-export function sellInShop(s, u, price) {
+export function sellInShop(s, u, price, platform = 'shop') {
   removeUnit(s, u.uid);
   addCash(s, price, `店頭販売: ${productOf(u.pid).name}`);
   s.stats.revenue += price;
@@ -93,7 +93,7 @@ export function sellInShop(s, u, price) {
   s.cur.salesProfit += price - u.cost;
   s.cur.sold++;
   s.cur.daysSum += Math.max(0, (s.week - u.week) * 7);
-  audienceFromSale(s, { pid: u.pid });
+  audienceFromSale(s, { pid: u.pid, platform, price });
 }
 
 // 月末にかかる店の費用（家賃＋スタッフの給料）
