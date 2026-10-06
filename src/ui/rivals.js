@@ -6,6 +6,7 @@ import {
 } from '../engine/rivals.js';
 import { hotKeys, regimeRows } from '../engine/regimes.js';
 import { ANNALS, ANNALS_FROM_YEAR } from '../engine/annals.js';
+import { INVEST_MAX, investCost, investIn, investLevel } from '../engine/lifestyle.js';
 import { playSe } from './audio.js';
 import { h, yenFmt } from './dom.js';
 import { openModal, toast } from './modal.js';
@@ -39,8 +40,19 @@ export function rivalsModal(s, onChange) {
         !ex && v >= 20
           ? h('button', { class: 'btn small', onclick: () => sign(key) }, `独占契約（${yenFmt(c.cash)}・対人${c.social}）`)
           : null,
+        // 開拓した仕入れ先への出資（品ぞろえが増え、荒れにくくなり、毎月配当）
+        spot ? h('div', { class: 'invest-line' },
+          h('small', {}, investLevel(s, key) ? `出資 Lv${investLevel(s, key)}（品ぞろえ+${investLevel(s, key) * 50}%・荒れにくい${investLevel(s, key) >= 2 ? '・仕入れ値-5%' : ''}）` : '出資していない'),
+          investLevel(s, key) < INVEST_MAX ? h('button', { class: 'btn small', onclick: () => invest(key) }, `出資する（${yenFmt(investCost(key, investLevel(s, key)))}）`) : null) : null,
       );
     });
+    const invest = (key) => {
+      if (!investIn(s, key)) return toast('お金が足りない', 'bad');
+      playSe('levelup');
+      toast(`${satNameOf(key)}に出資した`, 'good');
+      api.refresh();
+      onChange?.();
+    };
     const rank = ranking(s);
     const regs = regimeRows(s);
     const hot = hotKeys(s);

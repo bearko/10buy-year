@@ -716,6 +716,51 @@ test('業界の年表：5年目から毎年、予告 → 春に始まる → 年
   assert.equal(priceOf(t, 'pretty_set'), Math.round(base * 1.25));
 });
 
+test('生活水準：稼げると暮らしを上げる誘いが来る。出費が増え、下げるとやる気が大きく落ちる', async () => {
+  const L = await import('../src/engine/lifestyle.js');
+  const { capacity } = await import('../src/engine/inventory.js');
+  const { staminaCost } = await import('../src/engine/commands.js');
+  const s = createGame(35);
+  s.stage = 3;
+  assert.deepEqual(L.lifestyleWeek(s), [], '稼げていないと誘いは来ない');
+  s.monthly = [{ net: 900000 }, { net: 900000 }, { net: 900000 }];
+  const steps = L.lifestyleWeek(s);
+  assert.ok(steps.some((x) => x.t === 'choice'));
+  steps.find((x) => x.t === 'choice').options[0].run();
+  assert.equal(L.lifeLevel(s), 1);
+  L.raiseLife(s); // 車
+  assert.equal(L.lifeCost(s), 80000 + 120000);
+  assert.equal(capacity(s), capacity({ ...s, lifestyle: 0 }) + 20, '車のトランク');
+  assert.ok(staminaCost(s, COMMANDS.find((c) => c.id === 'store')) < staminaCost({ ...s, lifestyle: 0 }, COMMANDS.find((c) => c.id === 'store')));
+  const cash = s.cash;
+  L.lifestyleMonthly(s);
+  assert.equal(s.cash, cash - 200000, '毎月の出費');
+  s.mood = 3;
+  L.lowerLife(s);
+  assert.equal(s.mood, 1, '下げるとやる気 -2');
+  assert.ok(!L.canRaiseLife(s), '24週は上げられない');
+});
+
+test('出資：開拓した仕入れ先の品ぞろえが増え、荒れにくくなり、配当が入る', async () => {
+  const L = await import('../src/engine/lifestyle.js');
+  const R = await import('../src/engine/rivals.js');
+  const s = createGame(36);
+  s.cash = 10_000_000;
+  assert.ok(!L.investIn(s, 'toy_shop'), '開拓していない仕入れ先には出資できない');
+  s.spots = ['toy_shop'];
+  assert.ok(L.investIn(s, 'toy_shop'));
+  assert.equal(s.cash, 9_000_000);
+  assert.ok(L.investIn(s, 'toy_shop'));
+  assert.ok(!L.investIn(s, 'toy_shop'), 'Lv2まで');
+  assert.equal(L.investWeight(s, 'toy_shop'), 2);
+  assert.equal(L.investPrice(s, 'toy_shop'), 0.95);
+  assert.equal(L.dividend(s), Math.round(3_000_000 * 0.005));
+  s.saturation = { toy_shop: 50 };
+  s.satUsed = {};
+  R.decaySaturation(s);
+  assert.equal(R.saturation(s, 'toy_shop'), 44, '出資していると毎週さらに落ち着く');
+});
+
 test('KPIの見え方は「利益率と回転」「資金効率と時間単価」で増える', () => {
   const s = createGame(13);
   assert.equal(kpiLevel(s), 1);

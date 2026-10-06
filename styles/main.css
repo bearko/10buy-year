@@ -847,3 +847,9 @@ body.loot-show #side { display: none !important; }
 .ms-row small { color: var(--muted); }
 .vision-pick { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; width: 100%; margin-bottom: 6px; }
 .vision-pick small { color: var(--muted); }
+
+/* 暮らし・出資 */
+.life-row { grid-template-columns: 2em 1fr; }
+.life-lv { font-weight: bold; color: var(--gold); text-align: center; }
+.invest-line { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+.invest-line small { color: var(--muted); }
