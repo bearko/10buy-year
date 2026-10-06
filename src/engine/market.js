@@ -1,6 +1,7 @@
 // 相場シミュレーション。商品ごとに「定価に対する倍率（premium）」を持ち、毎週動かす。
 import { catOf } from './listing.js';
 import { madeToOrder, usedRegimeMult } from './regimes.js';
+import { AUD_OF } from '../data/careers.js';
 import { PRODUCTS, productOf } from '../data/products.js';
 import { chance, gauss, hashNoise, randInt, randRange } from './rng.js';
 import { clamp, hasSkill } from './effects.js';
@@ -37,7 +38,11 @@ export function ensureMarket(s) {
   for (const p of added) s.market[p.id].hist.push(priceOf(s, p.id));
 }
 
-export const priceOf = (s, pid) => Math.round(productOf(pid).retail * s.market[pid].p);
+// 業界の年表（engine/annals.js）の効果：その年だけ、ある顧客層の品の相場が上がる・為替が円安に振れる
+const annalMult = (s, pid) => (s.annalFx && s.week < s.annalFx.until && AUD_OF[pid] === s.annalFx.aud ? s.annalFx.mult : 1);
+const fxBias = (s) => (s.fxBias && s.week < s.fxBias.until ? s.fxBias.bias : 0);
+
+export const priceOf = (s, pid) => Math.round(productOf(pid).retail * s.market[pid].p * annalMult(s, pid));
 
 // 一度でも発売されていれば true（2年目以降は前年モデルが流通している）
 export function isReleased(s, product, week = s.week) {
@@ -67,6 +72,7 @@ export function unitPrice(s, u) {
   let mult = m.p;
   if (p.kind === 'hype' && u.edition && m.edition && u.edition < m.edition) mult = m.oldP;
   if (p.used || u.used) mult *= usedRegimeMult(s); // 認定中古市場
+  mult *= annalMult(s, u.pid);
   return Math.round(p.retail * mult * (u.damaged ? 0.5 : 1));
 }
 
@@ -84,7 +90,8 @@ export function applyShock(s, pid, mult, text, news) {
 export function updateMarket(s) {
   const news = [];
   // 為替（海外ECの売値の倍率）。1.1 あたりを中心にゆっくり動く
-  s.fx = Math.max(0.9, Math.min(1.35, (s.fx || 1.1) + (1.1 - (s.fx || 1.1)) * 0.1 + gauss(s) * 0.03));
+  const fxMean = 1.1 + fxBias(s); // 円安ショックの年は円安側へ
+  s.fx = Math.max(0.9, Math.min(1.35 + fxBias(s), (s.fx || 1.1) + (fxMean - (s.fx || 1.1)) * 0.1 + gauss(s) * 0.03));
   const w = woy(s.week);
   for (const p of PRODUCTS) {
     const m = s.market[p.id];

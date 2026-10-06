@@ -638,7 +638,7 @@ test('キャリアのコマンド：経験点を使い、それぞれの稼ぎ�
   assert.ok(s.careers.appraiser.jobs >= 2);
   // 委託販売：売上金の8割は持ち主へ
   const sale = { unit: { consign: true }, net: 10000, profit: 10000 };
-  K.consignPayout(sale);
+  K.consignPayout(s, sale);
   assert.equal(sale.net, 2000);
   // レビュー：読者が増え、毎月の紹介料
   K.reviewSteps(s);
@@ -653,6 +653,67 @@ test('キャリアのコマンド：経験点を使い、それぞれの稼ぎ�
   K.tourSteps(s);
   assert.equal(s.inventory.filter((u) => u.pid === 'kokeshi').length, 0);
   assert.ok(s.cash - before >= Math.round(priceOf(s, 'kokeshi') * 1.3 * 2) - 20);
+});
+
+const PIECES18 = () => [1006, 2006, 3006, 4006, 5006, 1009, 2009, 3009, 4009, 5009, 1017, 2017, 3017, 4017, 5017, 1018, 2018, 3018].map((ext) => ({ ext, cost: 1, value: 1, week: 0 }));
+
+test('志：ステージ4で選び、3段の目標を達成するとエンディングが変わる', async () => {
+  const V = await import('../src/engine/visions.js');
+  const { finalResult } = await import('../src/engine/ending.js');
+  const { goalOf } = await import('../src/engine/career.js');
+  const s = createGame(32);
+  s.debt = 0;
+  assert.deepEqual(V.visionWeek(s), [], 'ステージ4まで聞かれない');
+  s.stage = 4;
+  const steps = V.visionWeek(s);
+  assert.ok(steps.some((x) => x.who === 'ryoma'));
+  const ch = steps.find((x) => x.t === 'choice');
+  assert.ok(!ch.options.some((o) => o.label === '配信の女王'), 'キャリアがないと選べない志もある');
+  ch.options.find((o) => o.label === '私設美術館').run();
+  assert.equal(s.vision.id, 'museum');
+  // 目標：コレクション18点
+  s.collection = PIECES18();
+  const m = V.visionMonthly(s);
+  assert.ok(m.some((x) => x.t === 'celebrate'));
+  assert.equal(V.visionDone(s), 1);
+  s.stage = 5;
+  assert.equal(goalOf(s).short, '志：私設美術館', 'ステージ5の HUD は志の次の目標');
+  assert.equal(finalResult(s).ending.id, 'vision_half', '途中まで届けば志半ばEND');
+  s.vision.done = { 0: 1, 1: 2, 2: 3 };
+  assert.equal(finalResult(s).ending.title, '私設美術館END');
+  assert.equal(finalResult(s).vision.done, 3);
+  // 志は年に一度だけ変えられる
+  assert.ok(!V.canChangeVision(s));
+  s.week += V.CHANGE_WEEKS;
+  assert.ok(V.canChangeVision(s));
+});
+
+test('業界の年表：5年目から毎年、予告 → 春に始まる → 年末にミッションの結果', async () => {
+  const A = await import('../src/engine/annals.js');
+  const s = createGame(33);
+  s.stage = 4;
+  s.week = 48 * 3;
+  assert.deepEqual(A.annalWeek(s), [], '4年目までは起きない');
+  s.week = 48 * 4; // 5年目の1週目
+  s.audience = { beauty: 3000 };
+  const ann = A.annalWeek(s);
+  assert.ok(ann.some((x) => x.who === 'nostra'));
+  const a = A.currentAnnal(s);
+  assert.equal(a.phase, 'announced');
+  s.week = 48 * 4 + 12;
+  const st = A.annalWeek(s);
+  assert.equal(a.phase, 'started');
+  assert.ok(st.some((x) => x.t === 'info'));
+  s.week = 48 * 4 + 46;
+  const end = A.annalWeek(s);
+  assert.equal(a.phase, 'done');
+  assert.ok(['clear', 'fail'].includes(a.result));
+  assert.ok(end.some((x) => x.t === 'info'));
+  // ライブコマースバブル：美容の品の相場が上がる
+  const t = createGame(34);
+  const base = priceOf(t, 'pretty_set');
+  t.annalFx = { aud: 'beauty', mult: 1.25, until: 999 };
+  assert.equal(priceOf(t, 'pretty_set'), Math.round(base * 1.25));
 });
 
 test('KPIの見え方は「利益率と回転」「資金効率と時間単価」で増える', () => {

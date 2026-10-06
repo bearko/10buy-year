@@ -81,7 +81,7 @@ export function collectionModal(s, onChange) {
         row('私設美術館', s.museum ? `月の入館料 ${yenFmt(museumIncome(s))}（維持費 ${yenFmt(MUSEUM_UPKEEP)}）` : '未開館'),
       ),
       s.museum
-        ? null
+        ? ''
         : h('button', { class: 'btn', onclick: open }, `私設美術館を開く（${yenFmt(MUSEUM_COST)}・ステージ${MUSEUM_STAGE}から・5点以上）`),
       h('p', { class: 'note' }, `美術館を開くと、品の希少度に応じた入館料が毎月入る。シリーズを5点そろえると +${yenFmt(SERIES_BONUS)}/月。品は「外出 → 百貨店で買い物」の美術画廊で手に入る。持っている品をタップすると手放せる。`),
       ...COLLECTION_SERIES.map((sr) => {

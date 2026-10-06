@@ -188,6 +188,8 @@ function logRoutineWeek() {
   if (w.logged) return;
   w.logged = true;
   routineRun.weeks++;
+  // 型が崩れたか：条件に合う仕入れが続けて見つからない週を数える
+  routineRun.dry = w.bought.length ? 0 : (routineRun.dry || 0) + 1;
   const units = w.bought.reduce((a, x) => a + x.qty, 0);
   const cost = w.bought.reduce((a, x) => a + x.cost, 0);
   const parts = [`${COMMAND_MAP[routineRun.cfg.cmd].name}：${units}点仕入れ ${yenFmt(cost)}`, `出品 ${w.listed}件`];
@@ -508,6 +510,12 @@ async function loop() {
     await playSteps(endWeek(state));
     await tutorialStep();
     if (routineRun) logRoutineWeek();
+    if (routineRun && routineRun.dry >= 3) {
+      // 相場や仕入れ先が変わって、決めたルールでは仕入れられなくなった
+      stopAuto();
+      await say('mine', '3週続けて、ルールに合う品が見つからなかったわ。相場か仕入れ先が変わったのかも。「業界の動き」と仕入れ先の荒れ具合を見て、ルールを見直しましょう。', 'arms');
+      await endRoutine();
+    }
     if (autoWeeks > 0 && --autoWeeks === 0) {
       setAuto(false);
       await endRoutine();
@@ -626,6 +634,7 @@ function showEnding() {
         ),
       ),
       h('div', { class: 'ledger-grid' },
+        r.vision ? row('志', `${r.vision.name}（達成 ${r.vision.done}/3）`) : null,
         row('純資産（スコア）', yenFmt(r.netWorth)),
         row('残った借金', yenFmt(r.debt)),
         row('累計売上', yenFmt(r.revenue)),
@@ -651,7 +660,8 @@ function row(label, value) {
 }
 
 function copyResult(r) {
-  const text = `10 buy year！ 最終査定【${r.rank}】${r.ending.title}\n${r.stage}／称号：${r.title}\n純資産 ${yenFmt(r.netWorth)} / 売上 ${yenFmt(r.revenue)}`;
+  const vision = r.vision ? `\n志：${r.vision.name}（達成 ${r.vision.done}/3）` : '';
+  const text = `10 buy year！ 最終査定【${r.rank}】${r.ending.title}\n${r.stage}／称号：${r.title}${vision}\n純資産 ${yenFmt(r.netWorth)} / 売上 ${yenFmt(r.revenue)}`;
   navigator.clipboard?.writeText(text).catch(() => {});
 }
 

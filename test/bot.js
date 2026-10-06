@@ -48,6 +48,8 @@ export const smartPolicy = {
   choose: (s, st) => {
     const labels = st.options.map((o) => o.label);
     const find = (re) => labels.findIndex((l) => re.test(l));
+    // 志：シードごとに違う志を選ぶ（すべての志を試すため）
+    if (find(/^まだ決めない$/) >= 0) return (s.seed >> 3) % (labels.length - 1);
     if (find(/足を洗う/) >= 0) return route(s) === 'wash' ? find(/足を洗う/) : labels.findIndex((l) => !/足を洗う/.test(l));
     if (find(/義援金/) >= 0) return s.cash > 4000000 ? find(/義援金/) : s.cash > 1000000 ? find(/子ども食堂/) : 0;
     if (route(s) !== 'light' && find(/捨てアカ/) >= 0) return find(/捨てアカ/);

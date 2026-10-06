@@ -17,6 +17,7 @@ export const careerOf = (s, id) => s.careers?.[id];
 
 // 売れたとき：その商材の顧客層が育つ（評価が高いほど伸びる）
 export function audienceFromSale(s, sale) {
+  tallySale(s, sale);
   const aud = audOf(sale.pid);
   if (!aud) return;
   s.audience = { ...(s.audience || {}), [aud]: audience(s, aud) + Math.max(0.3, s.rating / 100) };
@@ -88,9 +89,10 @@ export function liveSteps(s) {
     s.cur.revenue += price;
     s.cur.salesProfit += Math.round(price * 0.92) - u.cost;
     s.cur.sold++;
-    audienceFromSale(s, { pid: u.pid });
+    audienceFromSale(s, { pid: u.pid, platform: 'live', price });
     revenue += price;
   }
+  kol.bestStream = Math.max(kol.bestStream || 0, revenue); // 志「配信の女王」の目標
   const grow = randInt(s, 15, 40) + sold.length * 4 + Math.floor(s.abilities.talk / 8);
   kol.followers += grow;
   kol.streams = (kol.streams || 0) + 1;
@@ -193,17 +195,29 @@ export function tourSteps(s) {
   let revenue = 0;
   for (const u of units) {
     const price = roundPrice(unitPrice(s, u) * 1.3);
-    sellInShop(s, u, price);
+    sellInShop(s, u, price, 'tour');
     revenue += price;
   }
   return [narr('訪日客のグループを、浅草から下町の工房まで案内した。'), info('買い物ツアー', [units.length ? `${units.length}点が売れた（売上 ${yen(revenue)}・相場の1.3倍）` : '売れる和雑貨・工芸の在庫（出品していないもの）がなかった', `経験点 ${costText(CAREERS.inbound.cost)} を使った`], units.length ? 'good' : '')];
 }
 
 // 委託販売の品が売れたとき：売上金の8割は持ち主へ
-export function consignPayout(sale) {
+export function consignPayout(s, sale) {
   if (!sale.unit?.consign) return;
   const owner = Math.round(sale.net * 0.8);
   sale.net -= owner;
   sale.profit = sale.net;
+  const ap = careerOf(s, 'appraiser');
+  if (ap) ap.consignIncome = (ap.consignIncome || 0) + sale.net; // 志「目利きの館」の目標
+}
+
+// 売れた数・売上の累計（顧客層別・販路別）。業界の年表のミッションが、期間の差分で使う
+export function tallySale(s, sale) {
+  const t = (s.tally ||= { aud: {}, plat: {}, rev: {} });
+  const aud = audOf(sale.pid);
+  const plat = sale.platform || 'shop';
+  if (aud) t.aud[aud] = (t.aud[aud] || 0) + 1;
+  t.plat[plat] = (t.plat[plat] || 0) + 1;
+  t.rev[plat] = (t.rev[plat] || 0) + (sale.price || 0);
 }
 

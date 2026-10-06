@@ -135,7 +135,7 @@ export function finalizeSale(s, sale, out) {
   sale.net = sale.price - sale.fee - sale.ship;
   sale.cost = u.cost;
   sale.profit = sale.net - u.cost;
-  consignPayout(sale); // 委託販売：売上金の8割は持ち主へ
+  consignPayout(s, sale); // 委託販売：売上金の8割は持ち主へ
   sale.id = `${s.week}-${u.uid}`;
   s.pending.push({ id: sale.id, amount: sale.net, week: s.week + 1, label: `売上金: ${product.name}` });
   removeUnit(s, u.uid);

@@ -5,6 +5,7 @@ import {
   EXCLUSIVE_WEEKS, exclusive, exclusiveCost, ranking, RIVAL_MAP, saturation, satNameOf, satPriceMult, signExclusive,
 } from '../engine/rivals.js';
 import { hotKeys, regimeRows } from '../engine/regimes.js';
+import { ANNALS, ANNALS_FROM_YEAR } from '../engine/annals.js';
 import { playSe } from './audio.js';
 import { h, yenFmt } from './dom.js';
 import { openModal, toast } from './modal.js';
@@ -43,7 +44,18 @@ export function rivalsModal(s, onChange) {
     const rank = ranking(s);
     const regs = regimeRows(s);
     const hot = hotKeys(s);
+    const annals = (s.annals || []).slice().reverse();
     body.append(
+      h('div', { class: 'sub' }, '業界の年表'),
+      annals.length
+        ? h('div', { class: 'reg-list' }, ...annals.map((a) => {
+          const d = ANNALS[a.id];
+          const state = a.phase === 'announced' ? '春から始まる' : a.phase === 'started' ? '進行中' : a.result === 'clear' ? 'ミッション達成' : 'ミッション失敗';
+          return h('div', { class: `reg-row ${a.result === 'clear' ? 'good' : ''} ${a.phase === 'done' ? 'over' : ''}` },
+            h('div', { class: 'sat-top' }, h('b', {}, `${a.year}年目：${d.name}`), h('small', {}, state)),
+            h('small', { class: 'reg-rule' }, `・ミッション：${d.mission.title}`));
+        }))
+        : h('p', { class: 'note' }, `${ANNALS_FROM_YEAR}年目から、毎年ひとつ業界の大事件が起きる（年の初めに予告される）。`),
       h('div', { class: 'sub' }, '規制と販売方式'),
       regs.length
         ? h('div', { class: 'reg-list' }, ...regs.map((r) => h('div', { class: `reg-row ${r.positive ? 'good' : ''} ${r.over ? 'over' : ''}` },
@@ -51,7 +63,7 @@ export function rivalsModal(s, onChange) {
           ...r.rules.map((l) => h('small', { class: 'reg-rule' }, `・${l}`)))))
         : h('p', { class: 'note' }, 'まだ大きな規制はない。高値の転売や買い占めで目立つと、メーカーや国が手を打ってくる。'),
       hot.length ? h('div', { class: 'heat-list' }, h('small', {}, '目立っているもの（100で対策が予告される）'),
-        ...hot.map((x) => h('div', { class: 'heat-row' }, h('span', {}, x.name), h('div', { class: `sat-bar ${x.v >= 70 ? 'hi' : x.v >= 40 ? 'mid' : ''}` }, h('i', { style: { width: `${x.v}%` } })), h('small', {}, `${x.v}`)))) : null,
+        ...hot.map((x) => h('div', { class: 'heat-row' }, h('span', {}, x.name), h('div', { class: `sat-bar ${x.v >= 70 ? 'hi' : x.v >= 40 ? 'mid' : ''}` }, h('i', { style: { width: `${x.v}%` } })), h('small', {}, `${x.v}`)))) : '',
       h('p', { class: 'note' }, '仕入れ先は使うほど荒れて、掘り出し物が減り仕入れ値が上がる。放っておけば落ち着く。ライバルにも荒らされる。荒れたら、新しい仕入れ先を開拓して移ろう。'),
       h('div', { class: 'sub' }, '仕入れ先の荒れ具合'),
       ...rows,
