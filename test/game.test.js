@@ -761,6 +761,40 @@ test('出資：開拓した仕入れ先の品ぞろえが増え、荒れにく�
   assert.equal(R.saturation(s, 'toy_shop'), 44, '出資していると毎週さらに落ち着く');
 });
 
+test('仮想通貨の再登場：余裕資金でサトシが戻り、売買でき、儲けすぎると結局クリプトEND', async () => {
+  const X = await import('../src/engine/crypto.js');
+  const { finalResult, netWorth } = await import('../src/engine/ending.js');
+  const s = createGame(37);
+  s.stage = 4;
+  s.debt = 0;
+  assert.deepEqual(X.cryptoWeek(s), [], '余裕資金がないと来ない');
+  s.cash = 20_000_000;
+  const steps = X.cryptoWeek(s);
+  assert.ok(steps.some((x) => x.who === 'satoshi'));
+  // 断ると二度と来ない
+  const t2 = structuredClone(s);
+  steps.find((x) => x.t === 'choice').options[1].run.call(null);
+  assert.ok(s.flags.cryptoSworn !== undefined);
+  assert.deepEqual(X.cryptoWeek(s), []);
+  // 受けると売買できる
+  const u = Object.assign(createGame(38), { stage: 4, cash: 20_000_000, debt: 0 });
+  X.cryptoWeek(u).find((x) => x.t === 'choice').options[0].run();
+  assert.ok(X.cryptoOpen(u));
+  const nw = netWorth(u);
+  assert.ok(X.buyCoin(u, 'nkm', 10_000_000));
+  assert.equal(netWorth(u), nw, '買った直後は時価＝買値で純資産は変わらない');
+  for (let i = 0; i < 10; i++) X.cryptoWeek(u);
+  assert.equal(u.crypto.hist.nkm.length, 10, '毎週値動きを記録');
+  // 儲けすぎると結局クリプトEND（志のエンディングより優先）
+  u.crypto.prices.nkm *= 20;
+  u.vision = { id: 'tycoon', chosen: 0, done: { 0: 1, 1: 2, 2: 3 } };
+  assert.equal(finalResult(u).ending.id, 'crypto');
+  const got = X.sellCoin(u, 'nkm', 1);
+  assert.ok(got > 100_000_000);
+  assert.ok(u.crypto.realized > 0);
+  assert.ok(t2);
+});
+
 test('KPIの見え方は「利益率と回転」「資金効率と時間単価」で増える', () => {
   const s = createGame(13);
   assert.equal(kpiLevel(s), 1);

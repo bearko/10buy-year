@@ -127,7 +127,7 @@ function row(label, value, cls = '') {
   return h('div', { class: 'lg-row' }, h('span', {}, label), h('b', { class: cls }, value));
 }
 
-export function menuModal({ s, onTitle, onSpeed, speed, onRestart, onChange, onMarket, onBiz, onShop, onDeal, onRivals, onCollection, onCareers, onLife, marketLock, newsCount = 0 }) {
+export function menuModal({ s, onTitle, onSpeed, speed, onRestart, onChange, onMarket, onBiz, onShop, onDeal, onRivals, onCollection, onCareers, onLife, onCrypto, marketLock, newsCount = 0 }) {
   return openModal('メニュー', (body, api) => {
     body.append(
       h('div', { class: 'menu-main' },
@@ -138,6 +138,7 @@ export function menuModal({ s, onTitle, onSpeed, speed, onRestart, onChange, onM
         s && (s.stage >= 3 || s.collection?.length) ? h('button', { class: 'btn big', onclick: () => { api.close(); onCollection?.(); } }, 'コレクション') : null,
         s && s.stage >= 2 ? h('button', { class: 'btn big', onclick: () => { api.close(); onCareers?.(); } }, 'キャリア') : null,
         s && s.stage >= 2 ? h('button', { class: 'btn big', onclick: () => { api.close(); onLife?.(); } }, '暮らし') : null,
+        s?.crypto?.open ? h('button', { class: 'btn big', onclick: () => { api.close(); onCrypto?.(); } }, '仮想通貨') : null,
       ),
       h('div', { class: 'menu-list' },
         h('button', { class: 'btn', onclick: () => { setSound(!soundOn()); api.refresh(); } }, `サウンド: ${soundOn() ? 'ON' : 'OFF'}`),
