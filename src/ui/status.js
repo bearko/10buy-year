@@ -127,7 +127,7 @@ function row(label, value, cls = '') {
   return h('div', { class: 'lg-row' }, h('span', {}, label), h('b', { class: cls }, value));
 }
 
-export function menuModal({ s, onTitle, onSpeed, speed, onRestart, onChange, onMarket, onBiz, onShop, onDeal, onRivals, marketLock, newsCount = 0 }) {
+export function menuModal({ s, onTitle, onSpeed, speed, onRestart, onChange, onMarket, onBiz, onShop, onDeal, onRivals, onCollection, marketLock, newsCount = 0 }) {
   return openModal('メニュー', (body, api) => {
     body.append(
       h('div', { class: 'menu-main' },
@@ -135,6 +135,7 @@ export function menuModal({ s, onTitle, onSpeed, speed, onRestart, onChange, onM
         h('button', { class: 'btn big', onclick: () => { api.close(); onBiz?.(); } }, '経営'),
         s?.shop ? h('button', { class: 'btn big shop-btn', onclick: () => { api.close(); onShop?.(); } }, '自分の店') : null,
         s && s.stage >= 2 ? h('button', { class: 'btn big', onclick: () => { api.close(); onRivals?.(); } }, '業界の動き') : null,
+        s && (s.stage >= 3 || s.collection?.length) ? h('button', { class: 'btn big', onclick: () => { api.close(); onCollection?.(); } }, 'コレクション') : null,
       ),
       h('div', { class: 'menu-list' },
         h('button', { class: 'btn', onclick: () => { setSound(!soundOn()); api.refresh(); } }, `サウンド: ${soundOn() ? 'ON' : 'OFF'}`),

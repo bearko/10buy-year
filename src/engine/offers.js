@@ -31,6 +31,9 @@ function makeOffer(s, pid, fields) {
   return offer;
 }
 
+// ほかの仕入れ元（百貨店・外商など）から候補を作るとき
+export const specialOffer = (s, pid, fields) => makeOffer(s, pid, fields);
+
 export const hasLicense = (s) => !!flag(s, 'license');
 const canUsed = (s) => hasLicense(s) && hasSkill(s, 'src_used');
 

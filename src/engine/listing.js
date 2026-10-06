@@ -126,6 +126,8 @@ export const SITES = {
   queue: { name: '店頭', kind: 'store', color: '#e0584b' },
   lottery: { name: '公式抽選', kind: 'mall', color: '#2d4fa8' },
   gift: { name: '入手', kind: 'store', color: '#777' },
+  dept: { name: '百貨店', kind: 'store', color: '#7c2d12' },
+  gaisho: { name: '外商', kind: 'store', color: '#9d174d' },
 };
 // 開拓した仕入れ先（engine/pioneer.js）も販売元として並べる
 const ROUTE_SITE_KIND = { store: 'store', online: 'mall', auction: 'pro', wholesale: 'pro' };

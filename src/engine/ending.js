@@ -6,6 +6,7 @@ import { STAGES } from './career.js';
 import { mainRoutes, routeCounts } from './perks.js';
 import { ROUTE_MAP } from '../data/skills.js';
 import { grossProfit } from './state.js';
+import { collectionValue } from './collection.js';
 
 export const INVENTORY_RATE = 0.7;
 
@@ -18,7 +19,8 @@ export function inventoryValue(s) {
 
 export function netWorth(s) {
   const pending = s.pending.reduce((sum, p) => sum + p.amount, 0);
-  return Math.round(s.cash + pending + s.points + inventoryValue(s) - s.debt - s.card.current - s.card.due);
+  // コレクション（私設美術館）は評価額で入る
+  return Math.round(s.cash + pending + s.points + inventoryValue(s) + collectionValue(s) - s.debt - s.card.current - s.card.due);
 }
 
 const RANKS = [

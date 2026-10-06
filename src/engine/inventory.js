@@ -9,6 +9,7 @@ import { perk } from './perks.js';
 import { SPOT_MAP } from './pioneer.js';
 import { addSaturation, markSatUsed, SAT_PER_SPOT_BUY } from './rivals.js';
 import { exportBlocked, feeRegime, heatFromBuy, priceCap } from './regimes.js';
+import { deptSpend } from './collection.js';
 
 export const ROOM_CAPACITY = 30;
 export const PLATFORMS = {
@@ -121,6 +122,7 @@ export function buy(s, offer, qty, method = 'cash') {
       stolen: !!offer.stolen,
       ...(offer.brandNew ? { used: false } : {}), // 正規店の新品（古物ではない）
       ...(offer.edition ? { edition: offer.edition } : {}),
+      ...(offer.gaisho ? { gaisho: true } : {}), // 外商の優先案内（転売するとバレることがある）
     }));
   }
   s.stats.boughtUnits += qty;
@@ -130,6 +132,7 @@ export function buy(s, offer, qty, method = 'cash') {
   s.cur.spent += total;
   if (offer.scarce) s.stats.scarceBought += qty;
   heatFromBuy(s, offer, qty); // 品薄品の買い占めは目立つ
+  if (offer.source === 'dept' || offer.source === 'gaisho') deptSpend(s, total); // 百貨店の年間購入額
   // 開拓した仕入れ先は、買うほど荒れる
   if (SPOT_MAP[offer.source]) {
     addSaturation(s, offer.source, SAT_PER_SPOT_BUY);

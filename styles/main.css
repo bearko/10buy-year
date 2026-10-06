@@ -813,3 +813,19 @@ body.loot-show #side { display: none !important; }
 .heat-list { display: flex; flex-direction: column; gap: 3px; margin-top: 6px; }
 .heat-row { display: grid; grid-template-columns: 7em 1fr 2.5em; align-items: center; gap: 6px; font-size: 12px; }
 .heat-row small { text-align: right; color: var(--muted); }
+
+/* 百貨店の美術画廊・コレクション */
+.pc-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 8px 0; }
+.pc-card { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px; border-radius: 10px; border: 1px solid var(--line); background: #ffffff08; color: inherit; text-align: center; }
+.pc-card img { width: 72px; height: 72px; object-fit: contain; image-rendering: pixelated; }
+.pc-card small { color: var(--muted); font-size: 11px; }
+.pc-price { color: var(--gold); font-weight: bold; }
+.pc-card.rE, .pc-slot.rE { border-color: #a855f7; }
+.pc-card.rL, .pc-slot.rL { border-color: var(--gold); box-shadow: 0 0 8px #f5c54255; }
+.pc-card.rR, .pc-slot.rR { border-color: #3b82f6; }
+.pc-series { padding: 6px 0; border-bottom: 1px solid var(--line); }
+.pc-series.complete .sat-top b { color: var(--gold); }
+.pc-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 4px; }
+.pc-slot { aspect-ratio: 1; border-radius: 8px; border: 1px solid var(--line); background: #ffffff0d; padding: 2px; display: grid; place-items: center; }
+.pc-slot img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+.pc-slot.empty img { filter: brightness(0) opacity(0.35); }

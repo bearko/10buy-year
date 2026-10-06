@@ -29,6 +29,7 @@ import { autoPick } from './engine/dealpolicy.js';
 import { pioneerLine } from './engine/pioneer.js';
 import { satLine } from './engine/rivals.js';
 import { rivalsModal } from './ui/rivals.js';
+import { collectionModal, galleryModal } from './ui/collection.js';
 import { dealPolicyModal } from './ui/dealpolicy.js';
 import { routineBuy, routineList, routineListStamina, routineStale } from './engine/routine.js';
 import { addStamina } from './engine/effects.js';
@@ -102,6 +103,10 @@ async function playSteps(steps) {
         }
         break;
       }
+      case 'gallery':
+        // 百貨店の美術画廊（ルーティン・オート中は寄らない）
+        if (!isAuto()) await galleryModal(state, st, refresh);
+        break;
       case 'items':
         await showItems(state, st.title, groupItems(st.list), st.opts || {});
         break;
@@ -436,6 +441,7 @@ function renderTabs() {
         onShop: () => after(myStoreModal(state, refresh)),
         onDeal: () => after(dealPolicyModal(state)),
         onRivals: () => after(rivalsModal(state, refresh)),
+        onCollection: () => after(collectionModal(state, refresh)),
       }),
     },
     { id: 'log', label: 'ログ', open: () => logModal(state) },

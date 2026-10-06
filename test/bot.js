@@ -15,6 +15,7 @@ import { checkTutorial, currentMission } from '../src/engine/tutorial.js';
 import { autoBuy, bestPlatform, reserveNeeded } from '../src/engine/automation.js';
 import { openCourses } from '../src/engine/courses.js';
 import { LOCATIONS } from '../src/engine/mystore.js';
+import { buyPiece, openMuseum } from '../src/engine/collection.js';
 
 export function play(s, steps, policy) {
   const queue = [...steps];
@@ -27,6 +28,8 @@ export function play(s, steps, policy) {
       queue.unshift(...(st.run() || []));
     } else if (st.t === 'offers') {
       policy.buyOffers(s, st.offers);
+    } else if (st.t === 'gallery') {
+      policy.buyGallery?.(s, st.items);
     }
   }
 }
@@ -37,6 +40,10 @@ const RISKY = /突っ込む|入会する|^買う$|5倍|やってみる|捨てア
 const route = (s) => (s.botRoute === 'wash' && s.flags.spiderThread !== undefined ? 'light' : s.botRoute || 'light');
 
 export const smartPolicy = {
+  // 百貨店の美術画廊：余裕資金（3,000万円を超える分）で、安い品から集める
+  buyGallery(s, items) {
+    for (const it of [...items].sort((a, b) => a.price - b.price)) if (s.cash - it.price > 30000000) buyPiece(s, it);
+  },
   choose: (s, st) => {
     const labels = st.options.map((o) => o.label);
     const find = (re) => labels.findIndex((l) => re.test(l));
@@ -164,6 +171,7 @@ function chooseCommand(s) {
   if (route(s) === 'light' && has('donate') && s.toku < 175 && s.week % 4 === 2 && (s.cash > 4000000 || s.stage >= 3)) return 'donate';
   if (has('course') && s.cash > 1500000 && (s.course ? WANT_COURSES.includes(s.course.id) : wantedCourse(s)) && s.week % 2 === 0) return 'course';
   if (has('open_shop') && s.cash > 4000000) return 'open_shop';
+  if (has('dept') && s.cash > 35000000 && s.week % 8 === 4) return 'dept';
   if (has('queue') && queueTargets(s).length && s.stamina >= 60) return 'queue';
   const fresh = has('lottery') ? openLotteries(s).filter((p) => !(s.botEntered ||= []).includes(`${p.id}@${Math.floor(s.week / 48)}`)) : [];
   if (fresh.length) {
@@ -192,6 +200,7 @@ export function runGame(seed, policy = smartPolicy, { weeks = Infinity, route = 
     play(s, checkTutorial(s), policy);
     if (s.over) break;
     growth(s);
+    if (!s.museum && (s.collection || []).length >= 5 && s.cash > 15000000) openMuseum(s);
     manageListings(s);
     play(s, checkTutorial(s), policy);
     while (s.actionsLeft > 0 && !s.over) {

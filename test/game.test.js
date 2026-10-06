@@ -537,6 +537,63 @@ test('いたちごっこ：抽選の本人確認・購入制限・手数料・�
   assert.ok(platformsFor(s, u).some((x) => x.id === 'exp'));
 });
 
+test('百貨店：年間の購入額で顧客ランクが上がり、外商の優先案内が来る。転売するとバレる', async () => {
+  const C = await import('../src/engine/collection.js');
+  const { netWorth } = await import('../src/engine/ending.js');
+  const s = createGame(28);
+  s.stage = 3;
+  s.cash = 50_000_000;
+  assert.ok(availableCommands(s).some((c) => c.id === 'dept'), 'ステージ3から百貨店');
+  assert.equal(C.deptRank(s), 0);
+  const steps = performCommand(Object.assign(s, { stamina: 100 }), 'dept');
+  const gallery = steps.find((x) => x.t === 'gallery');
+  assert.ok(gallery.items.length >= 4);
+  assert.ok(gallery.items.every((it) => C.PIECE_MAP[it.ext].rarity !== 'L'), '一般客にはレジェンドは並ばない');
+  const nw0 = netWorth(s);
+  const it = gallery.items[0];
+  assert.ok(C.buyPiece(s, it));
+  assert.ok(C.owned(s, it.ext));
+  assert.equal(netWorth(s), nw0, 'コレクションは評価額で純資産に入る');
+  for (let i = 0; i < 60; i++) { s.week++; updateMarket(s); } // 2年目（限定品が出回っている）
+  C.deptSpend(s, 6_000_000);
+  assert.equal(C.deptRank(s), 2, '年600万円で外商顧客');
+  // 外商の優先案内
+  let offerStep = null;
+  for (let i = 0; i < 300 && !offerStep; i++) offerStep = C.deptWeek(s).find((x) => x.t === 'offers');
+  assert.ok(offerStep, '外商の優先案内が来る');
+  const o = offerStep.offers[0];
+  assert.equal(o.source, 'gaisho');
+  buy(s, o, 1);
+  const u = s.inventory.find((x) => x.gaisho);
+  assert.ok(u, '外商の品には印がつく');
+  // 転売がバレると評判が下がる
+  s.dept.caught = 1;
+  const rep = s.dept.rep;
+  const caught = C.deptWeek(s);
+  assert.ok(caught.some((x) => x.who === 'marie'));
+  assert.equal(s.dept.rep, rep - 25);
+});
+
+test('コレクションと私設美術館：シリーズをそろえると入館料が増え、品は値上がりする', async () => {
+  const C = await import('../src/engine/collection.js');
+  const { COLLECTION_SERIES } = await import('../src/data/collection.js');
+  const s = createGame(29);
+  s.stage = 4;
+  s.cash = 100_000_000;
+  const sr = COLLECTION_SERIES[0];
+  for (const [ext] of sr.items) assert.ok(C.buyPiece(s, { ext, price: 100000 }));
+  assert.equal(C.completeSeries(s).length, 1);
+  assert.equal(C.museumIncome(s), 0, '美術館を開くまで入館料はない');
+  assert.ok(C.openMuseum(s));
+  assert.equal(C.museumIncome(s), 1000 + 2500 + 7500 + 20000 + 60000 + C.SERIES_BONUS);
+  const v0 = C.collectionValue(s);
+  for (let i = 0; i < 24; i++) C.collectionMonthly(s);
+  assert.ok(C.collectionValue(s) > v0, 'レア以上はゆっくり値上がりする');
+  const got = C.sellPiece(s, sr.items[4][0]);
+  assert.ok(got > 0);
+  assert.equal(C.completeSeries(s).length, 0, '手放すとシリーズが欠ける');
+});
+
 test('KPIの見え方は「利益率と回転」「資金効率と時間単価」で増える', () => {
   const s = createGame(13);
   assert.equal(kpiLevel(s), 1);
