@@ -777,3 +777,10 @@ body.loot-show #side { display: none !important; }
 .chip.toku.dark { background: #2a0a0a; color: #ff4d4d; border: 1px solid #b91c1c; }
 
 .menu-main .shop-btn { grid-column: 1 / -1; border-color: var(--gold); }
+
+/* 経験点の振り替え */
+.convert { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--line); display: flex; flex-direction: column; gap: 4px; }
+.convert .sub { font-weight: bold; color: var(--gold); }
+.cv-seg { flex-wrap: wrap; gap: 4px; }
+.cv-seg .btn { padding: 4px 6px; font-size: 11px; }
+.cv-btns { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }

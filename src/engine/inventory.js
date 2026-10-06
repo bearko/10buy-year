@@ -168,6 +168,13 @@ export function groupInventory(s) {
   return [...groups.values()];
 }
 
+// 出品できるのに出していない在庫と、出品枠の空き（週の最後の行動の前に知らせる）
+export function idleListing(s) {
+  const unlisted = activeUnits(s).filter((u) => !u.listing && !(productOf(u.pid).alcohol && s.flags.noAlcohol) && platformsFor(s, u).length > 0).length;
+  const free = Math.max(0, listingCap(s) - listedUnits(s).length);
+  return { unlisted, free, n: Math.min(unlisted, free) };
+}
+
 // イベント・家探しで在庫を直接増やす（福袋、家の不用品など）
 export function addUnits(s, pid, qty, cost, extra = {}) {
   for (let i = 0; i < qty; i++) s.inventory.push(newUnit(s, pid, cost, extra));

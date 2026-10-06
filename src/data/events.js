@@ -381,7 +381,7 @@ export const EVENTS = [
     chance: 0.08,
     cond: (s) => s.week >= 4,
     play: (s) => {
-      const cands = PRODUCTS.filter((p) => ['staple', 'collect', 'hype'].includes(p.kind) && isReleased(s, p) && !p.know);
+      const cands = PRODUCTS.filter((p) => ['staple', 'collect', 'hype'].includes(p.kind) && isReleased(s, p) && !p.know && !p.spot);
       const p = pick(s, cands);
       applyShock(s, p.id, 1.35, null, null);
       s.news.push({ pid: p.id, text: `【テレビ】情報番組で「${p.name}」が紹介され、相場が上昇`, kind: 'up' });

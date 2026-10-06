@@ -1,5 +1,6 @@
 // localStorage へのセーブ／ロード。プライベートブラウズなどで使えなくても落ちないようにする。
 import { SAVE_VERSION } from './state.js';
+import { ensureMarket } from './market.js';
 
 const SAVE_KEY = '10buy-year:save';
 const RANK_KEY = '10buy-year:ranking';
@@ -28,6 +29,7 @@ export function loadGame() {
     const s = JSON.parse(raw);
     if (s.version !== SAVE_VERSION) return null;
     if (s.toku === undefined) s.toku = Math.max(1, 100 - Math.round(s.hate || 0)); // 炎上度から TOKU へ
+    ensureMarket(s); // あとから追加した商品の相場
     return s;
   } catch {
     return null;

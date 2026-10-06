@@ -7,10 +7,11 @@ import { woy, yearOf } from './calendar.js';
 import { perk } from './perks.js';
 import { buildListing } from './listing.js';
 import { knowsGenre, unknownGenres } from './courses.js';
+import { openSpots } from './pioneer.js';
 
 let oidSeq = 1;
-// 新ジャンル（know）はここでは除き、genreOffer で知っているものだけ出す
-const byKind = (kind) => PRODUCTS.filter((p) => p.kind === kind && !p.know);
+// 新ジャンル（know）はここでは除き、genreOffer で知っているものだけ出す。開拓先のシリーズ（spot）も除く
+const byKind = (kind) => PRODUCTS.filter((p) => p.kind === kind && !p.know && !p.spot);
 // 定価10万円以上の高額品は、ステージ2になるまで仕入れ候補に出てこない（序盤の一攫千金を防ぐ）
 const affordableTier = (s, p) => p.retail < 100000 || s.stage >= 2;
 const round10 = (v) => Math.max(10, Math.round(v / 10) * 10);
@@ -123,7 +124,7 @@ export function storeOffers(s) {
       make: () => makeOffer(s, 'jewel', { source: 'luxury', label: 'ショーウィンドウの憧れの品', price: productOf('jewel').retail, maxQty: 1, scarce: true, brandNew: true }),
     },
   ];
-  gens.push(genreGen(s, 'used', 0.6, 0.85));
+  gens.push(genreGen(s, 'used', 0.6, 0.85), ...spotGens(s, 'store'));
   const offers = generate(s, gens, n);
   if (!s.stats.purchases) offers.unshift(firstWagon(s));
   return withUnknown(s, offers);
@@ -193,7 +194,7 @@ export function onlineOffers(s) {
       },
     },
   ];
-  gens.push(genreGen(s, 'flea', 0.65, 0.9));
+  gens.push(genreGen(s, 'flea', 0.65, 0.9), ...spotGens(s, 'online'));
   const offers = generate(s, gens, n);
   for (const o of offers) if (o.price === 0) o.price = productOf(o.pid).retail;
   return withUnknown(s, offers);
@@ -267,7 +268,7 @@ export function giftOffer(s, pid, fields) {
 // ---- 業者オークション（古物商だけが参加できる市場）----
 export function auctionOffers(s) {
   const n = 4 + Math.floor(s.abilities.buy / 30);
-  const pool = PRODUCTS.filter((p) => (['collect', 'luxury'].includes(p.kind) || (p.kind === 'hype' && isReleased(s, p))) && affordableTier(s, p) && knowsGenre(s, p));
+  const pool = PRODUCTS.filter((p) => (['collect', 'luxury'].includes(p.kind) || (p.kind === 'hype' && isReleased(s, p))) && affordableTier(s, p) && knowsGenre(s, p) && !p.spot);
   const gens = pool.map((p) => ({
     weight: p.kind === 'collect' ? 3 : 1,
     make: () => makeOffer(s, p.id, {
@@ -278,6 +279,7 @@ export function auctionOffers(s) {
       fakeRate: p.fakeRisk * 0.05,
     }),
   }));
+  gens.push(...spotGens(s, 'auction'));
   return generate(s, gens, n);
 }
 
@@ -294,7 +296,26 @@ export function wholesaleOffers(s) {
       minQty: 20,
     }),
   }));
+  gens.push(...spotGens(s, 'wholesale'));
   return generate(s, gens, n);
+}
+
+// ---- 開拓した仕入れ先（engine/pioneer.js）。そこでしか出会えないシリーズが並ぶ ----
+function spotGens(s, route) {
+  return openSpots(s, route).map((sp) => ({
+    weight: 1.5,
+    make: () => {
+      const p = productOf(sp.pid);
+      return makeOffer(s, p.id, {
+        source: sp.id,
+        label: `${sp.name}で仕入れ${sp.minQty ? `（最低${sp.minQty}個〜）` : ''}`,
+        price: roundPrice(priceOf(s, p.id) * randRange(s, sp.ratio[0], sp.ratio[1]) * (p.used ? perk(s, 'usedPrice') : 1)),
+        maxQty: randInt(s, sp.qty[0], sp.qty[1]),
+        ...(sp.minQty ? { minQty: sp.minQty } : {}),
+        fakeRate: p.fakeRisk * 0.15,
+      });
+    },
+  }));
 }
 
 // ---- ステージ3以降の新ジャンル ----

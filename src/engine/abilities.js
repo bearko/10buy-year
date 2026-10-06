@@ -11,6 +11,17 @@ export const EXP_TYPES = [
 ];
 export const EXP_NAME = Object.fromEntries(EXP_TYPES.map((e) => [e.id, e.name]));
 
+// 経験点の振り替え：余った経験点を、別の種類に半分の値で移す（情報・対人だけ余りがちなので）
+export const CONVERT_RATE = 0.5;
+export function convertExp(s, from, to, amount) {
+  amount = Math.min(Math.floor(amount), s.exp[from] || 0);
+  if (from === to || amount <= 0) return 0;
+  const got = Math.floor(amount * CONVERT_RATE);
+  s.exp[from] -= amount;
+  s.exp[to] = (s.exp[to] || 0) + got;
+  return got;
+}
+
 // 基礎能力。行動で貯めた経験点（情報・行動・技術・対人・精神）を組み合わせて上げる。
 export const ABILITIES = [
   { id: 'eye', name: '目利き', desc: '相場を読む精度と、偽物に気づく力', weights: { info: 1, mind: 0.5 } },

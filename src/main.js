@@ -6,7 +6,7 @@ import { availableCommands, availableNightCommands, COMMAND_MAP, commandPreview,
 import { claimableNodes } from './engine/abilities.js';
 import { hasSkill, MOOD_MULT } from './engine/effects.js';
 import { finalResult } from './engine/ending.js';
-import { activeUnits, listedUnits } from './engine/inventory.js';
+import { activeUnits, idleListing, listedUnits } from './engine/inventory.js';
 import { autoBuy } from './engine/automation.js';
 import { clearSave, loadGame, loadRanking, pushRanking, saveGame } from './engine/save.js';
 import { createGame } from './engine/state.js';
@@ -15,7 +15,7 @@ import { checkTutorial, currentMission, treeOpen } from './engine/tutorial.js';
 import { playBgm, playSe, setSound, soundOn } from './ui/audio.js';
 import { $, clear, h, wait, yenFmt } from './ui/dom.js';
 import { renderHud, renderParams, renderTicker, setPreview } from './ui/hud.js';
-import { openModal, toast } from './ui/modal.js';
+import { confirmBox, openModal, toast } from './ui/modal.js';
 import { choose, hidePartner, isAuto, say, setAuto, setBackground, setLogger, setMessage, setTextSpeed, showChris, showInfo } from './ui/stage.js';
 import { bizModal, menuModal } from './ui/status.js';
 import { openTree } from './ui/tree.js';
@@ -26,6 +26,7 @@ import { offersModal } from './ui/shop.js';
 import { myStoreModal } from './ui/mystore.js';
 import { routineModal } from './ui/routine.js';
 import { autoPick } from './engine/dealpolicy.js';
+import { pioneerLine } from './engine/pioneer.js';
 import { dealPolicyModal } from './ui/dealpolicy.js';
 import { routineBuy, routineList, routineListStamina, routineStale } from './engine/routine.js';
 import { addStamina } from './engine/effects.js';
@@ -257,7 +258,28 @@ function waitForCommand(mode) {
       setPreview(null);
       refresh();
     };
-    const pickCmd = (id) => {
+    let listWarned = false;
+    const pickCmd = async (id) => {
+      // この行動で週の作業が終わるのに、在庫を出せる出品枠が空いていたら知らせる（売れるのは週末なので）
+      const lastOfWeek = night || (state.actionsLeft <= 1 && !(state.nightLeft > 0 && state.sick <= 0));
+      const idle = idleListing(state);
+      if (lastOfWeek && idle.n > 0 && !listWarned && state.settings.warnIdleListing !== false) {
+        listWarned = true;
+        const r = await confirmBox({
+          title: '出品枠が空いています',
+          lines: [`出品していない在庫が${idle.unlisted}点、出品枠が${idle.free}件あいている。`, '売れるのは週末。このまま週を終えると、今週は売れない。'],
+          okLabel: '在庫を出品する',
+          cancelLabel: 'このまま進む',
+          dontAsk: true,
+        });
+        if (r.dontAsk) state.settings.warnIdleListing = false;
+        if (r.ok) {
+          await inventoryModal(state, refresh);
+          refresh();
+          draw();
+          return;
+        }
+      }
       redrawCommands = null;
       resumeCommands = null;
       drawIdleCommands();
@@ -271,7 +293,8 @@ function waitForCommand(mode) {
       const p = commandPreview(state, c, { night });
       setPreview({ ...p, exp: Object.fromEntries(Object.entries(c.exp).map(([k, v]) => [k, Math.round(v * mood)])) });
       refresh();
-      setMessage(c.name, c.desc);
+      const pio = pioneerLine(state, c.id);
+      setMessage(c.name, pio ? `${c.desc}\n${pio}` : c.desc);
       draw();
     };
 

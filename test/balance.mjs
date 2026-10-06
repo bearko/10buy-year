@@ -7,7 +7,7 @@ for (let i = 1; i <= n; i++) {
   const { s, result } = runGame(i * 7919);
   const sw = s.stageWeeks || {};
   rows.push({
-    seed: i, end: result.ending.id, toku: s.underworld ? '裏' : Math.round(s.toku), tr: s.skills.filter((x) => /^(tr_|cap_trade)/.test(x)).length, dk: s.skills.filter((x) => /^(dk_|cap_dark)/.test(x)).length, shop: s.shop ? s.shop.loc : '-', rank: result.rank, nw: result.netWorth, stage: s.stage,
+    seed: i, end: result.ending.id, toku: s.underworld ? '裏' : Math.round(s.toku), tr: s.skills.filter((x) => /^(tr_|cap_trade)/.test(x)).length, dk: s.skills.filter((x) => /^(dk_|cap_dark)/.test(x)).length, shop: s.shop ? s.shop.loc : '-', spots: (s.spots || []).length, rank: result.rank, nw: result.netWorth, stage: s.stage,
     st2: yr(sw[2]), st3: yr(sw[3]), st4: yr(sw[4]), st5: yr(sw[5]), debtFree: yr(s.flags.debtFree), rev: result.revenue, sold: result.soldUnits, week: s.week,
   });
 }

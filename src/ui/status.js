@@ -139,6 +139,7 @@ export function menuModal({ s, onTitle, onSpeed, speed, onRestart, onChange, onM
         h('button', { class: 'btn', onclick: () => { setSound(!soundOn()); api.refresh(); } }, `サウンド: ${soundOn() ? 'ON' : 'OFF'}`),
         h('div', { class: 'seg' }, h('span', {}, '文字送り '), ...[['はやい', 8], ['ふつう', 22], ['おそい', 40], ['一瞬', 0]].map(([label, ms]) => h('button', { class: `btn small ${speed() === ms ? 'on' : ''}`, onclick: () => { onSpeed(ms); api.refresh(); } }, label))),
         s ? h('button', { class: 'btn', onclick: () => { api.close(); onDeal?.(); } }, '取引の対応（値下げ交渉・トラブル）') : null,
+        s ? h('button', { class: 'btn', onclick: () => { s.settings.warnIdleListing = s.settings.warnIdleListing === false; api.refresh(); } }, `出品枠の空きを知らせる: ${s.settings.warnIdleListing === false ? 'OFF' : 'ON'}`) : null,
         s?.skills.includes('out_buy')
           ? h('button', { class: 'btn', onclick: () => { s.settings.autoBuy = !s.settings.autoBuy; api.refresh(); onChange?.(); } }, `外注の自動仕入れ: ${s.settings.autoBuy ? 'ON' : 'OFF'}`)
           : null,

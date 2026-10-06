@@ -10,7 +10,15 @@ const PRODUCT_INDEX = Object.fromEntries(PRODUCTS.map((p, i) => [p.id, i]));
 
 export function initMarket(s) {
   s.market = {};
+  ensureMarket(s);
+}
+
+// 古いセーブに、あとから追加した商品の相場がなければ作る
+export function ensureMarket(s) {
+  const added = [];
   for (const p of PRODUCTS) {
+    if (s.market[p.id]) continue;
+    added.push(p);
     const m = { p: p.kind === 'hype' ? p.peak : p.base ?? 1, hist: [], restockWeek: -1, restocks: 0 };
     if (p.kind === 'hype') {
       m.floor = p.floor;
@@ -25,7 +33,7 @@ export function initMarket(s) {
     }
     s.market[p.id] = m;
   }
-  for (const p of PRODUCTS) s.market[p.id].hist.push(priceOf(s, p.id));
+  for (const p of added) s.market[p.id].hist.push(priceOf(s, p.id));
 }
 
 export const priceOf = (s, pid) => Math.round(productOf(pid).retail * s.market[pid].p);
@@ -246,4 +254,5 @@ export function confidenceLabel(s) {
 }
 
 // 相場画面に並べる商品（発表済み・流通中のもの）
-export const visibleProducts = (s) => PRODUCTS.filter((p) => isAnnounced(s, p) && (!p.know || (s.certs || []).includes(`know_${p.know}`)));
+// 知らないジャンルと、まだ開拓していない仕入れ先のシリーズは相場画面に出さない
+export const visibleProducts = (s) => PRODUCTS.filter((p) => isAnnounced(s, p) && (!p.know || (s.certs || []).includes(`know_${p.know}`)) && (!p.spot || (s.spots || []).includes(p.spot)));

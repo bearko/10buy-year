@@ -11,6 +11,7 @@ import { addUnits, overCapacity } from './inventory.js';
 import { drawEvents } from './events.js';
 import { attendCourse, courseAvailable } from './courses.js';
 import { openShopSteps } from './mystore.js';
+import { pioneerTick } from './pioneer.js';
 import { bg, choice, gain, info, items, narr, offers, sfx, talk } from './steps.js';
 
 const E = (id) => `assets/extensions/${id}.png`;
@@ -184,15 +185,18 @@ const HANDLERS = {
   store(s) {
     s.flags.didStore = true;
     s.stats.storeTrips = (s.stats.storeTrips || 0) + 1;
+    const found = pioneerTick(s, 'store');
     const list = storeOffers(s);
     return [
+      ...found,
       talk('chris', pick(s, ['よし、今日は駅前から郊外まで5店舗回るぞ！', 'ワゴンの奥に宝が眠ってる…はず！', '値札の貼り替え日を狙って来たんだ。']), 'guts'),
       offers(list, '店舗で見つけた商品'),
     ];
   },
   online(s) {
+    const found = pioneerTick(s, 'online');
     const list = onlineOffers(s);
-    const steps = [talk('chris', pick(s, ['ポイント還元率、予約ページ、フリマの新着…全部チェックだ。', 'F5連打で在庫復活を狙う！', '通販サイトのセール情報をまとめて確認しよう。']), 'arms')];
+    const steps = [...found, talk('chris', pick(s, ['ポイント還元率、予約ページ、フリマの新着…全部チェックだ。', 'F5連打で在庫復活を狙う！', '通販サイトのセール情報をまとめて確認しよう。']), 'arms')];
     const forecast = forecastLine(s);
     if (forecast) steps.push(info('相場メモ', [forecast]));
     steps.push(offers(list, 'ネットで見つけた商品', '「激安」には理由があるかも…'));
@@ -253,13 +257,17 @@ const HANDLERS = {
     return steps;
   },
   auction(s) {
+    const found = pioneerTick(s, 'auction');
     return [
+      ...found,
       narr('会員証を見せて、業者オークションの会場に入った。プロの目利きが静かに札を入れていく。'),
       offers(auctionOffers(s), '業者オークションの出品物', '真贋チェック済みが多い'),
     ];
   },
   wholesale(s) {
+    const found = pioneerTick(s, 'wholesale');
     return [
+      ...found,
       narr('問屋の担当者と商談。「ロットでまとめていただけるなら、この掛け率で出せます」'),
       offers(wholesaleOffers(s), '問屋の卸値リスト', '最低ロット20個'),
     ];
