@@ -9,6 +9,7 @@ import { buildListing } from './listing.js';
 import { knowsGenre, unknownGenres } from './courses.js';
 import { openSpots } from './pioneer.js';
 import { applySaturation, botActive, saturation } from './rivals.js';
+import { lotteryRegimeMult, madeToOrder, queueLimited } from './regimes.js';
 
 let oidSeq = 1;
 // 新ジャンル（know）はここでは除き、genreOffer で知っているものだけ出す。開拓先のシリーズ（spot）も除く
@@ -224,7 +225,7 @@ export function queueTargets(s) {
   const targets = [];
   for (const p of PRODUCTS) {
     const w = woy(s.week);
-    if (p.kind === 'hype' && (w === p.release || isRestockWeek(s, p.id))) targets.push({ pid: p.id, reason: w === p.release ? '発売日' : '再販日' });
+    if (p.kind === 'hype' && !madeToOrder(s, p.id) && (w === p.release || isRestockWeek(s, p.id))) targets.push({ pid: p.id, reason: w === p.release ? '発売日' : '再販日' });
     if (p.kind === 'perishable' && p.eventWeeks.includes(w)) targets.push({ pid: p.id, reason: '催事' });
     if (p.kind === 'boom' && inBoom(s, p.id)) targets.push({ pid: p.id, reason: '入荷情報' });
     if (p.kind === 'seasonal' && w === p.release) targets.push({ pid: p.id, reason: '販売開始' });
@@ -235,6 +236,7 @@ export function queueTargets(s) {
 
 export function queueSuccessRate(s, crowd = 1) {
   let r = 0.35 + s.abilities.buy / 250 + (hasSkill(s, 'early_bird') ? 0.25 : 0) + (hasSkill(s, 'dk_crew') ? 0.3 : 0) + (s.mood - 2) * 0.03;
+  if (queueLimited(s)) r *= 0.8; // 購入制限（会員証の確認で列が進まない）
   return Math.max(0.05, Math.min(0.95, r / crowd));
 }
 
@@ -245,7 +247,7 @@ export function queueOffer(s, pid, qty) {
 
 // ---- 抽選 ----
 export function openLotteries(s) {
-  return byKind('hype').filter((p) => inPreSale(s, p));
+  return byKind('hype').filter((p) => inPreSale(s, p) && !madeToOrder(s, p.id)); // 受注生産なら抽選はない
 }
 
 export function lotteryWinRate(s, product) {
@@ -254,6 +256,7 @@ export function lotteryWinRate(s, product) {
   if (flag(s, 'lotteryPenalty')) r *= 0.6;
   r *= perk(s, 'lotteryMult');
   if (botActive(s)) r *= 0.6; // ライバルの転売ボット
+  r *= lotteryRegimeMult(s); // 抽選の本人確認（会員ランクで戻る）
   return Math.min(0.8, r);
 }
 

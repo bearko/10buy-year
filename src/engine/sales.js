@@ -4,6 +4,7 @@ import { chance, gauss, poisson, randRange, weightedPick } from './rng.js';
 import { addHate, addRating, addStamina, hasSkill } from './effects.js';
 import { demandOf, roundPrice, unitPrice } from './market.js';
 import { platformFee, platformMult, removeUnit } from './inventory.js';
+import { heatFromSale } from './regimes.js';
 import { addExpense, addHours, recordSale } from './kpi.js';
 import { perk } from './perks.js';
 
@@ -136,6 +137,7 @@ export function finalizeSale(s, sale, out) {
   s.pending.push({ id: sale.id, amount: sale.net, week: s.week + 1, label: `売上金: ${product.name}` });
   removeUnit(s, u.uid);
   recordSale(s, sale);
+  heatFromSale(s, sale); // 高値で売ると目立つ（いたちごっこ）
 
   const st = s.stats;
   st.revenue += sale.price;

@@ -2,6 +2,7 @@
 import { UNDERWORLD_LIVING } from './underworld.js';
 import { shopMonthly, shopMonthlyCost } from './mystore.js';
 import { rivalsMonthly } from './rivals.js';
+import { regimeMonthly } from './regimes.js';
 import { addCash, addHate, addMood, addToku, hasSkill, record, setFlag, yen } from './effects.js';
 import { celebrate, info, sfx, talk } from './steps.js';
 import { monthlyNodeFees } from './abilities.js';
@@ -103,6 +104,7 @@ export function monthEnd(s) {
     steps.push(talk('mine', '現金が大きくマイナスよ…。足りない分はカードローンで借りたことにするわ。', 'teary'));
     s.cash = 0;
   }
+  regimeMonthly(s, Object.keys(s.rivals || {}));
   steps.push(...rivalsMonthly(s));
   steps.push(...checkPromotion(s));
   return steps;

@@ -18,6 +18,8 @@ export const KNOW_GENRES = [['art', 'アート・美術品'], ['game', 'レト�
 COURSES.push(
   ...KNOW_GENRES.map(([g, name]) => ({ id: `know_${g}`, know: g, name: `${name}の基礎講座`, desc: `${name}のジャンルを仕入れられるようになる`, fee: 40000, sessions: 3, stage: 3 })),
   { id: 'export', name: '輸出入の基礎', desc: '海外の販路「海外EC」が使える。円安の週は高く売れる', fee: 50000, sessions: 4, stage: 3 },
+  // 輸出規制（いたちごっこ）が予告されたら出てくる
+  { id: 'trade_practice', name: '貿易実務', desc: '輸出規制のあとも、海外ECで限定品を売れる', fee: 60000, sessions: 4, stage: 3, cond: (s) => (s.regimes || []).some((r) => r.id === 'export_rule') },
   { id: 'store_mgmt', name: '店舗経営講座', desc: '自分の店を開ける（外出「店を開く」）', fee: 100000, sessions: 5, stage: 4 },
 );
 export const knowsGenre = (s, p) => !p.know || (s.stage >= (p.stage || 3) && !!s.certs?.includes(`know_${p.know}`));
@@ -28,7 +30,7 @@ export const COURSE_MAP = Object.fromEntries(COURSES.map((c) => [c.id, c]));
 
 export const hasCert = (s, id) => !!s.certs?.includes(id);
 export const hasGenreCert = (s, cat) => hasCert(s, `appraise_${cat}`);
-export const openCourses = (s) => COURSES.filter((c) => !hasCert(s, c.id) && s.stage >= c.stage);
+export const openCourses = (s) => COURSES.filter((c) => !hasCert(s, c.id) && s.stage >= c.stage && (!c.cond || c.cond(s)));
 export const courseAvailable = (s) => s.stage >= 2 && (!!s.course || openCourses(s).length > 0);
 
 function finish(s, c) {

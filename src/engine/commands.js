@@ -13,6 +13,7 @@ import { attendCourse, courseAvailable } from './courses.js';
 import { openShopSteps } from './mystore.js';
 import { pioneerTick } from './pioneer.js';
 import { meetupLeak, satNameOf, tripSaturation } from './rivals.js';
+import { namesBanned, queueLimited } from './regimes.js';
 import { bg, choice, gain, info, items, narr, offers, sfx, talk } from './steps.js';
 
 const E = (id) => `assets/extensions/${id}.png`;
@@ -216,7 +217,10 @@ const HANDLERS = {
     };
     return [
       talk('chris', `受付中の抽選は${names}。どうやって応募しよう…。`, 'arms'),
-      choice([
+      // 抽選の本人確認（いたちごっこ）が始まると、名義借り・捨てアカは使えない
+      choice(namesBanned(s) ? [
+        { label: `自分の名義だけで応募（${base}口）`, sub: `本人確認あり・公式の会員ランク ${s.member || 0}`, run: () => register('fair', 0) },
+      ] : [
         { label: `自分の名義だけで応募（${base}口）`, run: () => register('fair', 0) },
         {
           label: `家族や友人に頼む（+2口・お礼5,000円）`,
@@ -252,7 +256,7 @@ const HANDLERS = {
     addHate(s, 3, false);
     const steps = [narr(`${t.reason}の「${p.name}」を狙って、始発で店へ向かった。すでに長い列ができている…。`)];
     if (chance(s, rate)) {
-      const qty = hasSkill(s, 'early_bird') && chance(s, 0.5) ? 2 : 1;
+      const qty = hasSkill(s, 'early_bird') && chance(s, 0.5) && !queueLimited(s) ? 2 : 1; // 購入制限ならお一人様1点
       steps.push(talk('chris', '買えた…！ 整理券、ギリギリだった！', 'cheer'), offers([queueOffer(s, p.id, qty)], '行列の戦利品', `相場は約${Math.round(priceOf(s, p.id) / 1000)}千円（推定は購入画面で）`));
     } else {
       steps.push(talk('chris', '目の前で「本日分は完売です」の札が…。', 'wail'), info('完売', [`成功率は約${Math.round(rate * 100)}%だった`], 'bad'));

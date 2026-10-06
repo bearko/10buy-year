@@ -1,9 +1,10 @@
-// 仕入れ先と番付：仕入れ先ごとの荒れ具合と独占契約、ライバル転売屋との長者番付
+// 業界の動き：規制・販売方式の変化（いたちごっこ）、仕入れ先ごとの荒れ具合と独占契約、ライバル転売屋との長者番付
 import { portraitOf } from '../data/cast.js';
 import { PIONEER_ROUTES, openSpots } from '../engine/pioneer.js';
 import {
   EXCLUSIVE_WEEKS, exclusive, exclusiveCost, ranking, RIVAL_MAP, saturation, satNameOf, satPriceMult, signExclusive,
 } from '../engine/rivals.js';
+import { hotKeys, regimeRows } from '../engine/regimes.js';
 import { playSe } from './audio.js';
 import { h, yenFmt } from './dom.js';
 import { openModal, toast } from './modal.js';
@@ -15,7 +16,7 @@ function satKeys(s) {
 }
 
 export function rivalsModal(s, onChange) {
-  return openModal('仕入れ先と番付', (body, api) => {
+  return openModal('業界の動き', (body, api) => {
     const sign = (key) => {
       if (!signExclusive(s, key)) return toast('お金か対人の経験点が足りない', 'bad');
       playSe('levelup');
@@ -40,7 +41,17 @@ export function rivalsModal(s, onChange) {
       );
     });
     const rank = ranking(s);
+    const regs = regimeRows(s);
+    const hot = hotKeys(s);
     body.append(
+      h('div', { class: 'sub' }, '規制と販売方式'),
+      regs.length
+        ? h('div', { class: 'reg-list' }, ...regs.map((r) => h('div', { class: `reg-row ${r.positive ? 'good' : ''} ${r.over ? 'over' : ''}` },
+          h('div', { class: 'sat-top' }, h('b', {}, r.title), h('small', {}, r.state)),
+          ...r.rules.map((l) => h('small', { class: 'reg-rule' }, `・${l}`)))))
+        : h('p', { class: 'note' }, 'まだ大きな規制はない。高値の転売や買い占めで目立つと、メーカーや国が手を打ってくる。'),
+      hot.length ? h('div', { class: 'heat-list' }, h('small', {}, '目立っているもの（100で対策が予告される）'),
+        ...hot.map((x) => h('div', { class: 'heat-row' }, h('span', {}, x.name), h('div', { class: `sat-bar ${x.v >= 70 ? 'hi' : x.v >= 40 ? 'mid' : ''}` }, h('i', { style: { width: `${x.v}%` } })), h('small', {}, `${x.v}`)))) : null,
       h('p', { class: 'note' }, '仕入れ先は使うほど荒れて、掘り出し物が減り仕入れ値が上がる。放っておけば落ち着く。ライバルにも荒らされる。荒れたら、新しい仕入れ先を開拓して移ろう。'),
       h('div', { class: 'sub' }, '仕入れ先の荒れ具合'),
       ...rows,

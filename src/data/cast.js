@@ -51,6 +51,8 @@ export const CAST = {
   ghost: { name: '音信不通の購入者', enemy: 423 },
   collector: { name: '督促状の化身', enemy: 1190 },
 
+  ieyasu: { name: '徳川家康', hero: 3044, title: '規制の番人（鳴くまで待とう）' },
+
   // ライバル転売屋（金に取り憑かれた偉人の亡霊）
   rival_cao: { name: 'ゴースト・曹操', enemy: 467, title: '店舗の買い占め' },
   rival_edison: { name: 'ゴースト・エジソン', enemy: 491, title: '転売ボット' },

@@ -113,7 +113,7 @@ export function rivalWeek(s) {
   if (next && s.week >= (s.flags.rivalCool || 0)) {
     s.rivals[next.id] = { nw: Math.max(3000000, Math.round(netWorth(s) * next.start)), since: s.week, passed: false };
     s.flags.rivalCool = s.week + 12;
-    steps.push(sfx('trouble'), talk(next.cast, next.intro), info('ライバル転売屋', [`${next.name}（${next.style}）があらわれた`, '仕入れ先を荒らし、毎月の長者番付で競ってくる', '「メニュー → 仕入れ先と番付」で荒れ具合を確かめられる'], 'bad'));
+    steps.push(sfx('trouble'), talk(next.cast, next.intro), info('ライバル転売屋', [`${next.name}（${next.style}）があらわれた`, '仕入れ先を荒らし、毎月の長者番付で競ってくる', '「メニュー → 業界の動き」で荒れ具合と番付を確かめられる'], 'bad'));
     return steps;
   }
   // 行動：毎週それぞれ低い確率で仕掛けてくる

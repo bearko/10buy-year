@@ -1,5 +1,6 @@
 // 相場シミュレーション。商品ごとに「定価に対する倍率（premium）」を持ち、毎週動かす。
 import { catOf } from './listing.js';
+import { madeToOrder, usedRegimeMult } from './regimes.js';
 import { PRODUCTS, productOf } from '../data/products.js';
 import { chance, gauss, hashNoise, randInt, randRange } from './rng.js';
 import { clamp, hasSkill } from './effects.js';
@@ -65,6 +66,7 @@ export function unitPrice(s, u) {
   const m = s.market[u.pid];
   let mult = m.p;
   if (p.kind === 'hype' && u.edition && m.edition && u.edition < m.edition) mult = m.oldP;
+  if (p.used || u.used) mult *= usedRegimeMult(s); // 認定中古市場
   return Math.round(p.retail * mult * (u.damaged ? 0.5 : 1));
 }
 
@@ -129,6 +131,13 @@ function updateHype(s, p, m, news) {
   const w = woy(s.week);
   const year = yearOf(s.week);
   const label = year > 1 ? `${p.name}（${year}年モデル）` : p.name;
+  // 受注生産になった商品は品薄でなくなり、相場が定価近くまで下がっていく
+  if (madeToOrder(s, p.id)) {
+    m.floor = 1.02;
+    m.p += (1.05 - m.p) * 0.15;
+    m.oldP = Math.min(m.oldP, m.p);
+    return;
+  }
   // 旧モデルはゆっくり値下がりしていく
   m.oldP = Math.max(0.55, m.oldP * 0.985 + gauss(s) * 0.01);
   if (w === Math.max(0, p.release - 4)) news.push({ pid: p.id, text: `【発表】${p.genre}「${label}」が${p.release - w}週後に発売決定！抽選・予約受付スタート`, kind: 'info' });
