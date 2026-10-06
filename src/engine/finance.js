@@ -6,6 +6,7 @@ import { regimeMonthly } from './regimes.js';
 import { collectionMonthly, museumIncome } from './collection.js';
 import { mediaIncome } from './careers.js';
 import { visionMonthly } from './visions.js';
+import { dividend, lifestyleMonthly } from './lifestyle.js';
 import { addCash, addHate, addMood, addToku, hasSkill, record, setFlag, yen } from './effects.js';
 import { celebrate, info, sfx, talk } from './steps.js';
 import { monthlyNodeFees } from './abilities.js';
@@ -34,6 +35,7 @@ export function monthEnd(s) {
   if (s.fulltime) addCash(s, -LIVING_COST, '生活費（家賃・食費・国保・年金）');
   shopMonthly(s);
   collectionMonthly(s); // コレクションの値上がり・美術館の維持費
+  lifestyleMonthly(s); // 暮らしの出費
   // 丁寧な取引を続けている（評価が高い）と、少しずつ徳が積まれる
   if (s.rating >= 95) addToku(s, 1);
   if (s.underworld) addCash(s, -UNDERWORLD_LIVING, '裏の暮らし（金銭感覚の麻痺）');
@@ -173,6 +175,11 @@ export function passiveIncome(s) {
   if (hasSkill(s, 'div_consult')) {
     total += 250000;
     names.push('情報発信');
+  }
+  const div = dividend(s);
+  if (div) {
+    total += div;
+    names.push('出資の配当');
   }
   const media = mediaIncome(s);
   if (media) {

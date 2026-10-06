@@ -10,6 +10,7 @@ import { SPOT_MAP } from './pioneer.js';
 import { addSaturation, markSatUsed, SAT_PER_SPOT_BUY } from './rivals.js';
 import { exportBlocked, feeRegime, heatFromBuy, priceCap } from './regimes.js';
 import { deptSpend } from './collection.js';
+import { investSatMult } from './lifestyle.js';
 
 export const ROOM_CAPACITY = 30;
 export const PLATFORMS = {
@@ -56,7 +57,7 @@ export function platformsFor(s, u) {
 }
 
 export const listingCap = (s) => 5 + Math.floor(s.abilities.list / 10) + nodeLv(s, 'slots') * 3 + (hasSkill(s, 'ch_shops') ? 5 : 0);
-export const capacity = (s) => ROOM_CAPACITY + (hasSkill(s, 'warehouse') ? 60 : 0) + (hasSkill(s, 'warehouse2') ? 300 : 0) + perk(s, 'capacityAdd');
+export const capacity = (s) => ROOM_CAPACITY + (hasSkill(s, 'warehouse') ? 60 : 0) + (hasSkill(s, 'warehouse2') ? 300 : 0) + perk(s, 'capacityAdd') + ((s.lifestyle || 0) >= 2 ? 20 : 0); // 車のトランク
 export const activeUnits = (s) => s.inventory.filter((u) => u.arrive <= s.week);
 export const listedUnits = (s) => s.inventory.filter((u) => u.listing);
 export const spaceUsed = (s) => s.inventory.reduce((sum, u) => sum + SIZE_INFO[productOf(u.pid).size].space, 0);
@@ -135,7 +136,7 @@ export function buy(s, offer, qty, method = 'cash') {
   if (offer.source === 'dept' || offer.source === 'gaisho') deptSpend(s, total); // 百貨店の年間購入額
   // 開拓した仕入れ先は、買うほど荒れる
   if (SPOT_MAP[offer.source]) {
-    addSaturation(s, offer.source, SAT_PER_SPOT_BUY);
+    addSaturation(s, offer.source, SAT_PER_SPOT_BUY * investSatMult(s, offer.source)); // 出資した仕入れ先は荒れにくい
     markSatUsed(s, offer.source);
   }
   offer.maxQty -= qty;

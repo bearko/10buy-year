@@ -8,6 +8,7 @@ import { addExpense } from './kpi.js';
 import { PIONEER_ROUTES, SPOT_MAP, openSpots } from './pioneer.js';
 import { roundPrice } from './market.js';
 import { netWorth } from './ending.js';
+import { investDecay } from './lifestyle.js';
 import { info, sfx, talk } from './steps.js';
 
 // ---------------- 飽和度 ----------------
@@ -37,7 +38,7 @@ export const SAT_PER_SPOT_BUY = 2;
 // 週ごと：放っておけば落ち着く（使った週 -2.5、使わなかった週 -4）。週1回のペースなら荒れない
 export function decaySaturation(s) {
   const used = s.satUsed || {};
-  for (const key of Object.keys(s.saturation || {})) addSaturation(s, key, used[key] === s.week ? -2.5 : -4);
+  for (const key of Object.keys(s.saturation || {})) addSaturation(s, key, (used[key] === s.week ? -2.5 : -4) - investDecay(s, key)); // 出資した仕入れ先は早く落ち着く
 }
 export const markSatUsed = (s, key) => { s.satUsed = { ...(s.satUsed || {}), [key]: s.week }; };
 

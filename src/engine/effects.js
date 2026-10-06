@@ -26,6 +26,7 @@ export function addStamina(s, n) {
 // やる気を上げ下げする。「鋼のメンタル」は下がる出来事を半分の確率で無効化する。
 export function addMood(s, n) {
   if (n < 0 && hasSkill(s, 'iron_mental') && chance(s, 0.5)) return 0;
+  if (n < 0 && (s.lifestyle || 0) >= 3 && chance(s, 0.3)) return 0; // 家事代行：やる気が下がりにくい
   const before = s.mood;
   s.mood = clamp(s.mood + n, 0, 4);
   return s.mood - before;

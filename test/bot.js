@@ -17,6 +17,7 @@ import { openCourses } from '../src/engine/courses.js';
 import { LOCATIONS } from '../src/engine/mystore.js';
 import { buyPiece, openMuseum } from '../src/engine/collection.js';
 import { audOf } from '../src/engine/careers.js';
+import { INVEST_MAX, investIn, investLevel } from '../src/engine/lifestyle.js';
 
 export function play(s, steps, policy) {
   const queue = [...steps];
@@ -210,6 +211,11 @@ export function runGame(seed, policy = smartPolicy, { weeks = Infinity, route = 
     if (s.over) break;
     growth(s);
     if (!s.museum && (s.collection || []).length >= 5 && s.cash > 15000000) openMuseum(s);
+    // 出資：余裕資金で、開拓した仕入れ先に（月に1回まで）
+    if (s.cash > 25000000 && s.week % 4 === 1) {
+      const sp = (s.spots || []).find((id) => investLevel(s, id) < INVEST_MAX);
+      if (sp) investIn(s, sp);
+    }
     manageListings(s);
     play(s, checkTutorial(s), policy);
     while (s.actionsLeft > 0 && !s.over) {

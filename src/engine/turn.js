@@ -16,6 +16,7 @@ import { deptWeek } from './collection.js';
 import { careerWeek } from './careers.js';
 import { annalWeek } from './annals.js';
 import { visionWeek } from './visions.js';
+import { lifeStaminaBonus, lifestyleWeek } from './lifestyle.js';
 import { overCapacity } from './inventory.js';
 import { autoList, autoReprice } from './automation.js';
 import { stageOf, yearStart } from './career.js';
@@ -78,6 +79,7 @@ export function startWeek(s) {
   steps.push(...careerWeek(s));
   steps.push(...annalWeek(s));
   steps.push(...visionWeek(s));
+  steps.push(...lifestyleWeek(s));
   steps.push(...rivalWeek(s));
   if (flag(s, 'arrest')) s.over = 'arrested';
   s.phase = 'command';
@@ -117,7 +119,7 @@ export function endWeek(s) {
 
 function closeWeek(s) {
   const steps = [];
-  addStamina(s, overCapacity(s) ? 3 : 6);
+  addStamina(s, (overCapacity(s) ? 3 : 6) + lifeStaminaBonus(s)); // 暮らしを上げると回復が増える
   addHate(s, -2, false);
   decaySaturation(s);
   if (s.banWeeks > 0) s.banWeeks--;

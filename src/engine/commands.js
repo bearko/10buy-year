@@ -119,6 +119,7 @@ export function staminaCost(s, cmd) {
   if (cmd.id === 'store' && hasSkill(s, 'ino_map')) cost = Math.round(cost * 0.7);
   if (cmd.id === 'store' && hasSkill(s, 'backpain')) cost = Math.round(cost * 1.3);
   if (cmd.id === 'store') cost = Math.round(cost * perk(s, 'storeStamina'));
+  if (['store', 'auction', 'wholesale'].includes(cmd.id) && (s.lifestyle || 0) >= 2) cost = Math.round(cost * 0.85); // 車がある
   return cost;
 }
 

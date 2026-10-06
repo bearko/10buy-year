@@ -10,6 +10,7 @@ import { knowsGenre, unknownGenres } from './courses.js';
 import { openSpots } from './pioneer.js';
 import { applySaturation, botActive, saturation } from './rivals.js';
 import { lotteryRegimeMult, madeToOrder, queueLimited } from './regimes.js';
+import { investPrice, investQty, investWeight } from './lifestyle.js';
 
 let oidSeq = 1;
 // 新ジャンル（know）はここでは除き、genreOffer で知っているものだけ出す。開拓先のシリーズ（spot）も除く
@@ -325,14 +326,14 @@ function nicheGen(s, source, ids) {
 // ---- 開拓した仕入れ先（engine/pioneer.js）。そこでしか出会えないシリーズが並ぶ ----
 function spotGens(s, route) {
   return openSpots(s, route).map((sp) => ({
-    weight: 1.5 * (1 - saturation(s, sp.id) / 150), // 荒れた仕入れ先は品が減る
+    weight: 1.5 * (1 - saturation(s, sp.id) / 150) * investWeight(s, sp.id), // 荒れた仕入れ先は品が減る。出資すると増える
     make: () => {
       const p = productOf(sp.pid);
       return makeOffer(s, p.id, {
         source: sp.id,
         label: `${sp.name}で仕入れ${sp.minQty ? `（最低${sp.minQty}個〜）` : ''}`,
-        price: roundPrice(priceOf(s, p.id) * randRange(s, sp.ratio[0], sp.ratio[1]) * (p.used ? perk(s, 'usedPrice') : 1)),
-        maxQty: randInt(s, sp.qty[0], sp.qty[1]),
+        price: roundPrice(priceOf(s, p.id) * randRange(s, sp.ratio[0], sp.ratio[1]) * (p.used ? perk(s, 'usedPrice') : 1) * investPrice(s, sp.id)),
+        maxQty: Math.round(randInt(s, sp.qty[0], sp.qty[1]) * investQty(s, sp.id)),
         ...(sp.minQty ? { minQty: sp.minQty } : {}),
         fakeRate: p.fakeRisk * 0.15,
       });
