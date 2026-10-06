@@ -2,7 +2,8 @@
 import { productOf } from '../data/products.js';
 import { chance, pick, randInt } from './rng.js';
 import { addCash, addExp, addHate, addMood, addStamina, addToku, clamp, flag, hasSkill, removeSkill, setFlag, yen } from './effects.js';
-import { auctionOffers, lotteryEntries, lotteryWinRate, onlineOffers, openLotteries, queueOffer, queueSuccessRate, queueTargets, storeOffers, wholesaleOffers } from './offers.js';
+import { auctionOffers, lotteryEntries, lotteryWinRate, onlineOffers, openLotteries, queueOffer, queueSuccessRate, queueTargets, storeOfferCount, storeOffers, wholesaleOffers } from './offers.js';
+import { buildPhoneRun, buildStoreRun, phoneFillers, storeClock, totalOffersFor } from './sourcing.js';
 import { addExpense, addHours } from './kpi.js';
 import { perk } from './perks.js';
 import { woy } from './calendar.js';
@@ -201,11 +202,14 @@ const HANDLERS = {
     s.stats.storeTrips = (s.stats.storeTrips || 0) + 1;
     const found = pioneerTick(s, 'store');
     tripSaturation(s, 'store', night);
-    const list = storeOffers(s);
+    // 店舗巡り：閉店までに何店舗回れるか。見つかる品はルートの店と棚に散らばっている（engine/sourcing.js）
+    const clock = storeClock(s, night);
+    const n = storeOfferCount(s);
+    const list = storeOffers(s, totalOffersFor(n, clock));
     return [
       ...found,
-      talk('chris', pick(s, ['よし、今日は駅前から郊外まで5店舗回るぞ！', 'ワゴンの奥に宝が眠ってる…はず！', '値札の貼り替え日を狙って来たんだ。']), 'guts'),
-      offers(list, '店舗で見つけた商品'),
+      talk('chris', pick(s, ['よし、今日は駅前から郊外まで回れるだけ回るぞ！', 'ワゴンの奥に宝が眠ってる…はず！', '値札の貼り替え日を狙って来たんだ。']), 'guts'),
+      { ...offers(list, '店舗巡り'), run: buildStoreRun(s, list, clock, n) },
     ];
   },
   online(s, cmd, { night } = {}) {
@@ -215,7 +219,9 @@ const HANDLERS = {
     const steps = [...found, talk('chris', pick(s, ['ポイント還元率、予約ページ、フリマの新着…全部チェックだ。', 'F5連打で在庫復活を狙う！', '通販サイトのセール情報をまとめて確認しよう。']), 'arms')];
     const forecast = forecastLine(s);
     if (forecast) steps.push(info('相場メモ', [forecast]));
-    steps.push(offers(list, 'ネットで見つけた商品', '「激安」には理由があるかも…'));
+    // 夜のスマホ：アプリを渡り歩き、通知・売り切れ検索・値下げ交渉・オークションで仕入れる（engine/sourcing.js）
+    const feed = [...list, ...phoneFillers(s, list)];
+    steps.push({ ...offers(feed, 'ネットで見つけた商品', '「激安」には理由があるかも…'), run: buildPhoneRun(s, feed) });
     return steps;
   },
   lottery(s) {
@@ -267,7 +273,12 @@ const HANDLERS = {
     const rate = queueSuccessRate(s, crowd);
     addHate(s, 3, false);
     const steps = [narr(`${t.reason}の「${p.name}」を狙って、始発で店へ向かった。すでに長い列ができている…。`)];
-    if (chance(s, rate)) {
+    // 整理券と入荷数（UI は始発→整理券→開店→販売の順に見せる。ui/queue.js）
+    const won = chance(s, rate);
+    const stock = randInt(s, 15, 60);
+    const ticket = won ? randInt(s, Math.max(1, Math.round(stock * 0.4)), stock) : stock + randInt(s, 1, 40);
+    steps.push({ t: 'queue', pid: p.id, stock, ticket, ok: won, limited: queueLimited(s) });
+    if (won) {
       const qty = hasSkill(s, 'early_bird') && chance(s, 0.5) && !queueLimited(s) ? 2 : 1; // 購入制限ならお一人様1点
       steps.push(talk('chris', '買えた…！ 整理券、ギリギリだった！', 'cheer'), offers([queueOffer(s, p.id, qty)], '行列の戦利品', `相場は約${Math.round(priceOf(s, p.id) / 1000)}千円（推定は購入画面で）`));
     } else {
@@ -418,6 +429,7 @@ export function resolveLotteries(s) {
   const due = s.lotteries.filter((l) => l.week < s.week);
   s.lotteries = s.lotteries.filter((l) => l.week >= s.week);
   const wins = [];
+  const losses = [];
   for (const l of due) {
     const p = productOf(l.pid);
     const rate = lotteryWinRate(s, p);
@@ -432,7 +444,7 @@ export function resolveLotteries(s) {
       continue;
     }
     if (n > 0) wins.push({ pid: l.pid, n });
-    else steps.push(info('抽選結果', [`「${p.name}」…落選。`]));
+    else losses.push(l.pid);
   }
-  return { steps, wins };
+  return { steps, wins, losses };
 }

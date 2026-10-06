@@ -1,15 +1,20 @@
 // 仕入れ画面。フリマ・通販サイト・店舗の売り場のように商品を並べ、タップで商品ページを開く。
 // 偽物かどうかは書かない。出品者・写真・説明文・付属品・質問への対応・細部から自分で見抜く。
+// 店舗せどりは「店舗巡り」（ui/storerun.js）、電脳せどりは「夜のスマホ」（ui/phone.js）のモードで包む。
+// モードは一覧（list）・商品ページの下のバー（itemBar）・追加の欄（itemExtras）・外枠（wrap）を差しかえられる
 import { productImage, productOf, SIZE_INFO } from '../data/products.js';
 import { weekLabel } from '../engine/calendar.js';
 import { flag, hasSkill } from '../engine/effects.js';
 import { buy, capacity, cardAvailable, spaceUsed } from '../engine/inventory.js';
 import { askSeller, catInfo, siteOf, visibleChecks } from '../engine/listing.js';
 import { confidenceLabel } from '../engine/market.js';
+import { soldMedian } from '../engine/sourcing.js';
 import { playSe } from './audio.js';
 import { $, clear, h, signYen, yenFmt } from './dom.js';
 import { toast } from './modal.js';
 import { expectedProfit } from './trade.js';
+import { phoneMode } from './phone.js';
+import { storeMode } from './storerun.js';
 
 const yen = (n) => `¥${Math.round(n).toLocaleString('ja-JP')}`;
 const canCalc = (s) => hasSkill(s, 'eye_calc');
@@ -47,7 +52,7 @@ export function offersModal(s, step, onChange) {
   const onKey = (e) => {
     if (e.key !== 'Escape') return;
     if (open) back();
-    else close();
+    else if (!mode.escape?.()) close();
   };
   function close() {
     root.remove();
@@ -58,14 +63,23 @@ export function offersModal(s, step, onChange) {
     open = null;
     render();
   }
+  function openItem(o) {
+    open = o;
+    shot = 0;
+    render();
+  }
   window.addEventListener('keydown', onKey);
   $('#modal-root').append(root);
+
+  const ctx = { s, step, root, got, qty, onChange, render: () => render(), openItem, back, close, wallet, gridItem, section, doBuy, isOpen: () => open };
+  const mode = step.run?.kind === 'store' ? storeMode(ctx) : step.run?.kind === 'online' ? phoneMode(ctx) : {};
 
   function render() {
     const y = root.querySelector('.shop-body')?.scrollTop || 0;
     clear(root);
-    if (open) renderItem(open);
-    else renderGrid();
+    root.className = `shop ${mode.cls || ''}`;
+    const parts = open ? renderItem(open) : mode.list ? mode.list() : renderGrid();
+    root.append(...(mode.wrap ? mode.wrap(parts) : parts).filter(Boolean));
     const body = root.querySelector('.shop-body');
     if (body && !open) body.scrollTop = y;
   }
@@ -83,13 +97,12 @@ export function offersModal(s, step, onChange) {
   function renderGrid() {
     const first = siteOf(step.offers[0] || { source: 'store' });
     const title = sites.length > 1 ? step.title : first.name;
-    root.append(h('header', { class: 'shop-head', style: { '--site': sites.length > 1 ? '#39406b' : first.color } },
+    const head = h('header', { class: 'shop-head', style: { '--site': sites.length > 1 ? '#39406b' : first.color } },
       h('button', { class: 'shop-x', onclick: close, 'aria-label': '閉じる' }, '×'),
       h('b', { class: 'shop-logo' }, title),
       h('span', { class: 'shop-sub' }, sites.length > 1 ? '' : step.title),
-    ));
+    );
     const body = h('div', { class: 'shop-body' });
-    root.append(body);
     body.append(wallet());
     if (sites.length > 1) {
       body.append(h('div', { class: 'shop-tabs' },
@@ -104,10 +117,10 @@ export function offersModal(s, step, onChange) {
     for (const o of list) grid.append(gridItem(o));
     body.append(grid);
     // 片手で押しやすいよう、画面下に固定
-    root.append(h('div', { class: 'shop-footer' }, h('button', { class: 'btn primary shop-done', onclick: close }, '仕入れを終える')));
+    return [head, body, h('div', { class: 'shop-footer' }, h('button', { class: 'btn primary shop-done', onclick: close }, '仕入れを終える'))];
   }
 
-  function gridItem(o) {
+  function gridItem(o, { onOpen } = {}) {
     // 知識のないジャンル：何かがあることだけ見せる
     if (o.unknown) {
       return h('button', { class: 'sh-item unknown', onclick: () => toast(`「${o.genreName}の基礎講座」（資格講座）で学ぶと仕入れられる`, 'bad') },
@@ -121,7 +134,7 @@ export function offersModal(s, step, onChange) {
     const sold = o.maxQty < (o.minQty || 1);
     const store = site.kind === 'store' || site.kind === 'pro';
     const profit = expectedProfit(s, o.pid, o.est, o.price) + Math.round(o.price * (o.points || 0));
-    return h('button', { class: `sh-item ${store ? 'store' : ''} ${sold ? 'sold' : ''}`, onclick: () => { open = o; shot = 0; render(); } },
+    return h('button', { class: `sh-item ${store ? 'store' : ''} ${sold ? 'sold' : ''}`, onclick: () => (onOpen ? onOpen(o) : openItem(o)) },
       h('div', { class: 'sh-img' },
         photo(o, catInfo(o.pid).photos[0], { stock: o.listing?.stockPhoto }),
         store
@@ -151,12 +164,11 @@ export function offersModal(s, step, onChange) {
     const cur = photos[Math.min(shot, photos.length - 1)];
     const stock = L.stockPhoto && cur !== L.qa?.addPhoto;
 
-    root.append(h('header', { class: 'shop-head', style: { '--site': site.color } },
+    const head = h('header', { class: 'shop-head', style: { '--site': mode.itemColor?.(o) || site.color } },
       h('button', { class: 'shop-x', onclick: back, 'aria-label': '戻る' }, '‹'),
-      h('b', { class: 'shop-logo' }, site.name),
-    ));
+      h('b', { class: 'shop-logo' }, mode.itemTitle?.(o) || site.name),
+    );
     const body = h('div', { class: 'shop-body item' });
-    root.append(body);
 
     body.append(
       h('div', { class: 'gallery' },
@@ -165,7 +177,7 @@ export function offersModal(s, step, onChange) {
       ),
       h('div', { class: 'it-sec' },
         h('h2', { class: 'it-title' }, `${p.name}　${p.genre}`),
-        h('div', { class: 'it-price' }, yen(o.price), h('small', {}, store ? '（税込）' : site.kind === 'mall' ? '（税込）送料無料' : '（税込）送料込み')),
+        mode.itemPrice?.(o) || h('div', { class: 'it-price' }, yen(o.price), h('small', {}, store ? '（税込）' : site.kind === 'mall' ? '（税込）送料無料' : '（税込）送料込み')),
         h('div', { class: 'it-badges' },
           store ? h('span', { class: 'it-deal' }, o.label) : null,
           o.points ? h('span', { class: 'it-pt' }, `ポイント${Math.round(o.points * 100)}%還元`) : null,
@@ -179,8 +191,9 @@ export function offersModal(s, step, onChange) {
     body.append(section('商品の情報', h('table', { class: 'it-info' }, ...(L.info || []).map(([k, v]) => h('tr', {}, h('th', {}, k), h('td', {}, v))))));
     if (L.seller) body.append(section('出品者', sellerCard(L.seller)));
     if (L.qa) body.append(section(o.source === 'used' ? '店員さんに聞く' : 'コメント', qaBlock(o)));
+    for (const x of mode.itemExtras?.(o) || []) if (x) body.append(x);
     body.append(section('自分のメモ', memo(o), 'memo'));
-    root.append(buyBar(o));
+    return [head, body, mode.itemBar?.(o) || buyBar(o)];
   }
 
   function section(title, content, cls = '') {
@@ -207,7 +220,7 @@ export function offersModal(s, step, onChange) {
   function qaBlock(o) {
     const qa = o.listing.qa;
     if (!qa.asked) {
-      return h('button', { class: 'qa-ask', onclick: () => { askSeller(o); if (qa.addPhoto) shot = o.listing.photos.length; render(); } }, `質問する：${qa.question}`);
+      return h('button', { class: 'qa-ask', onclick: () => { if (mode.onAsk && !mode.onAsk(o)) return; askSeller(o); if (qa.addPhoto) shot = o.listing.photos.length; render(); } }, `質問する：${qa.question}${mode.askNote ? mode.askNote : ''}`);
     }
     return h('div', { class: 'qa' },
       h('div', { class: 'q' }, h('b', {}, 'クリス'), qa.question),
@@ -224,6 +237,7 @@ export function offersModal(s, step, onChange) {
     const touchable = !['flea', 'shady'].includes(siteOf(o).kind);
     return h('div', {},
       h('div', { class: 'mm-row' }, h('span', {}, hasSkill(s, 'eye_market') ? '推定相場' : '相場（ざっくり）'), h('b', {}, `${yen(o.est)}`), h('small', {}, `確度${confidenceLabel(s)}`)),
+      o.soldHist ? h('div', { class: 'mm-row' }, h('span', {}, '売り切れ相場'), h('b', {}, yen(soldMedian(o.soldHist))), h('small', {}, '最近売れた値段の真ん中')) : null,
       h('div', { class: 'mm-row' }, h('span', {}, '相場との比較'), h('b', {}, `${ratio}%`)),
       h('div', { class: 'mm-row' }, h('span', {}, '見込み利益'), canCalc(s) ? h('b', { class: profit >= 0 ? 'pos' : 'neg' }, `${signYen(profit)}/個`) : h('b', {}, '？')),
       h('div', { class: 'mm-tags' },
@@ -263,20 +277,23 @@ export function offersModal(s, step, onChange) {
     );
   }
 
-  function doBuy(o, q, method) {
+  function doBuy(o, q, method, { quiet = false } = {}) {
     const p = productOf(o.pid);
+    if (o.maxQty < (o.minQty || 1)) return { ok: false, msg: '売り切れ' };
     if (p.used && !o.brandNew && !flag(s, 'license')) {
-      toast('中古品の仕入れには古物商許可が必要だ', 'bad');
-      return;
+      if (!quiet) toast('中古品の仕入れには古物商許可が必要だ', 'bad');
+      return { ok: false, msg: '古物商許可が必要' };
     }
     const res = buy(s, o, q, method);
-    toast(res.msg, res.ok ? 'good' : 'bad');
+    if (!quiet) toast(res.msg, res.ok ? 'good' : 'bad');
     if (res.ok) {
-      playSe('hint'); // insp
+      if (!quiet) playSe('hint');
       got.push({ pid: o.pid, qty: q });
+      mode.afterBuy?.(o, q);
     }
-    render();
+    if (!quiet) render();
     onChange?.();
+    return res;
   }
 
   render();

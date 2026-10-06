@@ -45,12 +45,16 @@ function upcomingFields(s, p) {
 }
 
 // ---- 店舗せどり ----
-export function storeOffers(s) {
+// ふつうに店を回ったときに見つかる数（店舗巡りでは、これがルート全体に散らばる。engine/sourcing.js）
+export function storeOfferCount(s) {
   let n = 4 + Math.floor(s.abilities.buy / 25);
   if (hasSkill(s, 'ino_map')) n += 2;
   if (hasSkill(s, 'tenka')) n += 1;
   if (hasSkill(s, 'eye_ai')) n += 2;
-  n += perk(s, 'storeOffers');
+  return n + perk(s, 'storeOffers');
+}
+
+export function storeOffers(s, n = storeOfferCount(s)) {
   const discountBoost = (s.mods?.storeDiscount ?? 0) + (hasSkill(s, 'bargain') ? 0.05 : 0) + perk(s, 'storeDiscount');
 
   const gens = [
@@ -139,7 +143,7 @@ export function storeOffers(s) {
 // 初めての店舗せどりでは、わかりやすく利益の出るワゴン品を必ず1つ出す
 function firstWagon(s) {
   const p = productOf('scroll');
-  return makeOffer(s, p.id, { source: 'store', label: 'ワゴンセール（在庫一掃）', price: round10(p.retail * 0.6), maxQty: 3 });
+  return makeOffer(s, p.id, { source: 'store', label: 'ワゴンセール（在庫一掃）', price: round10(p.retail * 0.6), maxQty: 3, first: true });
 }
 
 // ---- 電脳せどり ----
