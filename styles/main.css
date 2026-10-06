@@ -853,3 +853,14 @@ body.loot-show #side { display: none !important; }
 .life-lv { font-weight: bold; color: var(--gold); text-align: center; }
 .invest-line { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
 .invest-line small { color: var(--muted); }
+
+/* 仮想通貨 */
+.cr-row { padding: 8px 0; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; }
+.cr-mid { display: grid; grid-template-columns: 90px 1fr; gap: 8px; align-items: center; }
+.cr-mid small { color: var(--muted); font-size: 11px; }
+.cr-spark { width: 90px; height: 26px; }
+.cr-spark polyline { fill: none; stroke-width: 1.6; stroke: var(--good); }
+.cr-spark.down polyline { stroke: var(--bad); }
+.cr-btns { display: flex; flex-wrap: wrap; gap: 4px; }
+.cr-row .pos, .ledger-grid .pos { color: var(--good); }
+.cr-row .neg, .ledger-grid .neg { color: var(--bad); }

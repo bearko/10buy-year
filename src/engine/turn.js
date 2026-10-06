@@ -17,6 +17,7 @@ import { careerWeek } from './careers.js';
 import { annalWeek } from './annals.js';
 import { visionWeek } from './visions.js';
 import { lifeStaminaBonus, lifestyleWeek } from './lifestyle.js';
+import { cryptoWeek } from './crypto.js';
 import { overCapacity } from './inventory.js';
 import { autoList, autoReprice } from './automation.js';
 import { stageOf, yearStart } from './career.js';
@@ -80,6 +81,7 @@ export function startWeek(s) {
   steps.push(...annalWeek(s));
   steps.push(...visionWeek(s));
   steps.push(...lifestyleWeek(s));
+  steps.push(...cryptoWeek(s));
   steps.push(...rivalWeek(s));
   if (flag(s, 'arrest')) s.over = 'arrested';
   s.phase = 'command';

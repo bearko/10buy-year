@@ -8,6 +8,7 @@ import { ROUTE_MAP } from '../data/skills.js';
 import { grossProfit } from './state.js';
 import { collectionValue } from './collection.js';
 import { visionDone, visionEnding, VISIONS } from './visions.js';
+import { cryptoCarried, holdingValue } from './crypto.js';
 
 export const INVENTORY_RATE = 0.7;
 
@@ -21,7 +22,7 @@ export function inventoryValue(s) {
 export function netWorth(s) {
   const pending = s.pending.reduce((sum, p) => sum + p.amount, 0);
   // コレクション（私設美術館）は評価額で入る
-  return Math.round(s.cash + pending + s.points + inventoryValue(s) + collectionValue(s) - s.debt - s.card.current - s.card.due);
+  return Math.round(s.cash + pending + s.points + inventoryValue(s) + collectionValue(s) + holdingValue(s) - s.debt - s.card.current - s.card.due); // 仮想通貨は時価
 }
 
 const RANKS = [
@@ -125,14 +126,14 @@ export function finalResult(s) {
   else if (s.underworld) id = 'kingpin';
   else if (flag(s, 'spiderThread') !== undefined) id = 'spider';
   else if (s.debt > 0) id = 'continuing';
-  else if (flag(s, 'cryptoWin')) id = 'crypto';
+  else if (flag(s, 'cryptoWin') || cryptoCarried(s, nw)) id = 'crypto'; // 資産の半分以上が仮想通貨の儲け
   else if (s.stage >= 5) id = 'tycoon';
   else if (s.stage === 4) id = 'ceo';
   else if (flag(s, 'santaHelped') && s.hate < 25) id = 'honest';
   else if (s.stage === 3) id = 'pro';
   else id = 'side';
   // 志を成し遂げた（または途中まで届いた）なら、志のエンディング
-  const ve = ['tycoon', 'ceo', 'pro', 'honest', 'side', 'crypto'].includes(id) ? visionEnding(s) : null;
+  const ve = ['tycoon', 'ceo', 'pro', 'honest', 'side'].includes(id) ? visionEnding(s) : null; // 結局クリプトなら、志よりクリプト
   if (ve) id = ve.id;
   const rank = ['arrested', 'bankrupt', 'vanished'].includes(id) ? RANKS[RANKS.length - 1] : rankOf(nw);
   const st = STAGES[s.stage - 1];
