@@ -7,7 +7,7 @@ for (let i = 1; i <= n; i++) {
   const { s, result } = runGame(i * 7919);
   const sw = s.stageWeeks || {};
   rows.push({
-    seed: i, end: result.ending.id, toku: s.underworld ? '裏' : Math.round(s.toku), tr: s.skills.filter((x) => /^(tr_|cap_trade)/.test(x)).length, dk: s.skills.filter((x) => /^(dk_|cap_dark)/.test(x)).length, shop: s.shop ? s.shop.loc : '-', spots: (s.spots || []).length, satS: Math.round(s.saturation?.store || 0), satO: Math.round(s.saturation?.online || 0), rivals: Object.keys(s.rivals || {}).length, passed: Object.values(s.rivals || {}).filter((r) => r.passed).length, regs: (s.regimes || []).length, rank: result.rank, nw: result.netWorth, stage: s.stage,
+    seed: i, end: result.ending.id, toku: s.underworld ? '裏' : Math.round(s.toku), tr: s.skills.filter((x) => /^(tr_|cap_trade)/.test(x)).length, dk: s.skills.filter((x) => /^(dk_|cap_dark)/.test(x)).length, shop: s.shop ? s.shop.loc : '-', spots: (s.spots || []).length, satS: Math.round(s.saturation?.store || 0), satO: Math.round(s.saturation?.online || 0), rivals: Object.keys(s.rivals || {}).length, passed: Object.values(s.rivals || {}).filter((r) => r.passed).length, regs: (s.regimes || []).length, coll: (s.collection || []).length, museum: s.museum ? 'Y' : '-', dept: (s.dept ? ['-', '会員', '外商', '特選'][Math.max(...[0, ...Object.values(s.dept.spent).map((v) => (v >= 20000000 ? 3 : v >= 5000000 ? 2 : v >= 1000000 ? 1 : 0))])] : '-'), rank: result.rank, nw: result.netWorth, stage: s.stage,
     st2: yr(sw[2]), st3: yr(sw[3]), st4: yr(sw[4]), st5: yr(sw[5]), debtFree: yr(s.flags.debtFree), rev: result.revenue, sold: result.soldUnits, week: s.week,
   });
 }

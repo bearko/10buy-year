@@ -14,6 +14,7 @@ import { openShopSteps } from './mystore.js';
 import { pioneerTick } from './pioneer.js';
 import { meetupLeak, satNameOf, tripSaturation } from './rivals.js';
 import { namesBanned, queueLimited } from './regimes.js';
+import { DEPT_STAGE, deptSteps } from './collection.js';
 import { bg, choice, gain, info, items, narr, offers, sfx, talk } from './steps.js';
 
 const E = (id) => `assets/extensions/${id}.png`;
@@ -46,6 +47,7 @@ export const COMMANDS = [
   { id: 'course', group: 'out', icon: E(4016), name: '資格講座に通う', desc: '受講料を払って通い、資格を取る（ステージ2から）', stamina: 12, exp: { act: 8, mind: 10, info: 6 }, hours: 4, bg: 'study' },
   { id: 'open_shop', group: 'out', icon: E(3170), name: '店を開く', desc: '立地を選んで自分の店を開く（店舗経営講座の修了が必要）', stamina: 10, exp: { social: 10, info: 6 }, hours: 6, bg: 'event' },
   { id: 'donate', group: 'out', icon: I('resurrection.png'), name: '寄付・地域の手伝い', desc: '寄付や地域のイベントの手伝いで徳を積む（TOKUが上がる・ステージ2から）', stamina: 8, exp: { social: 6, mind: 4 }, hours: 4, bg: 'event' },
+  { id: 'dept', group: 'out', icon: E(5009), name: '百貨店で買い物', desc: '自分のための買い物。美術画廊でコレクションを集め、年間の購入額で外商のランクが上がる（ステージ3から）', stamina: 6, exp: { social: 6, mind: 6 }, hours: 3, bg: 'event' },
   { id: 'card_up', group: 'out', icon: I('cp.png'), name: 'カード増枠の申請', desc: 'カード会社に利用枠の引き上げを申し込む。審査あり', stamina: 3, exp: { mind: 2 }, hours: 1, bg: 'study' },
   { id: 'license', group: 'out', icon: E(4016), node: 'license', name: '古物商許可を申請', desc: '警察署へ。許可まで約6週間', stamina: 8, exp: { info: 5, mind: 3 }, cost: 19000, hours: 3, bg: 'study' },
 ];
@@ -72,6 +74,7 @@ export function availableCommands(s) {
     if (c.id === 'course') return courseAvailable(s);
     if (c.id === 'open_shop') return !s.shop && !!s.certs?.includes('store_mgmt') && !s.underworld;
     if (c.id === 'donate') return s.stage >= 2 && !s.underworld;
+    if (c.id === 'dept') return s.stage >= DEPT_STAGE && !s.underworld;
     if (c.id === 'card_up') return nextCardTier(s) !== null && s.week >= (flag(s, 'cardApplied') ?? -99) + 8;
     return true;
   });
@@ -320,6 +323,9 @@ const HANDLERS = {
   },
   course(s) {
     return attendCourse(s);
+  },
+  dept(s) {
+    return deptSteps(s);
   },
   donate(s) {
     const give = (amount, toku, line) => () => {
