@@ -64,10 +64,15 @@ export function renderHud(s) {
       // 出費の予告は所持金の下の行に出す（横に並べると行が折り返して、下の行動カードの位置がずれる）
       h('div', { class: 'cash' },
         h('div', { class: 'cash-main' }, h('img', { src: 'assets/icons/gum.png', alt: '' }), h('span', { class: s.cash < 0 ? 'neg' : '' }, yenFmt(s.cash))),
-        preview?.cash ? h('small', { class: `cash-d ${preview.cash < 0 ? 'lose' : 'gain'}` }, `${preview.cash > 0 ? '+' : '−'}${Math.abs(preview.cash).toLocaleString('ja-JP')}`) : null),
+        // 借金は所持金の下に置き、右の目標欄と高さをそろえる
+        // 出費の予告も同じ行に並べて、予告が出ても行の高さが変わらないようにする
+        s.debt > 0 || preview?.cash
+          ? h('div', { class: 'cash-sub' },
+            s.debt > 0 ? h('span', { class: 'debt-line' }, '借金 ', h('b', {}, yenFmt(s.debt))) : null,
+            preview?.cash ? h('small', { class: `cash-d ${preview.cash < 0 ? 'lose' : 'gain'}` }, `${preview.cash > 0 ? '+' : '−'}${Math.abs(preview.cash).toLocaleString('ja-JP')}`) : null)
+          : null),
       goalBox(s),
     ),
-    s.debt > 0 ? h('div', { class: 'debt-line' }, '借金 ', h('b', {}, yenFmt(s.debt))) : null,
     h('div', { class: 'hud-row bars' },
       staminaBar(s),
       h('div', { class: 'chips' },

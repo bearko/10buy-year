@@ -67,9 +67,9 @@ h1 small { display: block; font-size: 16px; text-shadow: none; color: var(--gold
 .title-buttons .btn { min-width: 220px; }
 
 /* ---------- HUD ---------- */
-#hud { padding: 8px 10px 6px; background: #0a0f1f; border-bottom: 2px solid var(--line); position: sticky; top: 0; z-index: 5; }
+#hud { padding: 6px 10px 5px; background: #0a0f1f; border-bottom: 2px solid var(--line); position: sticky; top: 0; z-index: 5; }
 .hud-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
-.hud-row + .hud-row { margin-top: 4px; }
+.hud-row + .hud-row { margin-top: 3px; }
 .date b { color: var(--gold); font-size: 17px; }
 .date small { color: var(--muted); }
 .mood { font-size: 13px; padding: 1px 8px; border-radius: 99px; background: var(--panel-2); }
@@ -77,23 +77,27 @@ h1 small { display: block; font-size: 16px; text-shadow: none; color: var(--gold
 .mood.m1 { color: #ffd2d2; background: #4a2a40; }
 .mood.m3 { color: #0c2; background: #1d3a2a; }
 .mood.m4 { color: #fff; background: #d0701a; }
-.hud-row.money { flex-wrap: nowrap; }
+.hud-row.money { flex-wrap: nowrap; align-items: stretch; }
+.hud-row.money .cash { flex: 0 0 auto; justify-content: center; }
+.hud-row.top { flex-wrap: nowrap; }
+.mood { white-space: nowrap; }
+
 .cash { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; font-size: 20px; color: var(--gold); }
 .cash-main { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
 .cash img { width: 22px; height: 22px; }
 .cash .neg { color: var(--bad); }
 .debt { color: #ffc4c4; font-size: 13px; }
 .debt b { font-size: 16px; }
-.stamina { display: flex; align-items: center; gap: 6px; flex: 0 0 66%; min-width: 0; }
+.stamina { display: flex; align-items: center; gap: 6px; flex: 1 1 auto; min-width: 0; }
 .stamina img { width: 18px; height: 18px; }
 .stamina span { font-size: 12px; color: var(--muted); }
 .bar { flex: 1; height: 10px; background: #0005; border: 1px solid var(--line); border-radius: 99px; overflow: hidden; }
 .bar i { display: block; height: 100%; background: linear-gradient(90deg, #3fcf7a, #b7f05a); }
 .bar.low i { background: linear-gradient(90deg, #d33, #f96); }
 .chips { display: flex; gap: 4px; flex-wrap: wrap; }
-.chip { font-size: 11px; background: var(--panel-2); padding: 1px 7px; border-radius: 99px; color: var(--muted); }
+.chip { font-size: 11px; background: var(--panel-2); padding: 1px 7px; border-radius: 99px; color: var(--muted); white-space: nowrap; }
 .chip.warn { background: #5a1f28; color: #ffc0c0; }
-.hud-alert { margin-top: 5px; background: #5a1f28; color: #ffd9d9; font-size: 12px; padding: 3px 8px; border-radius: 6px; text-align: center; }
+.hud-alert { margin-top: 3px; background: #5a1f28; color: #ffd9d9; font-size: 12px; padding: 2px 8px; border-radius: 6px; text-align: center; }
 
 /* ---------- ステージ ---------- */
 #stage { position: relative; height: clamp(170px, 34dvh, 290px); overflow: hidden; background: #000; }
@@ -192,7 +196,7 @@ body.busy.gain-flash #side-btns { display: none; }
 .stamina .st-num.gain { color: var(--good); }
 .stamina .risk { color: var(--warn); font-weight: normal; }
 .stamina .risk.high { color: var(--bad); }
-.cash-d { font-size: 13px; margin-left: 26px; line-height: 1.1; animation: soft-blink 1s ease-in-out infinite; }
+.cash-d { font-size: 13px; line-height: 1.1; animation: soft-blink 1s ease-in-out infinite; }
 .cash-d.lose { color: var(--bad); }
 .cash-d.gain { color: var(--good); }
 body.busy #commands { opacity: 0.45; pointer-events: none; }
@@ -302,7 +306,7 @@ body.busy #commands { opacity: 0.45; pointer-events: none; }
 .ending .ledger-grid, .ending .ledger-row { text-align: left; }
 
 /* ---------- v2: 10年キャリア・スキルツリー・KPI ---------- */
-.hud-mission { margin-top: 5px; background: #1d3a2a; border: 1px solid #3d7a55; color: #d9ffe6; font-size: 12px; padding: 4px 8px; border-radius: 6px; display: flex; flex-direction: column; }
+.hud-mission { margin-top: 3px; line-height: 1.3; background: #1d3a2a; border: 1px solid #3d7a55; color: #d9ffe6; font-size: 12px; padding: 2px 8px; border-radius: 6px; display: flex; flex-direction: column; }
 .hud-mission b { color: #8bf0b0; }
 .chip.stage { background: #3a2f10; color: var(--gold); }
 .debt.clear { color: var(--good); }
@@ -554,10 +558,10 @@ body.auto #message::after { content: 'オート進行中'; position: absolute; t
 @keyframes guide-bounce { 50% { transform: translate(-50%, -6px); } }
 
 /* HUD：ステージは残り週の右。体力ゲージは2/3、右に評価・炎上 */
-.date { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.date { display: flex; align-items: baseline; gap: 6px; flex-wrap: nowrap; white-space: nowrap; min-width: 0; }
 .date .chip.stage { align-self: center; font-family: 'Orbitron', var(--font); font-size: 10px; letter-spacing: 0.04em; }
 .hud-row.bars { flex-wrap: nowrap; }
-.hud-row.bars .chips { flex: 1; justify-content: flex-end; flex-wrap: nowrap; }
+.hud-row.bars .chips { flex: 0 0 auto; justify-content: flex-end; flex-wrap: nowrap; }
 .hud-row.warn-row { justify-content: flex-start; }
 
 /* ニュース：はみ出すときは横スクロール */
@@ -570,6 +574,8 @@ body.auto #message::after { content: 'オート進行中'; position: absolute; t
 #loot { position: absolute; right: 6px; top: 26px; z-index: 4; width: 164px; max-height: calc(100% - 32px); overflow: hidden; display: none; flex-direction: column; align-items: center; gap: 1px; padding: 6px 9px 8px; background: #0a0f1fee; border: 2px solid var(--gold); border-radius: 10px; box-shadow: 0 0 16px #f5c54255; }
 body.loot-show #loot { display: flex; animation: loot-in 0.25s ease-out; }
 body.loot-show #side { display: none !important; }
+/* 相手の立ち絵（右側）が出ている間は、パラメータ欄を隠して重ならないようにする */
+body.partner-on #side { display: none !important; }
 @keyframes loot-in { from { transform: translateY(8px) scale(0.96); opacity: 0; } }
 .loot-head { width: 100%; display: flex; justify-content: space-between; align-items: center; min-height: 24px; }
 .loot-head b { color: var(--gold); font-family: 'Orbitron', var(--font); font-size: 13px; letter-spacing: 0.08em; }
@@ -716,9 +722,10 @@ body.loot-show #side { display: none !important; }
 .log-row.k-info.bad { border-left-color: var(--bad); }
 
 /* HUD：ステージの目標（借金欄の位置） */
-.goal { width: 52%; max-width: 230px; display: flex; flex-direction: column; gap: 2px; padding: 3px 8px; border: 1px solid #f5c54266; border-radius: 8px; background: #2a210855; }
+.goal { flex: 1 1 auto; min-width: 0; max-width: 230px; display: flex; flex-direction: column; gap: 2px; padding: 3px 8px; border: 1px solid #f5c54266; border-radius: 8px; background: #2a210855; }
 .goal-top { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
-.goal-top small { font-size: 10px; color: var(--gold); white-space: nowrap; }
+.goal-top small { font-size: 10px; color: var(--gold); white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.goal-top b { flex: 0 0 auto; }
 .goal-top b { font-size: 12px; white-space: nowrap; }
 .goal-bar { height: 6px; background: #0007; border-radius: 99px; overflow: hidden; }
 .goal-bar i { display: block; height: 100%; background: linear-gradient(90deg, #f5a524, #ffe066); }
@@ -726,7 +733,8 @@ body.loot-show #side { display: none !important; }
 .goal.done { border-color: var(--good); }
 .goal.done .goal-bar i { background: linear-gradient(90deg, #3fcf7a, #b7f05a); }
 .goal.warn .goal-note { color: var(--bad); font-weight: bold; }
-.debt-line { font-size: 11px; color: #ffc4c4; margin-top: -2px; }
+.cash-sub { display: flex; align-items: baseline; gap: 6px; margin-left: 26px; line-height: 1.2; white-space: nowrap; }
+.debt-line { font-size: 11px; color: #ffc4c4; }
 .debt-line b { font-size: 12px; }
 
 /* 達成の帯 */
@@ -864,3 +872,18 @@ body.loot-show #side { display: none !important; }
 .cr-btns { display: flex; flex-wrap: wrap; gap: 4px; }
 .cr-row .pos, .ledger-grid .pos { color: var(--good); }
 .cr-row .neg, .ledger-grid .neg { color: var(--bad); }
+
+/* 狭い画面：日付とやる気を1行に収める */
+@media (max-width: 380px) {
+  .date b { font-size: 15px; }
+  .date small { font-size: 11px; }
+  .date { gap: 4px; }
+  .mood { font-size: 12px; padding: 1px 6px; }
+  .goal-top small { font-size: 9px; }
+  .goal-top b { font-size: 11px; }
+  .cash { font-size: 18px; }
+  .cash img { width: 20px; height: 20px; }
+  .cash-sub { margin-left: 24px; gap: 4px; }
+  .cash-d { font-size: 12px; }
+}
+
