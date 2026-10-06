@@ -8,6 +8,7 @@ import { unitPrice } from './market.js';
 import { perk } from './perks.js';
 import { SPOT_MAP } from './pioneer.js';
 import { addSaturation, markSatUsed, SAT_PER_SPOT_BUY } from './rivals.js';
+import { exportBlocked, feeRegime, heatFromBuy, priceCap } from './regimes.js';
 
 export const ROOM_CAPACITY = 30;
 export const PLATFORMS = {
@@ -35,7 +36,7 @@ export function platformMult(s, platform) {
 
 export function feeRate(s, platform = 'merc') {
   // 保護観察中（足を洗った直後）は表の販路の手数料が高い
-  const base = (PLATFORMS[platform]?.fee ?? 0.1) + (s.probation > 0 && platform !== 'black' ? 0.08 : 0);
+  const base = (PLATFORMS[platform]?.fee ?? 0.1) + (s.probation > 0 && platform !== 'black' ? 0.08 : 0) + feeRegime(s, platform);
   return hasSkill(s, 'tenka') ? base - 0.03 : base;
 }
 
@@ -48,6 +49,7 @@ export function platformsFor(s, u) {
   return Object.values(PLATFORMS).filter((pf) => {
     if (!platformOpen(s, pf)) return false;
     if (pf.id === 'ama' && (u?.used || u?.home || u?.damaged)) return false;
+    if (pf.id === 'exp' && u && exportBlocked(s, u.pid)) return false; // 輸出規制
     return true;
   });
 }
@@ -127,6 +129,7 @@ export function buy(s, offer, qty, method = 'cash') {
   s.cur.bought += qty;
   s.cur.spent += total;
   if (offer.scarce) s.stats.scarceBought += qty;
+  heatFromBuy(s, offer, qty); // 品薄品の買い占めは目立つ
   // 開拓した仕入れ先は、買うほど荒れる
   if (SPOT_MAP[offer.source]) {
     addSaturation(s, offer.source, SAT_PER_SPOT_BUY);
@@ -147,7 +150,8 @@ export function listUnits(s, uids, platform, price) {
     if (!platformsFor(s, u).some((pf) => pf.id === platform)) continue;
     if (!u.listing && listed >= cap) break;
     if (!u.listing) listed++;
-    u.listing = { platform, price: Math.round(price), week: s.week };
+    // 規制（公式リセール・不正転売禁止）の上限を超える値付けはできない
+    u.listing = { platform, price: Math.round(Math.min(price, priceCap(s, u.pid, platform))), week: s.week };
     n++;
   }
   return n;

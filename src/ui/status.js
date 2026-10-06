@@ -134,7 +134,7 @@ export function menuModal({ s, onTitle, onSpeed, speed, onRestart, onChange, onM
         h('button', { class: `btn big ${marketLock ? 'locked' : ''}`, onclick: () => { if (marketLock) return toast(marketLock, 'bad'); api.close(); onMarket?.(); } }, marketLock ? '🔒相場' : '相場', !marketLock && newsCount ? h('span', { class: 'badge' }, newsCount) : null),
         h('button', { class: 'btn big', onclick: () => { api.close(); onBiz?.(); } }, '経営'),
         s?.shop ? h('button', { class: 'btn big shop-btn', onclick: () => { api.close(); onShop?.(); } }, '自分の店') : null,
-        s && s.stage >= 2 ? h('button', { class: 'btn big', onclick: () => { api.close(); onRivals?.(); } }, '仕入れ先と番付') : null,
+        s && s.stage >= 2 ? h('button', { class: 'btn big', onclick: () => { api.close(); onRivals?.(); } }, '業界の動き') : null,
       ),
       h('div', { class: 'menu-list' },
         h('button', { class: 'btn', onclick: () => { setSound(!soundOn()); api.refresh(); } }, `サウンド: ${soundOn() ? 'ON' : 'OFF'}`),

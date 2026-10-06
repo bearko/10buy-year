@@ -462,6 +462,81 @@ test('ライバル転売屋：ステージで登場し、仕掛けてきて、�
   assert.ok(cao);
 });
 
+test('いたちごっこ：高値の転売で目立つと対策が予告され、8週後に施行される', async () => {
+  const G = await import('../src/engine/regimes.js');
+  const s = createGame(26);
+  s.stage = 3;
+  s.cash = 1_000_000;
+  const p = PRODUCTS.find((x) => x.kind === 'hype');
+  // 定価の2.5倍で10個売る → 目立ち度 100
+  for (let i = 0; i < 10; i++) G.heatFromSale(s, { pid: p.id, price: p.retail * 2.5, platform: 'auc' });
+  assert.equal(Math.round(G.heat(s, G.productKey(p.id))), 100);
+  const ann = G.regimeWeek(s);
+  assert.ok(ann.some((x) => x.t === 'info' && x.title.includes('予告：公式リセールの開始')));
+  assert.ok(ann.some((x) => x.who === 'ieyasu'));
+  assert.equal(G.priceCap(s, p.id, 'merc'), Infinity, '予告の間はまだ効かない');
+  // 施行：フリマでは定価の1.5倍まで
+  buy(s, { pid: p.id, price: p.retail, maxQty: 2 }, 2);
+  const u = s.inventory.find((x) => x.pid === p.id);
+  listUnits(s, [u.uid], 'merc', p.retail * 3);
+  s.week += G.ANNOUNCE_WEEKS;
+  const enf = G.regimeWeek(s);
+  assert.ok(enf.some((x) => x.t === 'info' && x.title === '施行：公式リセールの開始'));
+  assert.equal(u.listing.price, Math.round(p.retail * 1.5), '出品中の高値は値下げされる');
+  assert.equal(G.priceCap(s, p.id, 'auc'), Infinity, 'オークションは対象外');
+  const u2 = s.inventory.find((x) => x.pid === p.id && !x.listing);
+  listUnits(s, [u2.uid], 'merc', p.retail * 3);
+  assert.equal(u2.listing.price, Math.round(p.retail * 1.5), '上限を超える値付けはできない');
+  // 次に目立つと、不正転売禁止の対象拡大（どの販路でも1.2倍まで）→ 認定中古市場が開く
+  s.flags.regimeCool = 0;
+  s.heat[G.productKey(p.id)] = 120;
+  G.regimeWeek(s);
+  s.week += G.ANNOUNCE_WEEKS;
+  G.regimeWeek(s);
+  assert.equal(G.priceCap(s, p.id, 'auc'), Math.round(p.retail * 1.2));
+  s.week += 16;
+  G.regimeWeek(s);
+  assert.equal(G.usedRegimeMult(s), 1.15, '規制のあとには認定中古の商機');
+});
+
+test('いたちごっこ：抽選の本人確認・購入制限・手数料・受注生産・輸出規制', async () => {
+  const G = await import('../src/engine/regimes.js');
+  const { lotteryWinRate, queueSuccessRate } = await import('../src/engine/offers.js');
+  const { feeRate, platformsFor } = await import('../src/engine/inventory.js');
+  const s = createGame(27);
+  s.stage = 3;
+  const p = PRODUCTS.find((x) => x.kind === 'hype');
+  const lot = lotteryWinRate(s, p);
+  const q = queueSuccessRate(s);
+  const fee = feeRate(s, 'merc');
+  const on = (id, extra = {}) => (s.regimes ||= []).push({ id, announced: 0, start: 0, ...extra });
+  on('lottery_id');
+  on('buy_limit', { end: 144 });
+  on('fee_hike');
+  assert.ok(lotteryWinRate(s, p) < lot, '抽選の当選率が下がる');
+  s.member = 40;
+  assert.ok(lotteryWinRate(s, p) > lotteryWinRate({ ...s, member: 0 }, p), '公式の会員ランクで戻る');
+  assert.ok(queueSuccessRate(s) < q);
+  assert.ok(Math.abs(feeRate(s, 'merc') - fee - 0.03) < 1e-9);
+  const lotSteps = performCommand(Object.assign(s, { stamina: 100, skills: [...s.skills, 'src_lottery'], week: 0 }), 'lottery');
+  const ch = lotSteps.find((x) => x.t === 'choice');
+  if (ch) assert.equal(ch.options.length, 1, '名義借り・捨てアカは選べない');
+  s.week = 144;
+  assert.ok(!G.queueLimited(s), '購入制限は3年で緩む');
+  // 受注生産：相場が定価近くまで下がる
+  on('made_to_order', { pid: p.id });
+  for (let i = 0; i < 30; i++) { s.week++; updateMarket(s); }
+  assert.ok(priceOf(s, p.id) < p.retail * 1.15);
+  // 輸出規制：限定品は貿易実務がないと海外ECに出せない
+  on('export_rule');
+  s.certs = ['export'];
+  buy(Object.assign(s, { cash: 1e7 }), { pid: p.id, price: 1, maxQty: 1 }, 1);
+  const u = s.inventory.find((x) => x.pid === p.id);
+  assert.ok(!platformsFor(s, u).some((x) => x.id === 'exp'));
+  s.certs.push('trade_practice');
+  assert.ok(platformsFor(s, u).some((x) => x.id === 'exp'));
+});
+
 test('KPIの見え方は「利益率と回転」「資金効率と時間単価」で増える', () => {
   const s = createGame(13);
   assert.equal(kpiLevel(s), 1);

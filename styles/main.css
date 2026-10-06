@@ -803,3 +803,13 @@ body.loot-show #side { display: none !important; }
 .rank-name { display: flex; flex-direction: column; min-width: 0; }
 .rank-name small { color: var(--muted); font-size: 11px; }
 .rank-nw { white-space: nowrap; }
+
+/* 業界の動き：規制 */
+.reg-list { display: flex; flex-direction: column; gap: 6px; }
+.reg-row { padding: 6px 8px; border-radius: 8px; background: #ff6b6b14; border-left: 3px solid var(--bad); display: flex; flex-direction: column; gap: 2px; }
+.reg-row.good { background: #3fcf7a14; border-left-color: var(--good); }
+.reg-row.over { opacity: 0.5; }
+.reg-rule { color: var(--muted); }
+.heat-list { display: flex; flex-direction: column; gap: 3px; margin-top: 6px; }
+.heat-row { display: grid; grid-template-columns: 7em 1fr 2.5em; align-items: center; gap: 6px; font-size: 12px; }
+.heat-row small { text-align: right; color: var(--muted); }

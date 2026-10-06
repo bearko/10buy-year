@@ -1,4 +1,5 @@
 // 仕入れ・販売まわりの画面（オファー、週の売上、在庫と出品、相場）
+import { priceCap } from '../engine/regimes.js';
 import { productImage, productOf, shipFor, shippingCost } from '../data/products.js';
 import { weekLabel, yearOf } from '../engine/calendar.js';
 import { flag, hasSkill } from '../engine/effects.js';
@@ -118,7 +119,8 @@ export function inventoryModal(s, onChange) {
         est,
         cur,
         platform,
-        price: Math.max(100, roundPrice(est * cur.mult)),
+        price: Math.min(priceCap(s, g.pid, platform), Math.max(100, roundPrice(est * cur.mult))),
+        cap: priceCap(s, g.pid, platform),
         quote: buybackQuote(s, u0),
         uids: g.units.slice(0, cur.qty).map((u) => u.uid),
         waiting: g.arrive > s.week,
@@ -325,6 +327,7 @@ export function inventoryModal(s, onChange) {
           h('div', { class: 'inv-line' }, h('span', {}, '値付け'), slider(0.5, 2, 0.05, cur.mult.toFixed(2), (v) => { cur.mult = v; }), priceLbl),
           h('div', { class: 'inv-sub' }, feelLbl, profitLbl),
           g.units.length > 1 ? h('div', { class: 'inv-line' }, h('span', {}, '個数'), slider(1, g.units.length, 1, cur.qty, (v) => { cur.qty = v; }), qtyLbl) : null,
+          x.cap < Infinity ? h('div', { class: 'warn' }, `規制により、この販路では${yenFmt(x.cap)}までしか出品できない`) : null,
           !x.canHere ? h('div', { class: 'warn' }, banned(s, platform) ? `${PLATFORMS[platform].name}は停止中` : `${PLATFORMS[platform].name}には出品できない（新品だけ）`) : null,
         ),
         selecting
