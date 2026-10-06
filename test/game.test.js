@@ -332,6 +332,61 @@ test('取引の対応：値下げ交渉・トラブルは決めておいた答�
   }
 });
 
+test('開拓：同じ仕入れルートを回り続けると、新しい仕入れ先とシリーズが出る', async () => {
+  const { SPOTS, pioneerLine } = await import('../src/engine/pioneer.js');
+  const { storeOffers } = await import('../src/engine/offers.js');
+  const s = createGame(18);
+  s.stats.purchases = 1;
+  const trip = () => { s.stamina = 100; s.sick = 0; return performCommand(s, 'store'); };
+  for (let i = 0; i < 7; i++) trip();
+  assert.ok(!s.spots?.includes('toy_shop'));
+  assert.match(pioneerLine(s, 'store'), /あと1回/);
+  const steps = trip();
+  assert.ok(s.spots.includes('toy_shop'), '8回目で温泉街のおもちゃ屋');
+  assert.ok(steps.some((x) => x.t === 'info' && x.title === '新しい仕入れ先を開拓！'));
+  let seen = false;
+  for (let i = 0; i < 20 && !seen; i++) seen = storeOffers(s).some((o) => o.source === 'toy_shop' && o.pid === 'kokeshi');
+  assert.ok(seen, '開拓先のシリーズが並ぶ');
+  // 開拓先のシリーズは、ほかの仕入れルートには出てこない
+  const t = createGame(19);
+  for (let i = 0; i < 40; i++) assert.ok(!storeOffers(t).some((o) => SPOTS.some((sp) => sp.pid === o.pid)));
+  // ステージの条件がある仕入れ先は、そのステージまで待つ
+  s.routeUse.store = 45;
+  trip(); // 20回目の工房が見つかる（1回に1か所ずつ）
+  assert.ok(s.spots.includes('craft_street'));
+  trip();
+  assert.ok(!s.spots.includes('flea_market'), '骨董市はステージ2から');
+});
+
+test('経験点の振り替えは半分の値になる', async () => {
+  const { convertExp } = await import('../src/engine/abilities.js');
+  const s = createGame(20);
+  s.exp = { info: 1000, act: 0, tech: 0, social: 0, mind: 0 };
+  assert.equal(convertExp(s, 'info', 'act', 500), 250);
+  assert.equal(s.exp.info, 500);
+  assert.equal(s.exp.act, 250);
+  assert.equal(convertExp(s, 'info', 'info', 100), 0, '同じ種類には振り替えない');
+  assert.equal(convertExp(s, 'act', 'mind', 9999), 125, '持っている分まで');
+});
+
+test('出品枠の空きと、出せる在庫の数', async () => {
+  const { idleListing } = await import('../src/engine/inventory.js');
+  const s = createGame(21);
+  const idle = idleListing(s);
+  assert.equal(idle.unlisted, 5, '最初の家の不用品5点');
+  assert.ok(idle.free >= 5);
+  listUnits(s, s.inventory.map((u) => u.uid), 'merc', 1000);
+  assert.equal(idleListing(s).n, 0);
+});
+
+test('古いセーブに、あとから追加した商品の相場を足す', async () => {
+  const { ensureMarket } = await import('../src/engine/market.js');
+  const s = createGame(22);
+  delete s.market.kokeshi;
+  ensureMarket(s);
+  assert.ok(priceOf(s, 'kokeshi') > 0);
+});
+
 test('KPIの見え方は「利益率と回転」「資金効率と時間単価」で増える', () => {
   const s = createGame(13);
   assert.equal(kpiLevel(s), 1);

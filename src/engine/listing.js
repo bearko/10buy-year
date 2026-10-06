@@ -6,6 +6,7 @@ import { productOf } from '../data/products.js';
 import { chance, pick, randInt } from './rng.js';
 import { hasSkill } from './effects.js';
 import { perk } from './perks.js';
+import { SPOTS } from './pioneer.js';
 
 // ---------------- 商品ジャンルごとの「写真」と「細部チェック」 ----------------
 const CAT_OF = {
@@ -126,6 +127,9 @@ export const SITES = {
   lottery: { name: '公式抽選', kind: 'mall', color: '#2d4fa8' },
   gift: { name: '入手', kind: 'store', color: '#777' },
 };
+// 開拓した仕入れ先（engine/pioneer.js）も販売元として並べる
+const ROUTE_SITE_KIND = { store: 'store', online: 'mall', auction: 'pro', wholesale: 'pro' };
+for (const sp of SPOTS) SITES[sp.id] = { name: sp.name, kind: sp.id === 'global_auction' ? 'flea' : ROUTE_SITE_KIND[sp.route], color: sp.color };
 export const siteOf = (o) => SITES[o.source] || SITES.gift;
 
 // ---------------- 出品者 ----------------

@@ -56,6 +56,19 @@ export const PRODUCTS = [
   { id: 'lacquer', name: '華やか二段重箱', genre: '輪島塗の重箱', ext: 4142, kind: 'collect', retail: 60000, size: 'M', demand: 0.6, base: 1.0, drift: 0.004, used: true, fakeRisk: 0.2, know: 'antique', stage: 3 },
   { id: 'scarf', name: '闇色のリボン', genre: 'ブランドスカーフ', ext: 3110, kind: 'staple', retail: 45000, size: 'S', demand: 1.4, base: 0.95, fakeRisk: 0.45, know: 'fashion', stage: 3 },
   { id: 'moai', name: '財宝ゴールデンモアイ', genre: '美術品・彫刻', ext: 5106, kind: 'luxury', retail: 2500000, size: 'L', demand: 0.3, base: 1.4, fakeRisk: 0.4, know: 'art', stage: 4 },
+  // ---- 開拓した仕入れ先でだけ出会えるシリーズ（spot：開拓先の id。engine/pioneer.js）----
+  { id: 'kokeshi', name: 'こけし', genre: '伝統こけし', ext: 1127, kind: 'staple', retail: 6800, size: 'S', demand: 1.6, base: 1.05, fakeRisk: 0, spot: 'toy_shop' },
+  { id: 'gamaguchi', name: 'がま口財布', genre: '職人のがま口', ext: 2172, kind: 'staple', retail: 8800, size: 'S', demand: 1.8, base: 1.0, fakeRisk: 0.1, spot: 'craft_street' },
+  { id: 'ichimatsu', name: '市松人形', genre: '古い市松人形', ext: 3127, kind: 'collect', retail: 68000, size: 'M', demand: 0.6, base: 1.0, drift: 0.005, used: true, fakeRisk: 0.15, spot: 'flea_market' },
+  { id: 'bangasa', name: '番傘', genre: '老舗の和傘', ext: 3190, kind: 'collect', retail: 38000, size: 'L', demand: 0.8, base: 1.0, drift: 0.004, fakeRisk: 0.05, spot: 'old_shop' },
+  { id: 'cosme_mirror', name: 'エリート鏡', genre: 'コスメブランドのミラー', ext: 2105, kind: 'staple', retail: 6500, size: 'S', demand: 2.2, base: 1.08, fakeRisk: 0.2, spot: 'zakka_site' },
+  { id: 'actress_mirror', name: '女優鏡', genre: '限定コスメのミラー', ext: 3105, kind: 'staple', retail: 14000, size: 'S', demand: 1.8, base: 1.15, fakeRisk: 0.3, spot: 'cosme_official' },
+  { id: 'monocle', name: '怪盗紳士の片眼鏡', genre: 'アンティークの片眼鏡', ext: 3102, kind: 'collect', retail: 45000, size: 'S', demand: 0.6, base: 1.0, drift: 0.006, used: true, fakeRisk: 0.3, spot: 'global_auction' },
+  { id: 'rabbit_watch', name: '白兎の魔法時計', genre: '機械式の名作時計', ext: 4111, kind: 'collect', retail: 240000, size: 'S', demand: 0.4, base: 1.0, drift: 0.005, used: true, fakeRisk: 0.45, spot: 'members_site' },
+  { id: 'maiogi', name: '舞扇', genre: '能楽の舞扇', ext: 4032, kind: 'collect', retail: 88000, size: 'S', demand: 0.5, base: 1.0, drift: 0.005, used: true, fakeRisk: 0.15, spot: 'local_market' },
+  { id: 'sakazuki', name: '幸若舞の盃', genre: '蒔絵の盃', ext: 4030, kind: 'collect', retail: 130000, size: 'S', demand: 0.45, base: 1.0, drift: 0.006, used: true, fakeRisk: 0.2, spot: 'estate' },
+  { id: 'gentle_umbrella', name: '紳士用傘', genre: '英国製の紳士傘', ext: 2190, kind: 'staple', retail: 9800, size: 'M', demand: 1.6, base: 1.0, fakeRisk: 0, spot: 'outlet_warehouse' },
+  { id: 'leather_wallet', name: '合皮財布', genre: '輸入ブランドの財布', ext: 3172, kind: 'staple', retail: 15000, size: 'S', demand: 1.5, base: 1.02, fakeRisk: 0.15, spot: 'importer' },
   { id: 'queen_watch', name: '王妃の黄金時計', genre: '高級腕時計', ext: 5111, kind: 'luxury', retail: 1280000, size: 'S', demand: 0.45, base: 1.55, fakeRisk: 0.5 },
 ];
 
@@ -92,6 +105,18 @@ const DESC = {
   lacquer: '伝統工芸の重箱。外国人観光客に人気がある。',
   scarf: 'ブランドのスカーフ。回転は速いが、偽物も多い。',
   moai: '黄金の彫刻。美術品の世界では、桁がひとつ違う。',
+  kokeshi: '温泉地のおもちゃ屋で見つけた伝統こけし。海外のコレクターに根強い人気がある。',
+  gamaguchi: '職人が手作りするがま口。問屋街の小さな工房でしか手に入らない。',
+  ichimatsu: '骨董市の古い市松人形。状態と作家で値段が大きく変わる。',
+  bangasa: '老舗が手放した和傘。大きくて置き場所を取るが、インバウンドに強い。',
+  cosme_mirror: 'コスメブランドのノベルティのミラー。美容系のフォロワーに回転よく売れる。',
+  actress_mirror: '限定コスメのミラー。発売のたびにSNSで話題になる。',
+  monocle: '海外オークションで見つけたアンティークの片眼鏡。偽物も多い。',
+  rabbit_watch: '会員制サイトでしか出回らない名作の機械式時計。目利きが試される。',
+  maiogi: '地方の古物市場に出てきた能楽の舞扇。業者どうしの目利き勝負。',
+  sakazuki: '遺品整理で出てきた蒔絵の盃。ひっそりと良い物が眠っている。',
+  gentle_umbrella: 'メーカー直営の倉庫で出会う紳士傘。B品だが品質は確か。',
+  leather_wallet: '輸入代理店から卸値で仕入れられるブランドの財布。',
   queen_watch: '高級腕時計。正規店でまれに定価で買える。資産として持つ人も多い。',
 };
 for (const p of PRODUCTS) p.desc = DESC[p.id] || p.genre;
