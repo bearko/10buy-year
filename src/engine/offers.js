@@ -13,7 +13,7 @@ import { lotteryRegimeMult, madeToOrder, queueLimited } from './regimes.js';
 
 let oidSeq = 1;
 // 新ジャンル（know）はここでは除き、genreOffer で知っているものだけ出す。開拓先のシリーズ（spot）も除く
-const byKind = (kind) => PRODUCTS.filter((p) => p.kind === kind && !p.know && !p.spot);
+const byKind = (kind) => PRODUCTS.filter((p) => p.kind === kind && !p.know && !p.spot && !p.niche);
 // 定価10万円以上の高額品は、ステージ2になるまで仕入れ候補に出てこない（序盤の一攫千金を防ぐ）
 const affordableTier = (s, p) => p.retail < 100000 || s.stage >= 2;
 const round10 = (v) => Math.max(10, Math.round(v / 10) * 10);
@@ -129,7 +129,7 @@ export function storeOffers(s) {
       make: () => makeOffer(s, 'jewel', { source: 'luxury', label: 'ショーウィンドウの憧れの品', price: productOf('jewel').retail, maxQty: 1, scarce: true, brandNew: true }),
     },
   ];
-  gens.push(genreGen(s, 'used', 0.6, 0.85), ...spotGens(s, 'store'));
+  gens.push(genreGen(s, 'used', 0.6, 0.85), ...spotGens(s, 'store'), nicheGen(s, 'store', ['pretty_set', 'bonsai', 'haori']));
   const offers = applySaturation(s, generate(s, gens, n), 'store');
   if (!s.stats.purchases) offers.unshift(firstWagon(s));
   return withUnknown(s, offers);
@@ -200,7 +200,7 @@ export function onlineOffers(s) {
       },
     },
   ];
-  gens.push(genreGen(s, 'flea', 0.65, 0.9), ...spotGens(s, 'online'));
+  gens.push(genreGen(s, 'flea', 0.65, 0.9), ...spotGens(s, 'online'), nicheGen(s, 'online', ['dream_set', 'cyber_staff', 'star_globe']));
   const offers = applySaturation(s, generate(s, gens, n), 'online');
   for (const o of offers) if (o.price === 0) o.price = productOf(o.pid).retail;
   return withUnknown(s, offers);
@@ -307,6 +307,19 @@ export function wholesaleOffers(s) {
   }));
   gens.push(...spotGens(s, 'wholesale'));
   return applySaturation(s, generate(s, gens, n), 'wholesale');
+}
+
+// ---- 美容・ガジェット・インバウンドの品（顧客層を育てる。engine/careers.js）。一般の品ぞろえとは別枠 ----
+function nicheGen(s, source, ids) {
+  return {
+    weight: 1.2,
+    make: () => {
+      const p = productOf(pick(s, ids));
+      if (p.used && !canUsed(s)) return null;
+      const price = p.used ? roundPrice(priceOf(s, p.id) * randRange(s, 0.45, 0.65)) : round10(p.retail * (1 - randRange(s, 0.15, 0.4)));
+      return makeOffer(s, p.id, { source: p.used ? 'used' : source, label: p.used ? 'リサイクルショップの掘り出し物' : source === 'store' ? 'ドラッグストア・雑貨店のセール' : 'ネットのタイムセール', price, maxQty: p.used ? 1 : randInt(s, 2, 5), fakeRate: p.used ? p.fakeRisk * 0.35 : 0 });
+    },
+  };
 }
 
 // ---- 開拓した仕入れ先（engine/pioneer.js）。そこでしか出会えないシリーズが並ぶ ----

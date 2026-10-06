@@ -16,6 +16,7 @@ import { autoBuy, bestPlatform, reserveNeeded } from '../src/engine/automation.j
 import { openCourses } from '../src/engine/courses.js';
 import { LOCATIONS } from '../src/engine/mystore.js';
 import { buyPiece, openMuseum } from '../src/engine/collection.js';
+import { audOf } from '../src/engine/careers.js';
 
 export function play(s, steps, policy) {
   const queue = [...steps];
@@ -155,6 +156,9 @@ function growth(s) {
   }
 }
 
+// 経験点に余裕があるか（ステージ5に必要な外注のパネルを取り終えている）
+const surplusExp = (s) => ['out_list', 'out_ship', 'out_buy'].every((id) => s.skills.includes(id));
+
 function chooseCommand(s) {
   const cmds = availableCommands(s).map((c) => c.id);
   const has = (id) => cmds.includes(id);
@@ -172,6 +176,9 @@ function chooseCommand(s) {
   if (has('course') && s.cash > 1500000 && (s.course ? WANT_COURSES.includes(s.course.id) : wantedCourse(s)) && s.week % 2 === 0) return 'course';
   if (has('open_shop') && s.cash > 4000000) return 'open_shop';
   if (has('dept') && s.cash > 35000000 && s.week % 8 === 4) return 'dept';
+  // キャリアのコマンド：余った経験点で回す（外注のパネルを取り終えてから）
+  if (surplusExp(s) && has('appraise_job') && s.exp.info >= 200 && s.exp.mind >= 200 && s.week % 3 === 0) return 'appraise_job';
+  if (surplusExp(s) && has('buying') && s.exp.tech >= 200 && s.cash > 2000000 && s.week % 4 === 2) return 'buying';
   if (has('queue') && queueTargets(s).length && s.stamina >= 60) return 'queue';
   const fresh = has('lottery') ? openLotteries(s).filter((p) => !(s.botEntered ||= []).includes(`${p.id}@${Math.floor(s.week / 48)}`)) : [];
   if (fresh.length) {
@@ -213,7 +220,10 @@ export function runGame(seed, policy = smartPolicy, { weeks = Infinity, route = 
       s.nightLeft--;
       const night = availableNightCommands(s).map((c) => c.id);
       const calm = (s.saturation?.online || 0) < 50;
-      const pickNight = night.includes('online') && calm ? 'online' : night.includes('listing') ? 'listing' : night[0];
+      const beauty = s.inventory.filter((u) => u.listing && audOf(u.pid) === 'beauty').length;
+      const pickNight = surplusExp(s) && night.includes('live') && beauty >= 3 && s.exp.social >= 200 ? 'live'
+        : surplusExp(s) && night.includes('review') && s.exp.info >= 200 && s.week % 2 ? 'review'
+          : night.includes('online') && calm ? 'online' : night.includes('listing') ? 'listing' : night[0];
       if (pickNight) {
         play(s, performCommand(s, pickNight, { night: true }), policy);
         manageListings(s);

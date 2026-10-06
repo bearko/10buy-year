@@ -30,6 +30,7 @@ import { pioneerLine } from './engine/pioneer.js';
 import { satLine } from './engine/rivals.js';
 import { rivalsModal } from './ui/rivals.js';
 import { collectionModal, galleryModal } from './ui/collection.js';
+import { careersModal } from './ui/careers.js';
 import { dealPolicyModal } from './ui/dealpolicy.js';
 import { routineBuy, routineList, routineListStamina, routineStale } from './engine/routine.js';
 import { addStamina } from './engine/effects.js';
@@ -442,6 +443,7 @@ function renderTabs() {
         onDeal: () => after(dealPolicyModal(state)),
         onRivals: () => after(rivalsModal(state, refresh)),
         onCollection: () => after(collectionModal(state, refresh)),
+        onCareers: () => after(careersModal(state)),
       }),
     },
     { id: 'log', label: 'ログ', open: () => logModal(state) },

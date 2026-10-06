@@ -15,6 +15,7 @@ import { pioneerTick } from './pioneer.js';
 import { meetupLeak, satNameOf, tripSaturation } from './rivals.js';
 import { namesBanned, queueLimited } from './regimes.js';
 import { DEPT_STAGE, deptSteps } from './collection.js';
+import { appraiseSteps, buyingSteps, hasCareer, liveSteps, reviewSteps, tourSteps } from './careers.js';
 import { bg, choice, gain, info, items, narr, offers, sfx, talk } from './steps.js';
 
 const E = (id) => `assets/extensions/${id}.png`;
@@ -48,13 +49,19 @@ export const COMMANDS = [
   { id: 'open_shop', group: 'out', icon: E(3170), name: '店を開く', desc: '立地を選んで自分の店を開く（店舗経営講座の修了が必要）', stamina: 10, exp: { social: 10, info: 6 }, hours: 6, bg: 'event' },
   { id: 'donate', group: 'out', icon: I('resurrection.png'), name: '寄付・地域の手伝い', desc: '寄付や地域のイベントの手伝いで徳を積む（TOKUが上がる・ステージ2から）', stamina: 8, exp: { social: 6, mind: 4 }, hours: 4, bg: 'event' },
   { id: 'dept', group: 'out', icon: E(5009), name: '百貨店で買い物', desc: '自分のための買い物。美術画廊でコレクションを集め、年間の購入額で外商のランクが上がる（ステージ3から）', stamina: 6, exp: { social: 6, mind: 6 }, hours: 3, bg: 'event' },
+  // キャリア（顧客層が育つと誘いが来る。engine/careers.js）
+  { id: 'live', group: 'sell', icon: E(2174), career: 'kol', name: 'ライブ配信', desc: '出品中の美容品を配信でまとめて売る（対人30）', stamina: 10, exp: { tech: 4 }, hours: 3, bg: 'home' },
+  { id: 'tour', group: 'sell', icon: E(2163), career: 'inbound', name: '訪日客の買い物ツアー', desc: '出品していない和雑貨・工芸を相場の1.3倍で直接売る（対人20）', stamina: 14, exp: { act: 6 }, hours: 6, bg: 'park' },
+  { id: 'buying', group: 'buy', icon: E(2172), career: 'select', name: '海外買い付け', desc: 'ファッションの品を卸値で買い付ける（技術25）', stamina: 16, exp: { act: 6, info: 4 }, hours: 8, bg: 'event' },
+  { id: 'appraise_job', group: 'out', icon: E(3102), career: 'appraiser', name: '鑑定の依頼', desc: '持ち込まれた品を鑑定して手数料を稼ぐ（情報20・精神10）', stamina: 8, exp: { mind: 4 }, hours: 4, bg: 'study' },
+  { id: 'review', group: 'out', icon: E(1158), career: 'media', name: 'レビュー記事を書く', desc: '読者を増やす。読者が多いほど毎月の紹介料（情報30）', stamina: 8, exp: { tech: 6 }, hours: 4, bg: 'home' },
   { id: 'card_up', group: 'out', icon: I('cp.png'), name: 'カード増枠の申請', desc: 'カード会社に利用枠の引き上げを申し込む。審査あり', stamina: 3, exp: { mind: 2 }, hours: 1, bg: 'study' },
   { id: 'license', group: 'out', icon: E(4016), node: 'license', name: '古物商許可を申請', desc: '警察署へ。許可まで約6週間', stamina: 8, exp: { info: 5, mind: 3 }, cost: 19000, hours: 3, bg: 'study' },
 ];
 export const COMMAND_MAP = Object.fromEntries(COMMANDS.map((c) => [c.id, c]));
 
 // 夜の作業（ステージ2から）：軽い作業だけできる。睡眠を削るので体力を余計に使う
-export const NIGHT_COMMANDS = ['online', 'lottery', 'listing', 'study'];
+export const NIGHT_COMMANDS = ['online', 'lottery', 'listing', 'study', 'live', 'review'];
 export const NIGHT_EXTRA_STAMINA = 5;
 export const hasNightSlot = (s) => s.stage >= 2;
 
@@ -67,6 +74,7 @@ export function availableCommands(s) {
   if (s.sick > 0) return [COMMAND_MAP.rest, COMMAND_MAP.clinic];
   return COMMANDS.filter((c) => {
     if (c.node && !hasSkill(s, c.node)) return false;
+    if (c.career) return hasCareer(s, c.career) && !s.underworld;
     if (c.id === 'license') return !flag(s, 'license') && flag(s, 'licensePending') === undefined;
     if (c.id === 'home_search') return s.homePool.length > 0;
     if (c.id === 'parttime') return !s.fulltime;
@@ -327,6 +335,11 @@ const HANDLERS = {
   dept(s) {
     return deptSteps(s);
   },
+  live: (s) => liveSteps(s),
+  tour: (s) => tourSteps(s),
+  buying: (s) => buyingSteps(s),
+  appraise_job: (s) => appraiseSteps(s),
+  review: (s) => reviewSteps(s),
   donate(s) {
     const give = (amount, toku, line) => () => {
       if (s.cash < amount) return [talk('chris', `寄付するお金が足りない…（${yen(amount)}必要）`, 'sad')];

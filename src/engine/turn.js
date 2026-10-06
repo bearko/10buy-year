@@ -13,6 +13,7 @@ import { negotiationSteps, troubleSteps } from '../data/troubles.js';
 import { decaySaturation, rivalWeek } from './rivals.js';
 import { regimeWeek } from './regimes.js';
 import { deptWeek } from './collection.js';
+import { careerWeek } from './careers.js';
 import { overCapacity } from './inventory.js';
 import { autoList, autoReprice } from './automation.js';
 import { stageOf, yearStart } from './career.js';
@@ -72,6 +73,7 @@ export function startWeek(s) {
   steps.push(...drawEvents(s, 'weekStart'));
   steps.push(...regimeWeek(s));
   steps.push(...deptWeek(s));
+  steps.push(...careerWeek(s));
   steps.push(...rivalWeek(s));
   if (flag(s, 'arrest')) s.over = 'arrested';
   s.phase = 'command';
