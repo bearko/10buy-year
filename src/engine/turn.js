@@ -109,6 +109,15 @@ export function endWeek(s) {
 
   const lot = resolveLotteries(s);
   steps.push(...lot.steps);
+  // 抽選の結果はメールで届く
+  if (lot.wins.length || lot.losses.length) {
+    const ms = [
+      ...lot.wins.map((w) => ({ from: '公式抽選 事務局', subject: `【当選のお知らせ】${productOf(w.pid).name}`, body: `厳正なる抽選の結果、ご当選されました（${w.n}点）。購入手続きをお願いします。期限を過ぎると当選は無効になります。`, tone: 'good' })),
+      ...lot.losses.map((pid) => ({ from: '公式抽選 事務局', subject: `抽選結果のお知らせ：${productOf(pid).name}`, body: '厳正なる抽選の結果、誠に残念ながら今回はご用意できませんでした。またのご応募をお待ちしております。', tone: 'bad' })),
+    ];
+    steps.push({ t: 'mail', mails: ms });
+    if (!lot.wins.length) steps.push(talk('chris', '……「誠に残念ながら」。この一文、もう見飽きたよ。', 'sad'));
+  }
   if (lot.wins.length) {
     steps.push(sfx('win'), talk('chris', '当選メールきた！！', 'cheer'));
     steps.push(offers(lot.wins.map((w) => ({ ...lotteryOffer(s, w.pid), maxQty: w.n })), '抽選に当選！', '購入しないと当選辞退になる'));

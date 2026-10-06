@@ -6,6 +6,7 @@ import { performCommand, availableCommands, availableNightCommands, nextCardTier
 import { buy, activeUnits, cardAvailable, listUnits, feeRate, sellToBuyer } from '../src/engine/inventory.js';
 import { estimateUnit, priceOf, estimate } from '../src/engine/market.js';
 import { queueTargets, openLotteries } from '../src/engine/offers.js';
+import { autoVisible } from '../src/engine/sourcing.js';
 import { ABILITIES, learnSkill, nodeState, raiseAbility, skillCost } from '../src/engine/abilities.js';
 import { SKILLS, SKILL_MAP } from '../src/data/skills.js';
 import { productOf, shippingCost } from '../src/data/products.js';
@@ -29,7 +30,7 @@ export function play(s, steps, policy) {
     } else if (st.t === 'defer') {
       queue.unshift(...(st.run() || []));
     } else if (st.t === 'offers') {
-      policy.buyOffers(s, st.offers);
+      policy.buyOffers(s, autoVisible(st));
     } else if (st.t === 'gallery') {
       policy.buyGallery?.(s, st.items);
     }

@@ -23,6 +23,9 @@ import { groupItems, showItems } from './ui/loot.js';
 import { celebrate, goalPopup } from './ui/goal.js';
 import { logModal, pushLog } from './ui/log.js';
 import { offersModal } from './ui/shop.js';
+import { autoVisible } from './engine/sourcing.js';
+import { mailbox, salesMails } from './ui/mail.js';
+import { queueScene } from './ui/queue.js';
 import { myStoreModal } from './ui/mystore.js';
 import { routineModal } from './ui/routine.js';
 import { autoPick } from './engine/dealpolicy.js';
@@ -95,10 +98,11 @@ async function playSteps(steps) {
         break;
       }
       case 'offers': {
-        if (hasSkill(state, 'out_buy') && state.settings.autoBuy) st.autoBought = autoBuy(state, st.offers);
+        // 外注・ルーティンは「ふつうに回ったら見つかる分」だけを見る（店舗巡りのルート全部ではない）
+        if (hasSkill(state, 'out_buy') && state.settings.autoBuy) st.autoBought = autoBuy(state, autoVisible(st));
         if (isAuto()) {
           if (st.autoBought?.length) toast(`外注が${st.autoBought.length}件を仕入れた`, 'good');
-          if (routineRun) routineRun.week.bought.push(...routineBuy(state, st.offers, routineRun.cfg));
+          if (routineRun) routineRun.week.bought.push(...routineBuy(state, autoVisible(st), routineRun.cfg));
         } else {
           const got = await offersModal(state, st, refresh);
           refresh();
@@ -116,8 +120,18 @@ async function playSteps(steps) {
       case 'sales':
         if (isAuto()) {
           if (st.sold.length) await showInfo('今週の取引', [`${st.sold.length}件売れた（売上金 ${yenFmt(st.sold.reduce((a, x) => a + x.net, 0))}）`], 'good');
-        } else if (st.sold.length || st.auctionsUnsold.length) await salesModal(state, st);
+        } else if (st.sold.length || st.auctionsUnsold.length) {
+          // 売れた知らせはメールで届く。メールアプリを開いてから、まとめて取引結果を見る
+          await mailbox(salesMails(st));
+          await salesModal(state, st);
+        }
         else if (listedUnits(state).length) await showInfo('今週の取引', ['1つも売れなかった…'], 'bad');
+        break;
+      case 'queue':
+        if (!isAuto()) await queueScene(st);
+        break;
+      case 'mail':
+        if (!isAuto()) await mailbox(st.mails, { button: '閉じる' });
         break;
       case 'sfx':
         playSe(st.name);

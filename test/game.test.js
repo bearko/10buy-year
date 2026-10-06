@@ -1064,3 +1064,55 @@ test('自分の店：出品していない在庫が店頭で売れ、家賃が�
   shopMonthly(s);
   assert.equal(cash - s.cash, 400000 + 250000);
 });
+
+// ---------------- 仕入れの現場（店舗巡り・夜のスマホ） ----------------
+import { autoVisible, buildPhoneRun, buildStoreRun, expectedSections, phoneFillers, settleAuction, negotiate, storeClock, totalOffersFor } from '../src/engine/sourcing.js';
+import { storeOfferCount, storeOffers, onlineOffers } from '../src/engine/offers.js';
+
+test('店舗巡り：すべての品がどこか1つの棚にあり、ふつうに回れば今までの数は見つかる', () => {
+  for (const seed of [3, 7, 11, 19]) {
+    const s = createGame(seed);
+    s.stage = 2;
+    s.skills.push('src_store');
+    const clock = storeClock(s);
+    const n = storeOfferCount(s);
+    const list = storeOffers(s, totalOffersFor(n, clock));
+    const run = buildStoreRun(s, list, clock, n);
+    const ids = run.stores.flatMap((st) => st.sections.flatMap((sec) => sec.oids));
+    assert.equal(ids.length, list.length);
+    assert.equal(new Set(ids).size, list.length);
+    assert.ok(autoVisible({ offers: list, run }).length >= Math.min(n, list.length) - 1, `seed ${seed}: 見つかる数が少なすぎる`);
+  }
+});
+
+test('店舗巡り：最初は2〜3店舗、地図・AI・車で回れる店が増える', () => {
+  const s = createGame(1);
+  const per = (c) => expectedSections(c) / 2.7;
+  const base = per(storeClock(s));
+  assert.ok(base >= 2 && base <= 3.6, `最初の店舗数 ${base}`);
+  s.skills.push('ino_map', 'eye_ai');
+  s.lifestyle = 2;
+  s.abilities.buy = 100;
+  assert.ok(per(storeClock(s)) > base + 2);
+});
+
+test('夜のスマホ：相場どおりの出品はオートに見せない・オークションは上限額で決まる', () => {
+  const s = createGame(5);
+  s.flags.license = true;
+  s.skills.push('src_online', 'src_flea');
+  const list = onlineOffers(s);
+  const feed = [...list, ...phoneFillers(s, list)];
+  const run = buildPhoneRun(s, feed);
+  assert.ok(feed.some((o) => o.filler));
+  assert.ok(autoVisible({ offers: feed, run }).every((o) => !o.filler));
+  const o = { auction: { rivalMax: 10000, cur: 5000, extend: false } };
+  assert.equal(settleAuction(o, 9000).won, false);
+  const w = settleAuction(o, 20000);
+  assert.ok(w.won && w.final === 10500);
+  assert.ok(settleAuction(o, 9500, { snipe: true }).won); // 終了間際ならライバルは上げ直せない
+  assert.equal(settleAuction({ auction: { ...o.auction, extend: true } }, 9500, { snipe: true }).won, false); // 自動延長ありでは効かない
+  const it = { price: 10000, listing: { seller: {} } };
+  let ok = 0;
+  for (let i = 0; i < 40; i++) { const x = { ...it }; if (negotiate(s, x, 0.05).ok) { ok++; assert.ok(x.price < 10000); } }
+  assert.ok(ok > 15 && ok < 40);
+});
