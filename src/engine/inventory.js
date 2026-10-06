@@ -6,6 +6,8 @@ import { yearOf } from './calendar.js';
 import { nodeLv } from './abilities.js';
 import { unitPrice } from './market.js';
 import { perk } from './perks.js';
+import { SPOT_MAP } from './pioneer.js';
+import { addSaturation, markSatUsed, SAT_PER_SPOT_BUY } from './rivals.js';
 
 export const ROOM_CAPACITY = 30;
 export const PLATFORMS = {
@@ -125,6 +127,11 @@ export function buy(s, offer, qty, method = 'cash') {
   s.cur.bought += qty;
   s.cur.spent += total;
   if (offer.scarce) s.stats.scarceBought += qty;
+  // 開拓した仕入れ先は、買うほど荒れる
+  if (SPOT_MAP[offer.source]) {
+    addSaturation(s, offer.source, SAT_PER_SPOT_BUY);
+    markSatUsed(s, offer.source);
+  }
   offer.maxQty -= qty;
   const extra = earned > 0 ? `（${earned.toLocaleString()}pt獲得）` : '';
   return { ok: true, msg: `${product.name}を${qty}個仕入れた！ ${yen(total)}${extra}` };

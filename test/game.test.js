@@ -341,6 +341,9 @@ test('開拓：同じ仕入れルートを回り続けると、新しい仕入�
   for (let i = 0; i < 7; i++) trip();
   assert.ok(!s.spots?.includes('toy_shop'));
   assert.match(pioneerLine(s, 'store'), /あと1回/);
+  s.routeUse.store = 8;
+  assert.match(pioneerLine(s, 'store'), /次に回ったら/);
+  s.routeUse.store = 7;
   const steps = trip();
   assert.ok(s.spots.includes('toy_shop'), '8回目で温泉街のおもちゃ屋');
   assert.ok(steps.some((x) => x.t === 'info' && x.title === '新しい仕入れ先を開拓！'));
@@ -385,6 +388,78 @@ test('古いセーブに、あとから追加した商品の相場を足す', as
   delete s.market.kokeshi;
   ensureMarket(s);
   assert.ok(priceOf(s, 'kokeshi') > 0);
+});
+
+test('飽和：仕入れ先は使うほど荒れ、仕入れ値が上がり候補が減る。放っておけば落ち着く', async () => {
+  const R = await import('../src/engine/rivals.js');
+  const { storeOffers } = await import('../src/engine/offers.js');
+  const s = createGame(23);
+  s.stats.purchases = 1;
+  for (let i = 0; i < 4; i++) { s.stamina = 100; performCommand(s, 'store'); }
+  assert.equal(R.saturation(s, 'store'), 4 * R.SAT_PER_TRIP, '1回の店舗せどりで +2.5');
+  s.saturation.store = 80;
+  const before = createGame(23);
+  before.stats.purchases = 1;
+  const cheap = storeOffers(before);
+  const pricey = storeOffers(s);
+  assert.ok(pricey.length < cheap.length, '荒れると候補が減る');
+  assert.ok(pricey.some((o) => o.sat >= 80), '荒れ具合が候補に付く');
+  assert.equal(R.satPriceMult(s, 'store'), 1.32);
+  s.satUsed = {};
+  R.decaySaturation(s);
+  assert.equal(R.saturation(s, 'store'), 76, '使わなかった週は -4');
+  assert.match(R.satLine(s, 'store'), /荒れ具合 76%/);
+});
+
+test('独占契約：お金と対人の経験点で、ライバルに荒らされなくなる', async () => {
+  const R = await import('../src/engine/rivals.js');
+  const s = createGame(24);
+  s.stage = 3;
+  s.cash = 5_000_000;
+  s.exp.social = 500;
+  s.saturation = { store: 50 };
+  assert.ok(R.signExclusive(s, 'store'));
+  assert.equal(R.saturation(s, 'store'), 25, '契約で落ち着く');
+  assert.ok(!R.signExclusive(s, 'store'), '二重には結べない');
+  R.addSaturation(s, 'store', 30, { rival: true });
+  assert.equal(R.saturation(s, 'store'), 25, 'ライバルは入れない');
+  R.addSaturation(s, 'store', 10);
+  assert.equal(R.saturation(s, 'store'), 30, '自分の利用は半分だけ');
+});
+
+test('ライバル転売屋：ステージで登場し、仕掛けてきて、長者番付で競う', async () => {
+  const R = await import('../src/engine/rivals.js');
+  const { lotteryWinRate } = await import('../src/engine/offers.js');
+  const { netWorth } = await import('../src/engine/ending.js');
+  const s = createGame(25);
+  assert.deepEqual(R.rivalWeek(s), [], 'ステージ1ではまだ来ない');
+  s.stage = 2;
+  assert.deepEqual(R.rivalWeek(s), [], 'ステージ2でもまだ');
+  s.stage = 3;
+  const steps = R.rivalWeek(s);
+  assert.ok(s.rivals.cao, 'ステージ3で曹操');
+  assert.ok(steps.some((x) => x.t === 'talk' && x.who === 'rival_cao'));
+  assert.ok(R.rivalWeek(s).every((x) => x.who !== 'rival_edison'), '次のライバルは12週あけて');
+  // 仕掛け：曹操はいちばん使っている仕入れ先を荒らす
+  s.routeUse = { store: 10 };
+  const cao = R.RIVAL_MAP.cao;
+  let acted = [];
+  for (let i = 0; i < 400 && !acted.length; i++) acted = R.rivalWeek(s);
+  assert.ok(R.saturation(s, 'store') >= 30);
+  // エジソンのボット：抽選の当選率が下がる
+  const p = PRODUCTS.find((x) => x.kind === 'hype');
+  const base = lotteryWinRate(s, p);
+  s.rivalFx = { botUntil: s.week + 8 };
+  assert.ok(lotteryWinRate(s, p) < base);
+  // 番付：抜くと演出
+  s.rivals.cao.nw = netWorth(s) - 1;
+  s.rivals.cao.passed = false;
+  const m = R.rivalsMonthly(s);
+  s.cash += 10_000_000;
+  const m2 = R.rivalsMonthly(s);
+  assert.ok([...m, ...m2].some((x) => x.t === 'info' && x.title === '長者番付で抜いた！'));
+  assert.equal(R.ranking(s)[0].id, 'me');
+  assert.ok(cao);
 });
 
 test('KPIの見え方は「利益率と回転」「資金効率と時間単価」で増える', () => {

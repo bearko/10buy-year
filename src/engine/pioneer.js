@@ -57,5 +57,6 @@ export function pioneerLine(s, route) {
   const nx = nextSpot(s, route);
   if (!nx) return `開拓 ${opened}/${total}：すべての仕入れ先を開拓した`;
   if (nx.left > 0) return `開拓 ${opened}/${total}：あと${nx.left}回で新しい仕入れ先が見つかりそう`;
-  return `開拓 ${opened}/${total}：ステージ${nx.spot.stage}になったら、次の仕入れ先が見つかりそう`;
+  if (nx.stageLock) return `開拓 ${opened}/${total}：ステージ${nx.spot.stage}になったら、次の仕入れ先が見つかりそう`;
+  return `開拓 ${opened}/${total}：次に回ったら、新しい仕入れ先が見つかりそう`;
 }

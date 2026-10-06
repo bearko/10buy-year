@@ -8,6 +8,7 @@ import { perk } from './perks.js';
 import { buildListing } from './listing.js';
 import { knowsGenre, unknownGenres } from './courses.js';
 import { openSpots } from './pioneer.js';
+import { applySaturation, botActive, saturation } from './rivals.js';
 
 let oidSeq = 1;
 // 新ジャンル（know）はここでは除き、genreOffer で知っているものだけ出す。開拓先のシリーズ（spot）も除く
@@ -125,7 +126,7 @@ export function storeOffers(s) {
     },
   ];
   gens.push(genreGen(s, 'used', 0.6, 0.85), ...spotGens(s, 'store'));
-  const offers = generate(s, gens, n);
+  const offers = applySaturation(s, generate(s, gens, n), 'store');
   if (!s.stats.purchases) offers.unshift(firstWagon(s));
   return withUnknown(s, offers);
 }
@@ -142,7 +143,8 @@ export function onlineOffers(s) {
   const lottery = hasSkill(s, 'src_lottery');
   const pointBoost = (s.mods?.onlinePoints ?? 1) * (1 + (hasSkill(s, 'poikatsu') ? 0.4 : 0)) * perk(s, 'pointsMult');
   const upcoming = lottery ? byKind('hype').filter((p) => beforeRelease(s, p)) : [];
-  const restocked = lottery ? byKind('hype').filter((p) => isReleased(s, p) && (isRestockWeek(s, p.id) || chance(s, 0.08))) : [];
+  // 転売ボット（ライバル）が動いている間は、在庫復活に気づけない
+  const restocked = lottery && !botActive(s) ? byKind('hype').filter((p) => isReleased(s, p) && (isRestockWeek(s, p.id) || chance(s, 0.08))) : [];
   const gens = [
     {
       weight: 4,
@@ -195,7 +197,7 @@ export function onlineOffers(s) {
     },
   ];
   gens.push(genreGen(s, 'flea', 0.65, 0.9), ...spotGens(s, 'online'));
-  const offers = generate(s, gens, n);
+  const offers = applySaturation(s, generate(s, gens, n), 'online');
   for (const o of offers) if (o.price === 0) o.price = productOf(o.pid).retail;
   return withUnknown(s, offers);
 }
@@ -251,6 +253,7 @@ export function lotteryWinRate(s, product) {
   if (hasSkill(s, 'lottery_nose')) r *= 1.3;
   if (flag(s, 'lotteryPenalty')) r *= 0.6;
   r *= perk(s, 'lotteryMult');
+  if (botActive(s)) r *= 0.6; // ライバルの転売ボット
   return Math.min(0.8, r);
 }
 
@@ -280,7 +283,7 @@ export function auctionOffers(s) {
     }),
   }));
   gens.push(...spotGens(s, 'auction'));
-  return generate(s, gens, n);
+  return applySaturation(s, generate(s, gens, n), 'auction');
 }
 
 // ---- 問屋・メーカー直取引（定番品をロットで卸値仕入れ）----
@@ -297,13 +300,13 @@ export function wholesaleOffers(s) {
     }),
   }));
   gens.push(...spotGens(s, 'wholesale'));
-  return generate(s, gens, n);
+  return applySaturation(s, generate(s, gens, n), 'wholesale');
 }
 
 // ---- 開拓した仕入れ先（engine/pioneer.js）。そこでしか出会えないシリーズが並ぶ ----
 function spotGens(s, route) {
   return openSpots(s, route).map((sp) => ({
-    weight: 1.5,
+    weight: 1.5 * (1 - saturation(s, sp.id) / 150), // 荒れた仕入れ先は品が減る
     make: () => {
       const p = productOf(sp.pid);
       return makeOffer(s, p.id, {

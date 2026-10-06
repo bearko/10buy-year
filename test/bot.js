@@ -178,6 +178,9 @@ function chooseCommand(s) {
   if (listed >= 8 && s.week % 5 === 1 && !s.skills.includes('out_list')) return 'listing';
   if (!has('store')) return has('home_search') ? 'home_search' : 'parttime';
   if (!has('online')) return 'store';
+  // 荒れてきたら、静かなほうへ回る（プレイヤーが「荒れ具合」を見て動くのと同じ）
+  const sat = (k) => s.saturation?.[k] || 0;
+  if (Math.abs(sat('store') - sat('online')) > 15) return sat('store') < sat('online') ? 'store' : 'online';
   return (s.week + (s.actionsLeft || 0)) % 2 ? 'store' : 'online';
 }
 
@@ -200,7 +203,8 @@ export function runGame(seed, policy = smartPolicy, { weeks = Infinity, route = 
     if (s.nightLeft > 0 && s.stamina >= 45) {
       s.nightLeft--;
       const night = availableNightCommands(s).map((c) => c.id);
-      const pickNight = night.includes('online') ? 'online' : night.includes('listing') ? 'listing' : night[0];
+      const calm = (s.saturation?.online || 0) < 50;
+      const pickNight = night.includes('online') && calm ? 'online' : night.includes('listing') ? 'listing' : night[0];
       if (pickNight) {
         play(s, performCommand(s, pickNight, { night: true }), policy);
         manageListings(s);
