@@ -594,6 +594,67 @@ test('コレクションと私設美術館：シリーズをそろえると入�
   assert.equal(C.completeSeries(s).length, 0, '手放すとシリーズが欠ける');
 });
 
+test('顧客層とキャリア：売るほど顧客層が育ち、ヒーローに誘われて転身する', async () => {
+  const K = await import('../src/engine/careers.js');
+  const { CAREERS } = await import('../src/data/careers.js');
+  const s = createGame(30);
+  s.rating = 100;
+  for (let i = 0; i < 10; i++) K.audienceFromSale(s, { pid: 'pretty_set' });
+  assert.equal(K.audience(s, 'beauty'), 10, '評価100なら1件 +1');
+  s.audience.beauty = CAREERS.kol.need;
+  assert.deepEqual(K.careerWeek(s), [], 'ステージ3から');
+  s.stage = 3;
+  const steps = K.careerWeek(s);
+  assert.ok(steps.some((x) => x.who === 'yohki'), '楊貴妃が誘う');
+  const ch = steps.find((x) => x.t === 'choice');
+  ch.options[0].run();
+  assert.ok(K.hasCareer(s, 'kol'));
+  assert.ok(availableCommands(s).some((c) => c.id === 'live'), 'ライブ配信が開く');
+  // 断ると24週は誘われない
+  s.audience.gadget = CAREERS.media.need;
+  K.careerWeek(s).find((x) => x.t === 'choice').options[1].run();
+  assert.deepEqual(K.careerWeek(s).filter((x) => x.t === 'choice'), []);
+});
+
+test('キャリアのコマンド：経験点を使い、それぞれの稼ぎ方ができる', async () => {
+  const K = await import('../src/engine/careers.js');
+  const s = createGame(31);
+  s.stage = 3;
+  s.cash = 1_000_000;
+  s.careers = { kol: { followers: 600 }, appraiser: { trust: 60, jobs: 0 }, media: { readers: 200 }, select: { trips: 0 }, inbound: { tours: 0 } };
+  s.exp = { info: 0, act: 0, tech: 0, social: 0, mind: 0 };
+  assert.match(K.liveSteps(s)[0].text, /準備が足りない/, '経験点が足りないとできない');
+  s.exp = { info: 500, act: 500, tech: 500, social: 500, mind: 500 };
+  // ライブ配信：出品中の美容品が売れる
+  buy(s, { pid: 'pretty_set', price: 2000, maxQty: 5 }, 5);
+  listUnits(s, s.inventory.filter((u) => u.pid === 'pretty_set').map((u) => u.uid), 'merc', 4500);
+  const cash = s.cash;
+  K.liveSteps(s);
+  assert.ok(s.inventory.filter((u) => u.pid === 'pretty_set').length < 5);
+  assert.ok(s.cash > cash);
+  assert.equal(s.exp.social, 470, '対人30を使う');
+  // 鑑定：手数料と信用
+  K.appraiseSteps(s);
+  assert.ok(s.careers.appraiser.jobs >= 2);
+  // 委託販売：売上金の8割は持ち主へ
+  const sale = { unit: { consign: true }, net: 10000, profit: 10000 };
+  K.consignPayout(sale);
+  assert.equal(sale.net, 2000);
+  // レビュー：読者が増え、毎月の紹介料
+  K.reviewSteps(s);
+  assert.ok(s.careers.media.readers > 200);
+  assert.equal(K.mediaIncome(s), s.careers.media.readers * 30);
+  // 海外買い付け：ファッションの品が卸値で並ぶ
+  const off = K.buyingSteps(s).find((x) => x.t === 'offers');
+  assert.ok(off.offers.length > 0 && off.offers.every((o) => K.audOf(o.pid) === 'fashion' && o.price < priceOf(s, o.pid)));
+  // 訪日客ツアー：出品していない和雑貨が相場の1.3倍で売れる
+  buy(s, { pid: 'kokeshi', price: 3000, maxQty: 2 }, 2);
+  const before = s.cash;
+  K.tourSteps(s);
+  assert.equal(s.inventory.filter((u) => u.pid === 'kokeshi').length, 0);
+  assert.ok(s.cash - before >= Math.round(priceOf(s, 'kokeshi') * 1.3 * 2) - 20);
+});
+
 test('KPIの見え方は「利益率と回転」「資金効率と時間単価」で増える', () => {
   const s = createGame(13);
   assert.equal(kpiLevel(s), 1);

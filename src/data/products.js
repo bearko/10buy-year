@@ -56,6 +56,13 @@ export const PRODUCTS = [
   { id: 'lacquer', name: '華やか二段重箱', genre: '輪島塗の重箱', ext: 4142, kind: 'collect', retail: 60000, size: 'M', demand: 0.6, base: 1.0, drift: 0.004, used: true, fakeRisk: 0.2, know: 'antique', stage: 3 },
   { id: 'scarf', name: '闇色のリボン', genre: 'ブランドスカーフ', ext: 3110, kind: 'staple', retail: 45000, size: 'S', demand: 1.4, base: 0.95, fakeRisk: 0.45, know: 'fashion', stage: 3 },
   { id: 'moai', name: '財宝ゴールデンモアイ', genre: '美術品・彫刻', ext: 5106, kind: 'luxury', retail: 2500000, size: 'L', demand: 0.3, base: 1.4, fakeRisk: 0.4, know: 'art', stage: 4 },
+  // ---- 顧客層（engine/careers.js）を育てる商品：美容・ガジェット・インバウンド（niche：一般の品ぞろえとは別枠で、ときどき並ぶ）----
+  { id: 'pretty_set', name: 'プリティーセット', genre: 'プチプラコスメのセット', ext: 1174, kind: 'staple', retail: 3800, size: 'S', demand: 2.6, base: 1.06, fakeRisk: 0.1, niche: true },
+  { id: 'dream_set', name: 'ドリームセット', genre: 'デパコスの限定コフレ', ext: 2174, kind: 'staple', retail: 8800, size: 'S', demand: 2.0, base: 1.14, fakeRisk: 0.25, niche: true },
+  { id: 'cyber_staff', name: 'サイバースタッフ', genre: 'ワイヤレスイヤホン', ext: 1158, kind: 'staple', retail: 19800, size: 'S', demand: 2.4, base: 1.03, fakeRisk: 0.2, niche: true },
+  { id: 'star_globe', name: '魔力で動く天球儀', genre: 'スマートプロジェクター', ext: 3143, kind: 'staple', retail: 39800, size: 'M', demand: 1.6, base: 1.05, fakeRisk: 0.1, niche: true },
+  { id: 'bonsai', name: '苔玉盆栽', genre: '苔玉の盆栽', ext: 2163, kind: 'staple', retail: 4800, size: 'M', demand: 1.8, base: 1.08, fakeRisk: 0, niche: true },
+  { id: 'haori', name: '紋付羽織', genre: '古着の紋付羽織', ext: 2141, kind: 'collect', retail: 28000, size: 'M', demand: 0.8, base: 1.0, drift: 0.004, used: true, fakeRisk: 0.05, niche: true },
   // ---- 開拓した仕入れ先でだけ出会えるシリーズ（spot：開拓先の id。engine/pioneer.js）----
   { id: 'kokeshi', name: 'こけし', genre: '伝統こけし', ext: 1127, kind: 'staple', retail: 6800, size: 'S', demand: 1.6, base: 1.05, fakeRisk: 0, spot: 'toy_shop' },
   { id: 'gamaguchi', name: 'がま口財布', genre: '職人のがま口', ext: 2172, kind: 'staple', retail: 8800, size: 'S', demand: 1.8, base: 1.0, fakeRisk: 0.1, spot: 'craft_street' },
@@ -117,6 +124,12 @@ const DESC = {
   sakazuki: '遺品整理で出てきた蒔絵の盃。ひっそりと良い物が眠っている。',
   gentle_umbrella: 'メーカー直営の倉庫で出会う紳士傘。B品だが品質は確か。',
   leather_wallet: '輸入代理店から卸値で仕入れられるブランドの財布。',
+  pretty_set: 'プチプラコスメのセット。美容系のお客さんが何度も買ってくれる。',
+  dream_set: 'デパコスの限定コフレ。発売のたびに争奪戦になる。',
+  cyber_staff: '人気のワイヤレスイヤホン。ガジェット好きは新しいものに目がない。',
+  star_globe: '天井に星空を映すスマートプロジェクター。レビュー次第で売れ行きが変わる。',
+  bonsai: '手のひらサイズの苔玉盆栽。訪日客へのお土産に人気。',
+  haori: '古着の紋付羽織。海外では日本の美として高く評価される。',
   queen_watch: '高級腕時計。正規店でまれに定価で買える。資産として持つ人も多い。',
 };
 for (const p of PRODUCTS) p.desc = DESC[p.id] || p.genre;

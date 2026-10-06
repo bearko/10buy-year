@@ -51,6 +51,11 @@ export const CAST = {
   ghost: { name: '音信不通の購入者', enemy: 423 },
   collector: { name: '督促状の化身', enemy: 1190 },
 
+  // キャリアの誘い（顧客層が育つと声をかけてくる）
+  yohki: { name: '楊貴妃', hero: 4015, title: '傾国の美の伝道師' },
+  hokusai: { name: '葛飾北斎', hero: 5024, title: '画狂老人・目利き' },
+  edison: { name: 'トーマス・エジソン', hero: 4007, title: '発明王' },
+  cleo: { name: 'クレオパトラ', hero: 5016, title: '流行をつくる女王' },
   ieyasu: { name: '徳川家康', hero: 3044, title: '規制の番人（鳴くまで待とう）' },
 
   // ライバル転売屋（金に取り憑かれた偉人の亡霊）

@@ -8,6 +8,7 @@ import { roundPrice, unitPrice } from './market.js';
 import { woy } from './calendar.js';
 import { choice, info, sfx, talk } from './steps.js';
 import { knowsGenre } from './courses.js';
+import { audienceFromSale } from './careers.js';
 
 export const LOCATIONS = {
   station: { name: '駅前', rent: 400000, traffic: 60, tolerance: 1.03, likes: ['staple', 'hype', 'boom'], know: ['fashion'], desc: '客足が多い。通勤客は新品の定番・話題の品を買う' },
@@ -81,7 +82,7 @@ export function shopWeek(s) {
   return s.shop.last;
 }
 
-function sellInShop(s, u, price) {
+export function sellInShop(s, u, price) {
   removeUnit(s, u.uid);
   addCash(s, price, `店頭販売: ${productOf(u.pid).name}`);
   s.stats.revenue += price;
@@ -92,6 +93,7 @@ function sellInShop(s, u, price) {
   s.cur.salesProfit += price - u.cost;
   s.cur.sold++;
   s.cur.daysSum += Math.max(0, (s.week - u.week) * 7);
+  audienceFromSale(s, { pid: u.pid });
 }
 
 // 月末にかかる店の費用（家賃＋スタッフの給料）

@@ -4,6 +4,7 @@ import { shopMonthly, shopMonthlyCost } from './mystore.js';
 import { rivalsMonthly } from './rivals.js';
 import { regimeMonthly } from './regimes.js';
 import { collectionMonthly, museumIncome } from './collection.js';
+import { mediaIncome } from './careers.js';
 import { addCash, addHate, addMood, addToku, hasSkill, record, setFlag, yen } from './effects.js';
 import { celebrate, info, sfx, talk } from './steps.js';
 import { monthlyNodeFees } from './abilities.js';
@@ -170,6 +171,11 @@ export function passiveIncome(s) {
   if (hasSkill(s, 'div_consult')) {
     total += 250000;
     names.push('情報発信');
+  }
+  const media = mediaIncome(s);
+  if (media) {
+    total += media;
+    names.push('レビューメディア');
   }
   const museum = museumIncome(s);
   if (museum) {
