@@ -10,6 +10,7 @@ import { resolveLotteries } from './commands.js';
 import { lotteryOffer } from './offers.js';
 import { resolveSales } from './sales.js';
 import { negotiationSteps, troubleSteps } from '../data/troubles.js';
+import { decaySaturation, rivalWeek } from './rivals.js';
 import { overCapacity } from './inventory.js';
 import { autoList, autoReprice } from './automation.js';
 import { stageOf, yearStart } from './career.js';
@@ -67,6 +68,7 @@ export function startWeek(s) {
 
   steps.push(...drawEvents(s, 'calendar'));
   steps.push(...drawEvents(s, 'weekStart'));
+  steps.push(...rivalWeek(s));
   if (flag(s, 'arrest')) s.over = 'arrested';
   s.phase = 'command';
   return steps;
@@ -107,6 +109,7 @@ function closeWeek(s) {
   const steps = [];
   addStamina(s, overCapacity(s) ? 3 : 6);
   addHate(s, -2, false);
+  decaySaturation(s);
   if (s.banWeeks > 0) s.banWeeks--;
   if (s.amaBan > 0) s.amaBan--;
   if (isMonthEnd(s.week)) steps.push(...monthEnd(s));

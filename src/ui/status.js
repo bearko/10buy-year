@@ -127,13 +127,14 @@ function row(label, value, cls = '') {
   return h('div', { class: 'lg-row' }, h('span', {}, label), h('b', { class: cls }, value));
 }
 
-export function menuModal({ s, onTitle, onSpeed, speed, onRestart, onChange, onMarket, onBiz, onShop, onDeal, marketLock, newsCount = 0 }) {
+export function menuModal({ s, onTitle, onSpeed, speed, onRestart, onChange, onMarket, onBiz, onShop, onDeal, onRivals, marketLock, newsCount = 0 }) {
   return openModal('メニュー', (body, api) => {
     body.append(
       h('div', { class: 'menu-main' },
         h('button', { class: `btn big ${marketLock ? 'locked' : ''}`, onclick: () => { if (marketLock) return toast(marketLock, 'bad'); api.close(); onMarket?.(); } }, marketLock ? '🔒相場' : '相場', !marketLock && newsCount ? h('span', { class: 'badge' }, newsCount) : null),
         h('button', { class: 'btn big', onclick: () => { api.close(); onBiz?.(); } }, '経営'),
         s?.shop ? h('button', { class: 'btn big shop-btn', onclick: () => { api.close(); onShop?.(); } }, '自分の店') : null,
+        s && s.stage >= 2 ? h('button', { class: 'btn big', onclick: () => { api.close(); onRivals?.(); } }, '仕入れ先と番付') : null,
       ),
       h('div', { class: 'menu-list' },
         h('button', { class: 'btn', onclick: () => { setSound(!soundOn()); api.refresh(); } }, `サウンド: ${soundOn() ? 'ON' : 'OFF'}`),

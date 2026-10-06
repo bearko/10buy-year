@@ -50,6 +50,12 @@ export const CAST = {
   fakeseller: { name: '怪しい業者', enemy: 410 },
   ghost: { name: '音信不通の購入者', enemy: 423 },
   collector: { name: '督促状の化身', enemy: 1190 },
+
+  // ライバル転売屋（金に取り憑かれた偉人の亡霊）
+  rival_cao: { name: 'ゴースト・曹操', enemy: 467, title: '店舗の買い占め' },
+  rival_edison: { name: 'ゴースト・エジソン', enemy: 491, title: '転売ボット' },
+  rival_gogh: { name: 'ゴースト・ゴッホ', enemy: 424, title: 'アート・競り' },
+  rival_billy: { name: 'ゴースト・ビリー・ザ・キッド', enemy: 487, title: '価格破壊' },
 };
 
 export function portraitOf(who, pose) {

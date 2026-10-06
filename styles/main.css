@@ -784,3 +784,22 @@ body.loot-show #side { display: none !important; }
 .cv-seg { flex-wrap: wrap; gap: 4px; }
 .cv-seg .btn { padding: 4px 6px; font-size: 11px; }
 .cv-btns { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+
+/* 仕入れ先と番付 */
+.sat-row { padding: 6px 0; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px; }
+.sat-row.spot { padding-left: 12px; }
+.sat-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.sat-top small { color: var(--muted); }
+.sat-bar { height: 7px; background: #0007; border-radius: 99px; overflow: hidden; }
+.sat-bar i { display: block; height: 100%; background: #3fcf7a; }
+.sat-bar.mid i { background: #f5a524; }
+.sat-bar.hi i { background: var(--bad); }
+.sat-row .btn.small { align-self: flex-start; }
+.rank-list { display: flex; flex-direction: column; gap: 4px; }
+.rank-row { display: grid; grid-template-columns: 34px 40px 1fr auto; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 8px; background: #ffffff08; }
+.rank-row.me { background: #f5c54222; outline: 1px solid #f5c54266; }
+.rank-row img { width: 40px; height: 40px; object-fit: contain; image-rendering: pixelated; }
+.rank-no { font-weight: bold; color: var(--gold); }
+.rank-name { display: flex; flex-direction: column; min-width: 0; }
+.rank-name small { color: var(--muted); font-size: 11px; }
+.rank-nw { white-space: nowrap; }

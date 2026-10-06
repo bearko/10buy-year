@@ -27,6 +27,8 @@ import { myStoreModal } from './ui/mystore.js';
 import { routineModal } from './ui/routine.js';
 import { autoPick } from './engine/dealpolicy.js';
 import { pioneerLine } from './engine/pioneer.js';
+import { satLine } from './engine/rivals.js';
+import { rivalsModal } from './ui/rivals.js';
 import { dealPolicyModal } from './ui/dealpolicy.js';
 import { routineBuy, routineList, routineListStamina, routineStale } from './engine/routine.js';
 import { addStamina } from './engine/effects.js';
@@ -293,8 +295,8 @@ function waitForCommand(mode) {
       const p = commandPreview(state, c, { night });
       setPreview({ ...p, exp: Object.fromEntries(Object.entries(c.exp).map(([k, v]) => [k, Math.round(v * mood)])) });
       refresh();
-      const pio = pioneerLine(state, c.id);
-      setMessage(c.name, pio ? `${c.desc}\n${pio}` : c.desc);
+      const extra = [pioneerLine(state, c.id), satLine(state, c.id)].filter(Boolean);
+      setMessage(c.name, [c.desc, ...extra].join('\n'));
       draw();
     };
 
@@ -433,6 +435,7 @@ function renderTabs() {
         onBiz: () => after(bizModal(state, refresh, playSteps)),
         onShop: () => after(myStoreModal(state, refresh)),
         onDeal: () => after(dealPolicyModal(state)),
+        onRivals: () => after(rivalsModal(state, refresh)),
       }),
     },
     { id: 'log', label: 'ログ', open: () => logModal(state) },
