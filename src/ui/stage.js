@@ -55,22 +55,25 @@ function startBlink(pose) {
 export function showPartner(who, pose) {
   const el = $('#sprite-right');
   if (!who || who === 'chris' || who === 'narr') {
-    el.hidden = true;
+    hidePartner();
     return;
   }
   const src = portraitOf(who, pose);
   if (!src) {
-    el.hidden = true;
+    hidePartner();
     return;
   }
   const c = CAST[who];
   el.src = src;
   el.className = `sprite ${c.hero ? 'hero' : c.enemy ? 'enemy' : `orig ${who}`}`;
   el.hidden = false;
+  // 右側のパラメータ欄と相手の立ち絵が重ならないように、相手がいる間は隠す
+  document.body.classList.add('partner-on');
 }
 
 export function hidePartner() {
   $('#sprite-right').hidden = true;
+  document.body.classList.remove('partner-on');
 }
 
 function speakerLabel(who) {
