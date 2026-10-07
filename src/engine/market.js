@@ -80,6 +80,8 @@ export function unitPrice(s, u) {
   if (u.rep) mult *= REP_MULT; // 再販版は初版より安い
   if (u.shoe) mult *= sizeMult(u.shoe); // スニーカーのサイズ
   if (u.junk) mult *= junkMult(u); // ジャンク品
+  // 家康の奥義「鳴くまで待とう」：半年以上持っているコレクター品・高級品・限定品は1割高い
+  if (s.secrets?.includes('nakumade') && ['collect', 'luxury', 'hype'].includes(p.kind) && s.week - u.week >= 26) mult *= 1.1;
   mult *= annalMult(s, u.pid);
   return Math.round(p.retail * mult * (u.damaged ? 0.5 : 1));
 }
@@ -302,6 +304,7 @@ export function estimateError(s) {
   if (hasSkill(s, 'eye_ai')) amp *= 0.7;
   if (hasSkill(s, 'crowd_madness')) amp *= 0.5;
   if (tired(s)) amp *= 1.3; // 疲れていると判断が甘くなる
+  if (s.secrets?.includes('evolution')) amp *= 0.7; // ダーウィンの奥義
   return amp * perk(s, 'estErr');
 }
 
@@ -334,4 +337,4 @@ export function confidenceLabel(s) {
 
 // 相場画面に並べる商品（発表済み・流通中のもの）
 // 知らないジャンルと、まだ開拓していない仕入れ先のシリーズは相場画面に出さない
-export const visibleProducts = (s) => PRODUCTS.filter((p) => isAnnounced(s, p) && (!p.imported || s.flags?.importIntro) && (p.kind !== 'kuji' || !!s.kuji) && (!p.know || (s.certs || []).includes(`know_${p.know}`)) && (!p.spot || (s.spots || []).includes(p.spot)));
+export const visibleProducts = (s) => PRODUCTS.filter((p) => isAnnounced(s, p) && (!p.imported || s.flags?.importIntro) && (p.kind !== 'kuji' || !!s.kuji) && (!p.ownBrand || !!s.secrets?.includes('menlo')) && (!p.know || (s.certs || []).includes(`know_${p.know}`)) && (!p.spot || (s.spots || []).includes(p.spot)));

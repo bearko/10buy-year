@@ -119,6 +119,7 @@ export function shipStaminaMult(s) {
   let m = 1 - s.abilities.pack / 200;
   if (hasSkill(s, 'pack_master')) m *= 0.5;
   if (hasSkill(s, 'tendon')) m *= 1.5;
+  if (s.secrets?.includes('logistics')) m *= 0.7; // ナポレオンの奥義「兵站の天才」
   return m * perk(s, 'shipStamina');
 }
 

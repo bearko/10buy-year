@@ -18,7 +18,7 @@ import { JUNK_PIDS, rollJunk, UNCHECKED_MULT } from './junk.js';
 
 let oidSeq = 1;
 // 新ジャンル（know）はここでは除き、genreOffer で知っているものだけ出す。開拓先のシリーズ（spot）も除く
-const byKind = (kind) => PRODUCTS.filter((p) => p.kind === kind && !p.know && !p.spot && !p.niche && !p.imported && !['med', 'device'].includes(p.reg));
+const byKind = (kind) => PRODUCTS.filter((p) => p.kind === kind && !p.know && !p.spot && !p.niche && !p.imported && !['med', 'device'].includes(p.reg) && !p.ownBrand);
 // 定価10万円以上の高額品は、ステージ2になるまで仕入れ候補に出てこない（序盤の一攫千金を防ぐ）
 const affordableTier = (s, p) => p.retail < 100000 || s.stage >= 2;
 const round10 = (v) => Math.max(10, Math.round(v / 10) * 10);
@@ -347,6 +347,13 @@ export function wholesaleOffers(s) {
   }));
   gens.push(...spotGens(s, 'wholesale'));
   return applySaturation(s, generate(s, gens, n), 'wholesale');
+}
+
+// ---- 自社製品（エジソンの奥義）：工場に発注する。競合がいないので荒れない ----
+export const OEM_WEEKS = 4;
+export function oemOffers(s) {
+  const p = productOf('own_brand');
+  return [makeOffer(s, p.id, { source: 'oem', label: `工場に発注（最低30個・${OEM_WEEKS}週後に納品）`, price: round10(p.retail * 0.28), maxQty: 300, minQty: 30, arriveWeek: s.week + OEM_WEEKS })];
 }
 
 // ---- 中国輸入（ノーブランド品をロットで。仕入れ値は為替しだい、届くのは3週後）----

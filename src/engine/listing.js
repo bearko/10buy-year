@@ -131,6 +131,7 @@ export const SITES = {
   dept: { name: '百貨店', kind: 'store', color: '#7c2d12' },
   gaisho: { name: '外商', kind: 'store', color: '#9d174d' },
   buying: { name: '海外の展示会', kind: 'pro', color: '#1e3a8a' },
+  oem: { name: '提携工場', kind: 'pro', color: '#0f766e' },
   import: { name: 'ロンロン卸', kind: 'pro', color: '#e4393c' },
 };
 // 開拓した仕入れ先（engine/pioneer.js）も販売元として並べる
@@ -271,7 +272,7 @@ export function buildListing(s, o) {
   if (o.fake && L.checks.length && !L.checks.some((c) => c.bad)) L.checks[randInt(s, 0, L.checks.length - 1)].bad = true;
   if (p.id === 'kaeru' && o.fake) L.checks.unshift({ part: '全体', name: 'タグの商品名', ok: '「カエルキッズ」', ng: '「ケロキッズ」と書いてある', bad: true });
   if (p.id === 'heiho' && o.fake) L.checks.find((c) => c.name === 'シュリンク').bad = true;
-  L.seen = seenChecks(s) + (s.certs?.includes(`appraise_${catOf(o.pid)}`) ? 1 : 0) + (s.style?.type === 'spec' && s.style.cat === catOf(o.pid) ? 2 : 0);
+  L.seen = seenChecks(s) + (s.certs?.includes(`appraise_${catOf(o.pid)}`) ? 1 : 0) + (s.style?.type === 'spec' && s.style.cat === catOf(o.pid) ? 2 : 0) + (s.secrets?.includes('vitruvian') ? 3 : 0); // ダ・ビンチの奥義
   // 鑑定眼は「目利き×1%」の確率（最大95%）。鑑定士を取っても目利きを上げる意味が残る
   L.verdict = perk(s, 'fakeDetect') >= 1 && risky && chance(s, Math.min(0.95, s.abilities.eye / 100));
   return L;

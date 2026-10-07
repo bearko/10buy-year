@@ -1412,3 +1412,11 @@ body.partner-on #side { display: none !important; }
 .kuji-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .inv-claim { display: flex; align-items: flex-start; gap: 6px; margin: 4px 0; font-size: 12px; color: var(--warn, #f0b35a); }
 .inv-claim small { display: block; font-size: 10px; color: var(--muted); }
+/* 仲間（ui/companions.js） */
+.comp-face { width: 64px; height: 64px; object-fit: contain; image-rendering: pixelated; background: #0003; border-radius: 8px; }
+.comp.unmet .comp-face { filter: brightness(0) opacity(0.5); }
+.comp-dots { display: flex; gap: 4px; margin: 4px 0; }
+.comp-dots i { width: 10px; height: 10px; border-radius: 50%; background: #fff2; }
+.comp-dots i.on { background: #ffd76a; }
+.comp-reward { font-size: 12px; color: var(--muted); }
+.comp-reward.got { color: #ffd76a; }
