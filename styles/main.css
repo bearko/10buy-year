@@ -1378,3 +1378,4 @@ body.partner-on #side { display: none !important; }
 .quote-head b { font-size: 16px; letter-spacing: 0.3em; }
 .quote-row { display: flex; justify-content: space-between; gap: 8px; padding: 4px 0; border-bottom: 1px dotted #aaa; }
 .quote-acts { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.sh-size { font-size: 11px; color: #777; }

@@ -11,6 +11,7 @@ import { audienceFromSale, consignPayout } from './careers.js';
 import { addExpense, addHours, recordSale } from './kpi.js';
 import { perk } from './perks.js';
 import { listBoostOf } from './worklife.js';
+import { sizeReturnWeight } from './shoes.js';
 
 export const OUTSOURCE_SHIP_FEE = 400;
 
@@ -220,6 +221,7 @@ function rollTrouble(s, sale) {
     { k: 'return', weight: 1.5 },
     { k: 'bad_review', weight: 2 },
     { k: 'prank', weight: sale.platform === 'merc' ? 1 : 0 },
+    { k: 'size', weight: sale.unit.shoe ? sizeReturnWeight(sale.pid) : 0 }, // サイズ違い
   ]).k;
 }
 

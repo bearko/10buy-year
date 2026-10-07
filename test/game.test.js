@@ -1442,3 +1442,31 @@ test('季節商品：母の日・五月人形・お中元・冷感グッズ・�
   }
   assert.equal(storeTypesOf(PRODUCTS.find((x) => x.id === 'akahon'))[0], 'book');
 });
+
+test('スニーカーのサイズ：人気サイズは高く、ワゴンの売れ残りは不人気サイズが多い。サイズ違いの返品がある', async () => {
+  const { sizeMult, pickSize } = await import('../src/engine/shoes.js');
+  const { specialOffer } = await import('../src/engine/offers.js');
+  const { buy } = await import('../src/engine/inventory.js');
+  const { unitPrice } = await import('../src/engine/market.js');
+  const { troubleSteps } = await import('../src/data/troubles.js');
+  assert.ok(sizeMult(27) > sizeMult(25) && sizeMult(25) > sizeMult(23));
+  const s = createGame(91);
+  let bad = 0, badLeft = 0;
+  for (let i = 0; i < 300; i++) {
+    if (sizeMult(pickSize(s)) < 0.9) bad++;
+    if (sizeMult(pickSize(s, { leftover: true })) < 0.9) badLeft++;
+  }
+  assert.ok(badLeft > bad * 1.3, `売れ残りは不人気サイズが多い ${bad} / ${badLeft}`);
+  s.cash = 1000000;
+  const o = specialOffer(s, 'boots', { source: 'store', label: 'ワゴンセール', price: 5000, maxQty: 2 });
+  assert.ok(o.shoe >= 23 && o.shoe <= 30);
+  assert.ok(o.listing.info.some(([k]) => k === 'サイズ'));
+  assert.ok(specialOffer(s, 'sake', { source: 'store', price: 3000, maxQty: 2 }).shoe === undefined);
+  buy(s, o, 1);
+  const u = s.inventory.at(-1);
+  assert.equal(u.shoe, o.shoe);
+  const plain = { ...u, shoe: undefined };
+  assert.equal(unitPrice(s, u), Math.round(unitPrice(s, plain) * sizeMult(u.shoe)));
+  const steps = troubleSteps(s, { kind: 'size', sale: { pid: 'boots', unit: u, id: 'x', ship: 700, price: 9000, net: 7000 } });
+  assert.ok(steps.some((x) => x.t === 'choice'));
+});

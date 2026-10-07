@@ -6,6 +6,7 @@ import { flag, hasSkill } from '../engine/effects.js';
 import {
   abroadMult, activeUnits, buybackQuote, capacity, feeRate, groupInventory, platformMult, platformOpen, hardCapacity, listedUnits, listingCap, listUnits, platformFee, platformsFor, PLATFORMS, sellToBuyer, spaceUsed, unlistUnits,
 } from '../engine/inventory.js';
+import { sizeLabel, sizeMult } from '../engine/shoes.js';
 import { confidenceLabel, estimateAt, estimateUnit, isReleased, isRetired, roundPrice, visibleProducts } from '../engine/market.js';
 import { openLotteries } from '../engine/offers.js';
 import { currentMission } from '../engine/tutorial.js';
@@ -291,6 +292,7 @@ export function inventoryModal(s, onChange) {
           g.damaged ? h('span', { class: 'tag bad' }, '傷あり') : null,
           g.authFail ? h('span', { class: 'tag bad' }, '鑑定NG（偽物）') : null,
           g.rep ? h('span', { class: 'tag' }, '再販版') : null,
+          g.shoe ? h('span', { class: `tag ${sizeMult(g.shoe) > 1 ? 'good' : sizeMult(g.shoe) < 0.9 ? 'bad' : ''}` }, sizeLabel(g.shoe)) : null,
           market === 'exp' && !g.listing && abroadMult(s, g.units[0]) >= 1.1 ? h('span', { class: 'tag good' }, `海外なら相場×${abroadMult(s, g.units[0]).toFixed(1)}`) : null,
           g.expire !== null && g.expire !== undefined ? h('span', { class: 'tag bad' }, `賞味期限 ${weekLabel(g.expire)}まで`) : null,
           x.waiting ? h('span', { class: 'tag' }, `${u0.imported ? '国際便・' : ''}${weekLabel(g.arrive)}に届く`) : null,

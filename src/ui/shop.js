@@ -150,7 +150,7 @@ export function offersModal(s, step, onChange) {
         o.rep ? h('span', { class: 'sh-badge rep' }, '再販版') : null,
         sold ? h('span', { class: 'sh-sold' }, 'SOLD') : null,
       ),
-      h('div', { class: 'sh-name' }, p.name),
+      h('div', { class: 'sh-name' }, p.name, o.shoe ? h('small', { class: 'sh-size' }, ` ${o.shoe.toFixed(1)}cm`) : null),
       h('div', { class: 'sh-meta' },
         sites.length > 1 ? h('span', { class: 'sh-site', style: { '--site': site.color } }, site.name) : null,
         o.listing?.likes ? h('span', {}, `♡${o.listing.likes}`) : null,
