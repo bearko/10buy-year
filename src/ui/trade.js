@@ -81,6 +81,7 @@ export function salesModal(s, step) {
           canCalc(s) && step.sold.length > 1 ? h('span', { class: totalProfit >= 0 ? 'pos' : 'neg' }, `合計の利益 ${signYen(totalProfit)}`) : null,
           step.staminaUsed ? h('span', {}, `梱包・発送で体力 -${step.staminaUsed}`) : null,
           step.outsourced ? h('span', {}, `外注が${step.outsourced}件発送`) : null,
+          step.staffShipped ? h('span', {}, `スタッフが${step.staffShipped}件発送`) : null,
         ),
       );
     }

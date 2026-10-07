@@ -21,6 +21,7 @@ import { bgm, choice, gain, info, items, narr, sfx, talk } from '../engine/steps
 import { washHands } from '../engine/underworld.js';
 import { perk } from '../engine/perks.js';
 import { COMPANION_EVENTS } from './companions.js';
+import { BIGLEAGUE_EVENTS } from './bigleague.js';
 
 // 徳を積む選択：TOKU を上げて、何も表示しないステップを返す
 const addTokuStep = (s, n) => {
@@ -1318,5 +1319,5 @@ export const EVENTS = [
   },
 ];
 
-EVENTS.push(...COMPANION_EVENTS); // 仲間の連続イベント（data/companions.js）
+EVENTS.push(...COMPANION_EVENTS, ...BIGLEAGUE_EVENTS); // 仲間の連続イベント（data/companions.js）・ステージ4〜5（data/bigleague.js）
 export const EVENT_MAP = Object.fromEntries(EVENTS.map((e) => [e.id, e]));

@@ -65,6 +65,11 @@ const ENDINGS = {
     lines: ['3度目の滞納。弁護士に相談し、債務整理の手続きをすることになった。', '部屋に残ったのは、売れ残った段ボールの山。', '「……次は、ちゃんと働こう」'],
     pose: 'cry',
   },
+  exit: {
+    title: 'イグジットEND',
+    lines: ['育てた事業を、ファンドに売った。契約書にサインした手は、少しだけ震えていた。', '借金まみれで段ボールを積んでいた部屋は、もうない。', '「次は何をしよう」――時間は、自分のものになった。'],
+    pose: 'sparkle',
+  },
   crypto: {
     title: '結局クリプトEND',
     lines: ['10年が経った。資産の半分くらいは、仮想通貨の爆益だった。', '「転売で地道に稼いだ日々って、何だったんだろう」', 'マインは何も言わず、そっとチャートアプリを削除した。'],
@@ -123,6 +128,7 @@ export function finalResult(s) {
   if (s.over === 'arrested') id = 'arrested';
   else if (s.over === 'bankrupt') id = 'bankrupt';
   else if (s.over === 'vanished') id = 'vanished';
+  else if (s.over === 'exit') id = 'exit'; // 事業を売却して引退（data/bigleague.js）
   else if (s.underworld) id = 'kingpin';
   else if (flag(s, 'spiderThread') !== undefined) id = 'spider';
   else if (s.debt > 0) id = 'continuing';

@@ -12,6 +12,7 @@ import { celebrate, info, sfx, talk } from './steps.js';
 import { monthlyNodeFees } from './abilities.js';
 import { addExpense, closeMonth, heldDays, inventoryStats } from './kpi.js';
 import { checkPromotion, CORP_SOCIAL, LIVING_COST } from './career.js';
+import { staffMonth } from './staff.js';
 // 専業の生活費（フランクリンの奥義「1ペニーの節約は1ペニーの稼ぎ」で2割安い）
 export const livingCost = (s) => Math.round(LIVING_COST * (s.secrets?.includes('penny') ? 0.8 : 1));
 import { yearOf } from './calendar.js';
@@ -35,6 +36,7 @@ export function monthEnd(s) {
   const fees = monthlyNodeFees(s);
   for (const f of fees) addExpense(s, f.amount, f.name);
   if (s.corp) addExpense(s, CORP_SOCIAL, '社会保険料');
+  staffMonth(s); // スタッフの人件費と育ち（engine/staff.js）
   const passive = passiveIncome(s);
   if (passive.total) {
     s.cash += passive.total;

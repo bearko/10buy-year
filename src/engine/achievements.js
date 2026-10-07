@@ -3,7 +3,7 @@
 import { SKILLS } from '../data/skills.js';
 
 const caps = (s) => SKILLS.filter((x) => x.kind === 'capstone' && s.skills.includes(x.id)).length;
-const cleared = (s) => !s.over;
+const cleared = (s) => !s.over || s.over === 'exit'; // 事業売却での引退も、走り切ったうちに入る
 
 export const ACHIEVEMENTS = [
   { id: 'first_sale', name: 'はじめての売上', desc: '1つ売る', test: (s) => s.stats.soldUnits >= 1 },

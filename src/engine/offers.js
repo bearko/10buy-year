@@ -146,14 +146,6 @@ export function storeOffers(s, n = storeOfferCount(s), { trip = false } = {}) {
       make: () => makeOffer(s, 'jewel', { source: 'luxury', label: 'ショーウィンドウの憧れの品', price: productOf('jewel').retail, maxQty: 1, scarce: true, brandNew: true }),
     },
   ];
-  // ドラッグストアの見切り品：医薬品・カラコンは安いが、個人は転売できない（engine/regulated.js）
-  gens.push({
-    weight: 1,
-    make: () => {
-      const p = productOf(pick(s, ['kanpo', 'colorcon']));
-      return makeOffer(s, p.id, { source: 'store', label: pick(s, ['使用期限が近い品の見切り', '箱つぶれ品の処分']), price: round10(p.retail * randRange(s, 0.35, 0.5)), maxQty: randInt(s, 3, 8) });
-    },
-  });
   // ジャンクかご：動作未確認の電子機器（買って動作確認・修理するまで中身はわからない。engine/junk.js）
   gens.push({
     weight: canUsed(s) ? 1.5 : 0,
@@ -166,6 +158,12 @@ export function storeOffers(s, n = storeOfferCount(s), { trip = false } = {}) {
   });
   gens.push(genreGen(s, 'used', 0.6, 0.85), ...(trip ? [] : spotGens(s, 'store')), nicheGen(s, 'store', ['pretty_set', 'bonsai', 'haori']));
   const offers = trip ? generate(s, gens, n) : applySaturation(s, generate(s, gens, n), 'store');
+  // ドラッグストアの見切り品：医薬品・カラコンは安いが、個人は転売できない（engine/regulated.js）。
+  // ふつうの候補の枠は使わず、ときどき余分に並ぶ
+  if (s.week >= 6 && chance(s, 0.3)) {
+    const p = productOf(pick(s, ['kanpo', 'colorcon']));
+    offers.push(makeOffer(s, p.id, { source: 'store', label: pick(s, ['使用期限が近い品の見切り', '箱つぶれ品の処分']), price: round10(p.retail * randRange(s, 0.35, 0.5)), maxQty: randInt(s, 3, 8) }));
+  }
   if (!s.stats.purchases) offers.unshift(firstWagon(s));
   return withUnknown(s, withSpec(s, offers, 'store'));
 }

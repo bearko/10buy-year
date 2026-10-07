@@ -1568,3 +1568,33 @@ test('仲間は20人以上、全員3段階以上の連続イベントがあり�
   EVENT_MAP.napoleon_3.play(t);
   assert.ok(t.secrets.includes('logistics'));
 });
+
+test('ステージ4〜5：スタッフの採用と育成、税務調査、事業売却の打診', async () => {
+  const { EVENT_MAP } = await import('../src/data/events.js');
+  const { staffDamageRate } = await import('../src/engine/staff.js');
+  const s = createGame(141);
+  s.stage = 4;
+  assert.ok(EVENT_MAP.staff_hire.cond(s));
+  EVENT_MAP.staff_hire.play(s).find((x) => x.t === 'choice').options[1].run();
+  assert.equal(s.staff.kind, 'rookie');
+  const r0 = staffDamageRate(s);
+  const cash = s.cash;
+  monthEnd(s);
+  assert.ok(s.staff.skill > 30 && staffDamageRate(s) < r0, '毎月育つ');
+  // 帳簿が整っていれば税務調査は指摘なし
+  s.skills.push('ledger');
+  s.monthly = Array.from({ length: 12 }, () => ({ net: 500000 }));
+  const before = s.cash;
+  EVENT_MAP.biz_audit.play(s);
+  assert.equal(s.cash, before);
+  // 事業売却：残り年数ぶんの利益の9割（最大3年分）
+  s.stage = 5;
+  s.week = 200;
+  s.monthly = Array.from({ length: 12 }, () => ({ net: 1000000 }));
+  s.skills.push('out_ship');
+  const c0 = s.cash;
+  EVENT_MAP.acquisition.play(s).find((x) => x.t === 'choice').options[0].run();
+  assert.equal(s.cash, c0 + 36000000);
+  assert.ok(s.over === 'exit' && !s.staff, '売却すると引退（イグジットEND）');
+  assert.ok(cash > 0);
+});
