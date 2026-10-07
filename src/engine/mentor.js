@@ -30,6 +30,7 @@ export const canAskMentor = (s) => !!s.mentor && s.week >= (s.flags?.mentorWeek 
 export function mentorSteps(s) {
   const m = s.mentor;
   s.flags.mentorWeek = s.week;
+  s.stats.mentorTalks = (s.stats.mentorTalks || 0) + 1;
   const top = ABILITIES.slice().sort((a, b) => (m.abilities[b.id] || 0) - (m.abilities[a.id] || 0))[0];
   const amount = 10 + s.stage * 8;
   const exp = Object.fromEntries(Object.entries(top.weights).map(([k, w]) => [k, Math.round(amount * w)]));
