@@ -196,6 +196,7 @@ function rollTrouble(s, sale) {
   rate *= perk(s, 'trouble');
   if (sale.delayed) rate += 0.15;
   if (!s.flags.tutorialDone) rate *= 0.4; // 序盤は売る流れを覚えるのが先
+  rate *= s.mods?.troubleMult ?? 1; // 年末商戦など
   if (!chance(s, rate)) return null;
   const expensive = sale.price >= 30000;
   return weightedPick(s, [

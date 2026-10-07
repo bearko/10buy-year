@@ -1,8 +1,8 @@
 // 1週間の進行。startWeek →（行動 × actionsPerWeek）→ endWeek → 次の週 …
 import { shopWeek } from './mystore.js';
 import { productOf } from '../data/products.js';
-import { TOTAL_WEEKS, isMonthEnd, isYearEnd, weekLabel, woy, yearOf } from './calendar.js';
-import { addHate, addStamina, flag, record, setFlag, yen } from './effects.js';
+import { TOTAL_WEEKS, isMonthEnd, isYearEnd, monthOf, weekLabel, weekOfMonth, woy, yearOf } from './calendar.js';
+import { addHate, addStamina, flag, hasSkill, record, setFlag, yen } from './effects.js';
 import { updateMarket } from './market.js';
 import { drawEvents } from './events.js';
 import { monthEnd } from './finance.js';
@@ -32,6 +32,23 @@ export function startWeek(s) {
   s.actionsLeft = s.actionsPerWeek;
   s.nightLeft = s.stage >= 2 ? 1 : 0;
   if (s.week > 0) s.news = updateMarket(s);
+  // 毎月の第1・第3週は、通販モールのポイントアップ週
+  if ([1, 3].includes(weekOfMonth(s.week))) {
+    s.mods.onlinePoints *= 1.3;
+    if (hasSkill(s, 'src_online')) (s.news ||= []).push({ text: '【マイクリ市場】今週はポイントアップ週。電脳せどりのポイント還元が1.3倍', kind: 'info' });
+  }
+  // 12月は年末商戦：買い手が増え、発送とクレームも増える。年明けは発送が山積み
+  if (monthOf(s.week) === 12) {
+    s.mods.demand *= 1.25;
+    s.mods.troubleMult = 1.3;
+    if (weekOfMonth(s.week) === 1 && s.stats.soldUnits > 0) {
+      steps.push(talk('mine', '12月は年末商戦よ。プレゼント需要で買い手が増えるぶん、発送もクレームも増えるわ。体力は残しておいてね。', 'pointer'), info('年末商戦', ['12月は買い手が1.25倍', '取引トラブルも1.3倍に増える']));
+    }
+  }
+  if (monthOf(s.week) === 1 && weekOfMonth(s.week) === 1 && s.stats.soldUnits > 0 && s.week > 0) {
+    addStamina(s, -10);
+    steps.push(talk('narr', '年明けの月曜。年末から休み中に売れた分の発送が、部屋に山積みになっている…。'), talk('chris', '梱包、梱包、梱包…。正月気分が一瞬で吹き飛んだ…。', 'cry'), info('年明けの発送ラッシュ', ['体力 -10']));
+  }
   if (s.week > 0 && woy(s.week) === 0) steps.push(...yearStart(s, yearOf(s.week)));
 
   // 売上金の入金
