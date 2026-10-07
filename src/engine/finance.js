@@ -13,6 +13,8 @@ import { monthlyNodeFees } from './abilities.js';
 import { addExpense, closeMonth, heldDays, inventoryStats } from './kpi.js';
 import { checkPromotion, CORP_SOCIAL, LIVING_COST } from './career.js';
 import { yearOf } from './calendar.js';
+import { ORG_WAGE } from './style.js';
+import { chance } from './rng.js';
 
 // 難易度：借金の額・毎月の最低返済・金利
 export const DIFFICULTIES = {
@@ -46,6 +48,15 @@ export function monthEnd(s) {
   if (s.rating >= 95) addToku(s, 1);
   if (s.underworld) addCash(s, -UNDERWORLD_LIVING, '裏の暮らし（金銭感覚の麻痺）');
   if (s.probation > 0) s.probation = Math.max(0, s.probation - 4);
+  // 組織型：人件費と、複数アカウント運用の規約違反
+  if (s.style?.type === 'org') {
+    addCash(s, -ORG_WAGE * s.stage, '人件費（並び屋・仕入れスタッフ）');
+    if (chance(s, 0.06)) {
+      s.banWeeks = Math.max(s.banWeeks || 0, 2);
+      addHate(s, 5);
+      steps.push(talk('narr', 'スタッフ名義で回していたプンシーのアカウントが、運営に「同一人物の複数アカウント」と判定された。'), info('規約違反', ['プンシーへの出品が2週間止まる', '炎上度が上がった'], 'bad'));
+    }
+  }
   const rec = closeMonth(s);
   steps.push(monthReport(s, rec, fees, passive));
   steps.push(...staleReport(s));

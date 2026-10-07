@@ -5,7 +5,8 @@ import { flag, hasSkill } from './effects.js';
 import { beforeRelease, estimate, estimateUpcoming, inBoom, inPreSale, isReleased, isRestockWeek, priceOf, roundPrice } from './market.js';
 import { woy, yearOf } from './calendar.js';
 import { perk } from './perks.js';
-import { buildListing } from './listing.js';
+import { buildListing, catOf } from './listing.js';
+import { specCat } from './style.js';
 import { knowsGenre, unknownGenres } from './courses.js';
 import { openSpots } from './pioneer.js';
 import { applySaturation, botActive, saturation } from './rivals.js';
@@ -51,7 +52,7 @@ export function storeOfferCount(s) {
   if (hasSkill(s, 'ino_map')) n += 2;
   if (hasSkill(s, 'tenka')) n += 1;
   if (hasSkill(s, 'eye_ai')) n += 2;
-  return n + perk(s, 'storeOffers');
+  return n + perk(s, 'storeOffers') + (s.style?.type === 'org' ? 2 : 0);
 }
 
 export function storeOffers(s, n = storeOfferCount(s)) {
@@ -137,7 +138,7 @@ export function storeOffers(s, n = storeOfferCount(s)) {
   gens.push(genreGen(s, 'used', 0.6, 0.85), ...spotGens(s, 'store'), nicheGen(s, 'store', ['pretty_set', 'bonsai', 'haori']));
   const offers = applySaturation(s, generate(s, gens, n), 'store');
   if (!s.stats.purchases) offers.unshift(firstWagon(s));
-  return withUnknown(s, offers);
+  return withUnknown(s, withSpec(s, offers, 'store'));
 }
 
 // 初めての店舗せどりでは、わかりやすく利益の出るワゴン品を必ず1つ出す
@@ -148,7 +149,7 @@ function firstWagon(s) {
 
 // ---- 電脳せどり ----
 export function onlineOffers(s) {
-  const n = 4 + Math.floor(s.abilities.buy / 35) + (hasSkill(s, 'eye_ai') ? 2 : 0) + perk(s, 'onlineOffers');
+  const n = 4 + Math.floor(s.abilities.buy / 35) + (hasSkill(s, 'eye_ai') ? 2 : 0) + perk(s, 'onlineOffers') + (s.style?.type === 'org' ? 2 : 0);
   const lottery = hasSkill(s, 'src_lottery');
   const pointBoost = (s.mods?.onlinePoints ?? 1) * (1 + (hasSkill(s, 'poikatsu') ? 0.4 : 0)) * perk(s, 'pointsMult');
   const upcoming = lottery ? byKind('hype').filter((p) => beforeRelease(s, p)) : [];
@@ -208,7 +209,7 @@ export function onlineOffers(s) {
   gens.push(genreGen(s, 'flea', 0.65, 0.9), ...spotGens(s, 'online'), nicheGen(s, 'online', ['dream_set', 'cyber_staff', 'star_globe']));
   const offers = applySaturation(s, generate(s, gens, n), 'online');
   for (const o of offers) if (o.price === 0) o.price = productOf(o.pid).retail;
-  return withUnknown(s, offers);
+  return withUnknown(s, withSpec(s, offers, 'online'));
 }
 
 function generate(s, gens, n) {
@@ -243,7 +244,7 @@ export function queueTargets(s) {
 }
 
 export function queueSuccessRate(s, crowd = 1) {
-  let r = 0.35 + s.abilities.buy / 250 + (hasSkill(s, 'early_bird') ? 0.25 : 0) + (hasSkill(s, 'dk_crew') ? 0.3 : 0) + (s.mood - 2) * 0.03;
+  let r = 0.35 + s.abilities.buy / 250 + (hasSkill(s, 'early_bird') ? 0.25 : 0) + (hasSkill(s, 'dk_crew') || s.style?.type === 'org' ? 0.3 : 0) + (s.mood - 2) * 0.03;
   if (queueLimited(s)) r *= 0.8; // 購入制限（会員証の確認で列が進まない）
   return Math.max(0.05, Math.min(0.95, r / crowd));
 }
@@ -364,6 +365,18 @@ function genreGen(s, source, lo, hi) {
 }
 
 // 知らないジャンルが並んでいることだけ見せる（買えない）
+// 商材特化：専門の仕入れ先から掘り出し物が回ってくる（高級品は除く）
+function withSpec(s, offers, source) {
+  const cat = specCat(s);
+  if (!cat) return offers;
+  const pool = PRODUCTS.filter((p) => catOf(p.id) === cat && isReleased(s, p) && !p.spot && !p.know && p.kind !== 'luxury');
+  for (let i = 0; i < 2 && pool.length; i++) {
+    const p = pick(s, pool);
+    offers.push(makeOffer(s, p.id, { source, label: '専門のつながりで回ってきた品', price: roundPrice(priceOf(s, p.id) * randRange(s, 0.8, 0.9)), maxQty: 1, fakeRate: p.fakeRisk * 0.2 }));
+  }
+  return offers;
+}
+
 function withUnknown(s, offers) {
   const unk = unknownGenres(s);
   if (!unk.length || !chance(s, 0.6)) return offers;

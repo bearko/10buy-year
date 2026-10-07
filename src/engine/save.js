@@ -6,6 +6,7 @@ const SAVE_KEY = '10buy-year:save';
 const RANK_KEY = '10buy-year:ranking';
 const DAILY_KEY = '10buy-year:daily';
 const LEGACY_KEY = '10buy-year:legacy';
+const MENTOR_KEY = '10buy-year:mentors';
 
 function storage() {
   try {
@@ -110,4 +111,23 @@ export function pushLegacy(ids) {
     /* noop */
   }
   return all;
+}
+
+// 継承：前の周までの転売屋（新しい順に3人まで）
+export function loadMentors() {
+  try {
+    return JSON.parse(storage()?.getItem(MENTOR_KEY) || '[]');
+  } catch {
+    return [];
+  }
+}
+
+export function pushMentor(rec) {
+  const list = [rec, ...loadMentors()].slice(0, 3);
+  try {
+    storage()?.setItem(MENTOR_KEY, JSON.stringify(list));
+  } catch {
+    /* noop */
+  }
+  return list;
 }

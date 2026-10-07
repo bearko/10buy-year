@@ -23,6 +23,8 @@ export const CAST = {
       talk: C('navi_ain_07_talk'), sparkle: C('navi_ain_08_sparkle'), cry: C('navi_ain_09_cry'), teary: C('navi_ain_10_teary'),
     },
   },
+  // 継承：前の周のクリス（立ち絵はクリスの腕組み）
+  mentor: { name: '師匠', title: '先代の転売屋', poses: { idle: C('chris_01_arms_crossed') } },
   maycri: {
     name: 'マイクリくん',
     poses: { idle: C('maycri_00_eyes_blank'), small: C('maycri_01_eyes_small'), wide: C('maycri_02_eyes_wide'), thin: C('maycri_03_eyes_thin') },

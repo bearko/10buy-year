@@ -237,8 +237,10 @@ function chooseCommand(s) {
   return (s.week + (s.actionsLeft || 0)) % 2 ? 'store' : 'online';
 }
 
-export function runGame(seed, policy = smartPolicy, { weeks = Infinity, route = process.env.BOT_ROUTE, difficulty = process.env.BOT_DIFF || 'normal' } = {}) {
+export function runGame(seed, policy = smartPolicy, { weeks = Infinity, route = process.env.BOT_ROUTE, difficulty = process.env.BOT_DIFF || 'normal', style = process.env.BOT_STYLE } = {}) {
   const s = createGame(seed, difficulty);
+  // キャリアの型（例：BOT_STYLE=spec:tcg）
+  if (style) { const [type, cat] = style.split(':'); s.style = { type, cat }; }
   if (route) s.botRoute = route;
   while (!s.over && s.week < weeks) {
     play(s, startWeek(s), policy);
