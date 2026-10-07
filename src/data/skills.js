@@ -79,7 +79,7 @@ export const SKILLS = [
   { id: 'rec_appraiser', route: 'vintage', parent: 'serial_memo', depth: 4, lane: 1, kind: 'record', name: '古物の目', desc: '推定相場の誤差-10%', record: { key: 'usedSold', target: 30, label: '中古・コレクター品を売った数' }, icon: E(4008) },
   { id: 'vi_eye', route: 'vintage', parent: 'license', depth: 3, lane: -1, kind: 'repeat', max: 5, name: '目利きの修行', desc: '基礎能力「目利き」+3（レベルごと）', cost: { info: 20, mind: 10 }, grant: { abilities: { eye: 3 } }, icon: I('ce.png') },
   { id: 'vi_note', route: 'vintage', parent: 'src_flea', depth: 5, lane: -1, kind: 'repeat', max: 3, name: '相場ノート', desc: '推定相場の誤差-5%（レベルごと）', cost: { info: 35, mind: 15 }, perLv: [{ key: 'estErr', mul: 0.95 }], icon: E(4008) },
-  { id: 'cap_vintage', route: 'vintage', parent: 'src_auction', depth: 5, lane: 0, kind: 'capstone', name: '鑑定士', desc: '鑑定眼：仕入れ候補の真贋が「目利き×1%」の確率でひと目で分かる（最大95%）。中古・業者オークションの仕入れ値-8%', cost: { info: 150, mind: 80 }, need: { eye: 60 }, icon: E(5509) },
+  { id: 'cap_vintage', route: 'vintage', parent: 'src_auction', depth: 5, lane: 0, kind: 'capstone', name: '鑑定士', desc: '鑑定眼：仕入れ候補の真贋が「目利き×1%」の確率でひと目で分かる（最大95%）。中古・業者オークションの仕入れ値-8%', cost: { info: 170, mind: 60 }, need: { eye: 50 }, icon: E(5509) },
 
   // ---- 販路・出品 ----
   { id: 'ch_miime', route: 'sales', parent: 'src_home', depth: 1, lane: 0, kind: 'starter', name: 'ミィーム', desc: 'オークション。手数料10%。コレクター品は競り上がりやすい', cost: { tech: 20, info: 10 }, gate: [{ flag: 'tutorialDone', label: 'チュートリアルを終える' }], icon: E(1111) },
@@ -114,12 +114,12 @@ export const SKILLS = [
   { id: 'quick_reply', route: 'network', parent: 'net_meetup', depth: 2, lane: 0, kind: 'perk', name: '即レス', desc: '評価が上がりやすく、トラブルが少し減る', cost: { social: 35, mind: 15 }, icon: I('buf_agi.png') },
   { id: 'profile', route: 'network', parent: 'net_meetup', depth: 2, lane: -1, kind: 'perk', name: 'プロフ必読', desc: '取引トラブルが30%減る', cost: { info: 20, social: 30 }, icon: E(1003) },
   { id: 'tenka', route: 'network', parent: 'net_meetup', depth: 2, lane: 1, kind: 'gold', hero: 'nobunaga', name: '天下布武', desc: '楽市楽座の精神。販売手数料-3%、仕入れ候補+1', cost: { social: 70, act: 70 }, icon: H(5001) },
-  { id: 'iron_mental', route: 'network', parent: 'quick_reply', depth: 3, lane: 0, kind: 'perk', name: '鋼のメンタル', desc: 'やる気が下がる出来事を半分の確率で受け流す', cost: { mind: 60 }, icon: I('buf_phy.png') },
+  { id: 'iron_mental', route: 'network', parent: 'quick_reply', depth: 3, lane: 0, kind: 'perk', name: '鋼のメンタル', desc: 'やる気が下がる出来事を半分の確率で受け流す', cost: { mind: 40, social: 20 }, icon: I('buf_phy.png') },
   { id: 'tonchi', route: 'network', parent: 'profile', depth: 3, lane: -1, kind: 'gold', hero: 'ikkyu', name: 'このはし渡るべからず', desc: 'トラブル対応の判定が大幅に有利になる', cost: { social: 80, mind: 40 }, icon: H(2029) },
   { id: 'rec_network', route: 'network', parent: 'tenka', depth: 3, lane: 1, kind: 'record', name: 'クレーム慣れ', desc: '取引トラブル-10%', record: { key: 'troubles', target: 10, label: '乗り越えた取引トラブル' }, icon: 'assets/enemies/101.png' },
   { id: 'ne_talk', route: 'network', parent: 'iron_mental', depth: 4, lane: -1, kind: 'repeat', max: 5, name: '交渉術', desc: '基礎能力「交渉」+3（レベルごと）', cost: { social: 20, mind: 10 }, grant: { abilities: { talk: 3 } }, icon: I('cp.png') },
   { id: 'ne_manner', route: 'network', parent: 'ne_talk', depth: 5, lane: -1, kind: 'repeat', max: 3, name: '丁寧な取引', desc: '取引トラブル-5%（レベルごと）', cost: { social: 30, mind: 15 }, perLv: [{ key: 'trouble', mul: 0.95 }], icon: I('resurrection.png') },
-  { id: 'cap_network', route: 'network', parent: 'iron_mental', depth: 4, lane: 0, kind: 'capstone', name: '業界の顔', desc: '取引トラブル半減、交渉判定+20%', cost: { social: 150, mind: 80 }, need: { talk: 60 }, icon: H(5008) },
+  { id: 'cap_network', route: 'network', parent: 'iron_mental', depth: 4, lane: 0, kind: 'capstone', name: '業界の顔', desc: '取引トラブル半減、交渉判定+20%', cost: { social: 170, mind: 60 }, need: { talk: 50 }, icon: H(5008) },
   { id: 'div_consult', route: 'network', parent: 'rec_network', depth: 4, lane: 1, kind: 'perk', name: '情報発信・コンサル', desc: '経験を売る。毎月安定した収入。ただし炎上しやすい', cost: { social: 120, info: 100 }, stage: 5, icon: H(3008) },
 
   // ---- 経営 ----
@@ -131,7 +131,7 @@ export const SKILLS = [
   { id: 'ledger', route: 'manage', parent: 'kpi_mid', depth: 3, lane: -1, kind: 'gold', hero: 'mitsunari', name: '大一大万大吉', desc: '帳簿が完璧。確定申告の税額-30%、カード払いがリボにならない', cost: { info: 60, mind: 60 }, icon: H(2012) },
   { id: 'ma_learn', route: 'manage', parent: 'eye_calc', depth: 2, lane: 1, kind: 'repeat', max: 5, name: '学びの習慣', desc: '獲得する経験点+4%（レベルごと）', cost: { info: 20, mind: 15 }, perLv: [{ key: 'expGain', mul: 1.04 }], icon: E(1016) },
   { id: 'ma_tax', route: 'manage', parent: 'kpi_pro', depth: 4, lane: -1, kind: 'repeat', max: 3, name: '節税の知恵', desc: '税額-3%（レベルごと）', cost: { info: 40, mind: 20 }, perLv: [{ key: 'taxMult', mul: 0.97 }], icon: I('gum.png') },
-  { id: 'cap_manage', route: 'manage', parent: 'kpi_pro', depth: 4, lane: 0, kind: 'capstone', name: '経営者の眼', desc: '税額-15%、カードの利用枠+100万円、獲得する経験点+10%', cost: { info: 150, mind: 60 }, need: { talk: 50 }, icon: E(4016) },
+  { id: 'cap_manage', route: 'manage', parent: 'kpi_pro', depth: 4, lane: 0, kind: 'capstone', name: '経営者の眼', desc: '税額-15%、カードの利用枠+100万円、獲得する経験点+10%', cost: { info: 150, mind: 60 }, gate: [{ key: 'netTotal', target: 10000000, label: '累計の純利益（円）' }], icon: E(4016) },
   { id: 'div_brand', route: 'manage', parent: 'kpi_pro', depth: 4, lane: 1, kind: 'perk', name: '自社ブランド', desc: 'せどりで掴んだ売れ筋をもとにOEM商品を作る。毎月、評価に応じた利益', cost: { info: 150, tech: 80 }, stage: 4, icon: E(3112) },
 
   // ---- 正道・商社（TOKU が高いと取れる。健全な事業として大きくなる）----

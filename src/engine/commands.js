@@ -34,7 +34,7 @@ export const GROUPS = [
 export const COMMANDS = [
   { id: 'home_search', group: 'buy', icon: E(1059), name: '家の中を探す', desc: '押し入れから売れそうな物を探す', stamina: 5, exp: { info: 4, tech: 3 }, hours: 3, bg: 'home' },
   { id: 'store', group: 'buy', icon: E(2125), node: 'src_store', name: '店舗せどり', desc: 'ワゴンや値札ミスの掘り出し物を探す', stamina: 15, exp: { act: 12, info: 5, social: 2 }, hours: 10, bg: 'store' },
-  { id: 'online', group: 'buy', icon: E(5075), node: 'src_online', name: '電脳せどり', desc: 'ポイント還元・予約・フリマの安値', stamina: 8, exp: { info: 13, tech: 4 }, hours: 5, bg: 'online' },
+  { id: 'online', group: 'buy', icon: E(5075), node: 'src_online', name: '電脳せどり', desc: 'ポイント還元・予約・フリマの安値', stamina: 8, exp: { info: 13, tech: 4, mind: 2 }, hours: 5, bg: 'online' },
   { id: 'lottery', group: 'buy', icon: E(1016), node: 'src_lottery', name: '抽選に応募', desc: '限定品の抽選。結果は翌週', stamina: 5, exp: { info: 6, mind: 6 }, hours: 2, bg: 'online' },
   { id: 'queue', group: 'buy', icon: E(5531), node: 'src_queue', name: '行列に並ぶ', desc: '発売日に始発で並ぶ', stamina: 28, exp: { act: 15, mind: 10 }, hours: 8, bg: 'queue' },
   { id: 'auction', group: 'buy', icon: E(5509), node: 'src_auction', name: '業者オークション', desc: '古物商だけの市場。相場の5〜7割', stamina: 10, exp: { info: 10, social: 8 }, hours: 6, bg: 'event' },
