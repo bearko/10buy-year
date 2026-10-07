@@ -1446,7 +1446,7 @@ body.partner-on #side { display: none !important; }
 .mch-cutin b { font-size: calc(18px * var(--fs, 1)); max-width: 230px; }
 @keyframes mch-cutin-in { from { transform: translate(100%, -50%) skewY(-10deg); opacity: 0; } to { transform: translateY(-50%) skewY(-10deg); opacity: 1; } }
 @keyframes mch-cutin-shine { from { opacity: 0; } to { opacity: 0.8; } }
-.bt-fx { position: absolute; right: 8%; bottom: 18%; width: 100px; height: 100px; background: url('../assets/effects/hit.png') 0 0 no-repeat; transform: scale(1.6); image-rendering: pixelated; }
+.bt-fx { position: absolute; right: 8%; bottom: 18%; width: 100px; height: 100px; background: url('../assets/effects/hit.webp') 0 0 no-repeat; transform: scale(1.6); image-rendering: pixelated; }
 .mch-result { position: absolute; inset: 0; display: flex; align-items: center; z-index: 10; }
 .mch-result p { position: absolute; left: 50%; top: 50%; width: 150%; margin: 0; padding: 12px; background: #282b33; opacity: 0.9; color: #fff; font-size: calc(34px * var(--fs, 1)); font-weight: 700; text-align: center; transform: translate(-50%, -50%) rotate(-10deg); animation: mch-result-in 0.75s both; }
 .mch-result.win p { color: #ffd76a; }

@@ -456,7 +456,7 @@ function waitForCommand(mode) {
       if (night) {
         cmds.forEach((c) => nav.append(cmdCard(c)));
         markSeen(cmds);
-        nav.append(card({ class: 'cmd sleep', onclick: () => { if (!busy) pickCmd('sleep'); } }, 'assets/icons/sleep.png', '寝る'));
+        nav.append(card({ class: 'cmd sleep', onclick: () => { if (!busy) pickCmd('sleep'); } }, 'assets/icons/sleep.webp', '寝る'));
         return;
       }
       if (group) {
@@ -470,7 +470,7 @@ function waitForCommand(mode) {
               resumeCommands?.();
               refresh();
             },
-          }, 'assets/extensions/1059.png', '在庫を出品', h('span', { class: 'free-tag' }, '週は進まない')));
+          }, 'assets/extensions/1059.webp', '在庫を出品', h('span', { class: 'free-tag' }, '週は進まない')));
         }
         const inGroup = cmds.filter((c) => c.group === group);
         markSeen(inGroup);

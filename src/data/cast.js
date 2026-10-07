@@ -1,6 +1,6 @@
 // 登場人物。クリス・マイン・マイクリくんはオリジナルキャラ（ドット絵）、
 // それ以外はマイクリのヒーロー／エネミー画像を使う。
-const C = (file) => `assets/characters/${file}.png`;
+const C = (file) => `assets/characters/${file}.webp`;
 
 export const CAST = {
   chris: {
@@ -78,7 +78,7 @@ export function portraitOf(who, pose) {
   const c = CAST[who];
   if (!c) return null;
   if (c.poses) return c.poses[pose] || c.poses.idle;
-  if (c.hero) return `assets/heroes/${c.hero}.png`;
-  if (c.enemy) return `assets/enemies/${c.enemy}.png`;
+  if (c.hero) return `assets/heroes/${c.hero}.webp`;
+  if (c.enemy) return `assets/enemies/${c.enemy}.webp`;
   return null;
 }

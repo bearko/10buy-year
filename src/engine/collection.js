@@ -20,7 +20,7 @@ export const SERIES_BONUS = 50000; // シリーズを5点そろえると、月�
 
 export const PIECES = COLLECTION_SERIES.flatMap((sr) => sr.items.map(([ext, name]) => ({ ext, name, series: sr.id, seriesName: sr.name, rarity: RARITY[Math.floor(ext / 1000) - 1] })));
 export const PIECE_MAP = Object.fromEntries(PIECES.map((p) => [p.ext, p]));
-export const pieceImage = (ext) => `assets/extensions/${ext}.png`;
+export const pieceImage = (ext) => `assets/extensions/${ext}.webp`;
 
 export const owned = (s, ext) => (s.collection || []).some((c) => c.ext === ext);
 export const collectionValue = (s) => (s.collection || []).reduce((a, c) => a + c.value, 0);

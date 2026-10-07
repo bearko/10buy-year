@@ -160,7 +160,7 @@ function makeSeller(s, o, site) {
   return {
     name: shopName ? pick(s, SHOPLIKE) : pick(s, PERSONAL),
     shoplike: shopName,
-    avatar: `assets/heroes/${pick(s, AVATARS)}.png`,
+    avatar: `assets/heroes/${pick(s, AVATARS)}.webp`,
     ratings,
     good: ratings === 0 ? null : badFake ? randInt(s, 82, 93) : randInt(s, 97, 100),
     verified: shady ? false : !chance(s, flagRate(o, 0.2, 0.6)),

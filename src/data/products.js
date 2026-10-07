@@ -221,4 +221,4 @@ export function shipFor(platform, product) {
 }
 
 // rep：再販版（MCHのRepレアリティの画像）。再販が決まったあとに仕入れた品は再販版になる
-export const productImage = (product, rep = false) => `assets/extensions/${rep && product.rep ? product.rep : product.ext}.png`;
+export const productImage = (product, rep = false) => `assets/extensions/${rep && product.rep ? product.rep : product.ext}.webp`;

@@ -24,7 +24,7 @@ function staminaBar(s) {
   const low = Math.min(now, after);
   const risk = preview?.risk || 0;
   return h('div', { class: 'stamina', title: '体力' },
-    h('img', { src: 'assets/icons/hp.png', alt: '' }),
+    h('img', { src: 'assets/icons/hp.webp', alt: '' }),
     h('div', { class: `bar ${after / max < 0.3 ? 'low' : ''}` },
       h('i', { style: { width: pct(low) } }),
       d ? h('i', { class: `ghost ${d < 0 ? 'lose' : 'gain'}`, style: { left: pct(low), width: pct(Math.abs(after - now)) } }) : null,
@@ -64,7 +64,7 @@ export function renderHud(s) {
     h('div', { class: 'hud-row money' },
       // 出費の予告は所持金の下の行に出す（横に並べると行が折り返して、下の行動カードの位置がずれる）
       h('div', { class: 'cash' },
-        h('div', { class: 'cash-main' }, h('img', { src: 'assets/icons/gum.png', alt: '' }), h('span', { class: s.cash < 0 ? 'neg' : '' }, yenFmt(s.cash))),
+        h('div', { class: 'cash-main' }, h('img', { src: 'assets/icons/gum.webp', alt: '' }), h('span', { class: s.cash < 0 ? 'neg' : '' }, yenFmt(s.cash))),
         // 借金は所持金の下に置き、右の目標欄と高さをそろえる
         // 出費の予告も同じ行に並べて、予告が出ても行の高さが変わらないようにする
         s.debt > 0 || preview?.cash
