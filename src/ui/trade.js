@@ -252,9 +252,9 @@ export function inventoryModal(s, onChange) {
       const on = selected.has(g.key);
 
       const head = h('div', { class: 'grow' },
-        h('div', { class: 'name' }, g.home ? p.genre : p.name, h('small', {}, ` ×${g.units.length}`)),
+        h('div', { class: 'name' }, p.name, h('small', {}, ` ×${g.units.length}`)),
         h('div', { class: 'tags' },
-          g.home ? h('span', { class: 'tag' }, '家の不用品') : null,
+          g.home ? h('span', { class: 'tag' }, `家の不用品・${p.genre}`) : null,
           editionTag(s, u0),
           g.damaged ? h('span', { class: 'tag bad' }, '傷あり') : null,
           g.expire !== null && g.expire !== undefined ? h('span', { class: 'tag bad' }, `賞味期限 ${weekLabel(g.expire)}まで`) : null,
