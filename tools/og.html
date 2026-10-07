@@ -1,0 +1,52 @@
+<!doctype html>
+<!-- OGP画像（1200×630）の元。ブラウザで開いて 1200×630 でスクリーンショットを撮り、assets/og.png に保存する（README「OGP画像」） -->
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Orbitron:wght@700&display=swap" rel="stylesheet" />
+    <style>
+      html, body { margin: 0; width: 1200px; height: 630px; overflow: hidden; background: #0b1020; }
+      .og { position: relative; width: 1200px; height: 630px; overflow: hidden; font-family: 'DotGothic16', sans-serif; color: #fff; }
+      .bg { position: absolute; inset: 0; background: url(../assets/backgrounds/home.jpg) center 35% / cover; filter: saturate(0.9) brightness(0.55); image-rendering: pixelated; }
+      .shade { position: absolute; inset: 0; background: linear-gradient(90deg, #0b1020ee 0, #0b1020aa 46%, #0b102033 70%, #0b102000 100%); }
+      .floor { position: absolute; left: 0; right: 0; bottom: 0; height: 120px; background: linear-gradient(#0000, #0b1020cc); }
+      img { image-rendering: pixelated; position: absolute; }
+      .chris { right: 170px; bottom: 26px; width: 216px; height: 420px; filter: drop-shadow(0 8px 0 #0008); }
+      .item { width: 128px; height: 128px; filter: drop-shadow(0 6px 0 #0007); }
+      .hero { width: 128px; height: 128px; filter: drop-shadow(0 6px 0 #0007); }
+      .text { position: absolute; left: 64px; top: 64px; width: 700px; }
+      .kicker { display: inline-block; padding: 6px 14px; border: 2px solid #ffd76a; border-radius: 6px; color: #ffd76a; font-size: 26px; letter-spacing: 2px; }
+      h1 { margin: 22px 0 0; white-space: nowrap; font: 700 86px/1 'Orbitron', 'DotGothic16', sans-serif; letter-spacing: 2px; text-shadow: 0 6px 0 #0009; }
+      h1 em { font-style: normal; color: #ffd76a; }
+      .sub { margin: 26px 0 0; font-size: 34px; line-height: 1.35; text-shadow: 0 3px 0 #0009; }
+      .sub b { color: #ffd76a; font-weight: 400; }
+      .tags { margin-top: 26px; display: flex; flex-wrap: wrap; gap: 10px; }
+      .tags span { padding: 6px 14px; border-radius: 999px; background: #ffffff1f; border: 1px solid #ffffff44; font-size: 24px; }
+      .credit { position: absolute; left: 64px; bottom: 24px; font-size: 20px; color: #ffffffaa; }
+      .bubble { position: absolute; right: 160px; top: 128px; padding: 12px 18px; background: #fff; color: #222; border-radius: 14px; font-size: 26px; box-shadow: 0 6px 0 #0006; }
+      .bubble::after { content: ''; position: absolute; left: 50%; bottom: -24px; margin-left: -12px; border: 12px solid transparent; border-top: 14px solid #fff; }
+    </style>
+  </head>
+  <body>
+    <div class="og">
+      <div class="bg"></div>
+      <div class="shade"></div>
+      <div class="floor"></div>
+      <!-- 部屋に積んだ在庫（商品＝エクステンション） -->
+      <img class="item" src="../assets/extensions/1059.png" style="right: 20px; bottom: 18px" alt="" />
+      <img class="item" src="../assets/extensions/1031.png" style="right: 380px; bottom: 14px" alt="" />
+      <img class="item" src="../assets/extensions/1111.png" style="right: 470px; bottom: 30px" alt="" />
+      <img class="item" src="../assets/extensions/5016.png" style="right: 40px; bottom: 150px" alt="" />
+      <img class="hero" src="../assets/heroes/2029.png" style="right: 4px; top: 22px" alt="" />
+      <img class="chris" src="../assets/characters/chris_04_guts_pose.png" alt="" />
+      <div class="bubble">安く買って、高く売る！</div>
+      <div class="text">
+        <span class="kicker">転売シミュレーション</span>
+        <h1>10 buy <em>year!</em></h1>
+        <p class="sub">借金<b>150万円</b>。<br />家の不用品から始める10年の転売キャリア</p>
+        <div class="tags"><span>相場</span><span>手数料</span><span>在庫</span><span>税金</span><span>法律</span></div>
+      </div>
+      <div class="credit">My Crypto Heroes 二次創作 ・ ブラウザで無料</div>
+    </div>
+  </body>
+</html>
