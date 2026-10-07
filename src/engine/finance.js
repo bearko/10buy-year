@@ -10,7 +10,7 @@ import { dividend, lifestyleMonthly } from './lifestyle.js';
 import { addCash, addExp, addHate, addMood, addToku, hasSkill, record, setFlag, yen } from './effects.js';
 import { celebrate, info, sfx, talk } from './steps.js';
 import { monthlyNodeFees } from './abilities.js';
-import { addExpense, closeMonth, inventoryStats } from './kpi.js';
+import { addExpense, closeMonth, heldDays, inventoryStats } from './kpi.js';
 import { checkPromotion, CORP_SOCIAL, LIVING_COST } from './career.js';
 import { yearOf } from './calendar.js';
 
@@ -48,6 +48,7 @@ export function monthEnd(s) {
   if (s.probation > 0) s.probation = Math.max(0, s.probation - 4);
   const rec = closeMonth(s);
   steps.push(monthReport(s, rec, fees, passive));
+  steps.push(...staleReport(s));
 
   // 1) カードの引き落とし（先月利用分）
   const due = s.card.due;
@@ -244,4 +245,19 @@ export function fiscalIncome(s) {
   // 裏の稼ぎは申告しない（足を洗う前の月は数えない）
   const months = s.monthly.filter((m) => m.year === y && m.week > (s.flags.spiderThread ?? -1));
   return months.reduce((a, m) => a + m.net, 0) + (s.cur.salesProfit - s.cur.expenses + s.cur.passive);
+}
+
+// 月末の長期在庫レポート：90日以上売れていない在庫がたまってきたら、損切りを促す
+export function staleReport(s) {
+  const stale = s.inventory.filter((u) => u.arrive <= s.week && heldDays(s, u) >= 90);
+  if (stale.length < 3) return [];
+  const cost = stale.reduce((a, u) => a + u.cost, 0);
+  const total = s.inventory.reduce((a, u) => a + u.cost, 0);
+  const share = Math.round((cost / Math.max(1, total)) * 100);
+  const steps = [info('長期在庫レポート', [`90日以上売れていない在庫：${stale.length}個（仕入れ額 ${yen(cost)}・在庫の${share}%）`, '値下げして売り切るか、在庫画面の「90日以上の在庫を買取」で現金に戻すのも手'], share >= 30 ? 'bad' : '')];
+  if (share >= 30 && !s.flags.staleTalked) {
+    setFlag(s, 'staleTalked', s.week);
+    steps.unshift(talk('mine', '売れ残りが在庫の3割を超えたわ。仕入れ値にこだわって持ち続けると、お金が眠ったままになるの。「損切り」も立派な判断よ。', 'arms'));
+  }
+  return steps;
 }
