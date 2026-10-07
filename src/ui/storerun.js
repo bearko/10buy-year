@@ -276,7 +276,7 @@ export function storeMode(ctx) {
         cartOpen ? h('div', { class: 'sr-cart-list' }, ...[...cart].map(([id, q]) => {
           const o = byId.get(id);
           return h('div', { class: 'sr-cart-row' },
-            h('img', { src: productImage(productOf(o.pid)), alt: '' }),
+            h('img', { src: productImage(productOf(o.pid), o.rep), alt: '' }),
             h('span', { class: 'sr-cart-n' }, productOf(o.pid).name, h('small', {}, `${yen(o.price)} × ${q}（残り${o.maxQty}）`)),
             stepper(id, q));
         })) : null,

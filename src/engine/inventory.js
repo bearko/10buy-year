@@ -148,6 +148,7 @@ export function buy(s, offer, qty, method = 'cash') {
       stolen: !!offer.stolen,
       ...(offer.brandNew ? { used: false } : {}), // 正規店の新品（古物ではない）
       ...(offer.edition ? { edition: offer.edition } : {}),
+      ...(offer.rep ? { rep: true } : {}), // 再販版
       ...(offer.gaisho ? { gaisho: true } : {}), // 外商の優先案内（転売するとバレることがある）
     }));
   }
@@ -203,8 +204,8 @@ export function removeUnit(s, uid) {
 export function groupInventory(s) {
   const groups = new Map();
   for (const u of s.inventory) {
-    const key = [u.pid, u.cost, u.edition || '', u.home ? 'home' : '', u.arrive > s.week ? 'wait' : '', u.damaged ? 'dmg' : '', u.authFail ? 'ng' : '', u.listing ? `${u.listing.platform}:${u.listing.price}` : ''].join('|');
-    if (!groups.has(key)) groups.set(key, { key, pid: u.pid, cost: u.cost, units: [], listing: u.listing, arrive: u.arrive, damaged: u.damaged, authFail: u.authFail, expire: u.expire, home: u.home, edition: u.edition, week: u.week });
+    const key = [u.pid, u.cost, u.edition || '', u.home ? 'home' : '', u.arrive > s.week ? 'wait' : '', u.damaged ? 'dmg' : '', u.authFail ? 'ng' : '', u.rep ? 'rep' : '', u.listing ? `${u.listing.platform}:${u.listing.price}` : ''].join('|');
+    if (!groups.has(key)) groups.set(key, { key, pid: u.pid, cost: u.cost, units: [], listing: u.listing, arrive: u.arrive, damaged: u.damaged, authFail: u.authFail, rep: u.rep, expire: u.expire, home: u.home, edition: u.edition, week: u.week });
     groups.get(key).units.push(u);
   }
   return [...groups.values()];

@@ -61,12 +61,12 @@ export const PRODUCTS = [
   { id: 'scroll', name: 'スクロール', genre: 'トレカBOX（定番）', ext: 1016, kind: 'staple', retail: 5500, size: 'S', demand: 3.4, base: 1.1, fakeRisk: 0.15 },
   { id: 'novice_book', name: 'ノービスブック', genre: '古本', ext: 1008, kind: 'collect', retail: 900, size: 'S', demand: 2.6, base: 1.0, drift: 0, used: true, fakeRisk: 0 },
 
-  { id: 'heiho', name: '兵法書', genre: '人気トレカ新弾BOX', ext: 4016, kind: 'hype', retail: 5500, size: 'S', demand: 3.2, release: weekAt(4, 3), peak: 3.0, floor: 1.7, decay: 0.09, restock: 0.07, odds: 0.3, fakeRisk: 0.35, fakeNote: '再シュリンク品' },
-  { id: 'western_boots', name: '大西部のブーツ', genre: 'コラボスニーカー', ext: 4031, kind: 'hype', retail: 22000, size: 'M', demand: 2.6, release: weekAt(5, 2), peak: 2.4, floor: 1.4, decay: 0.07, restock: 0.04, odds: 0.2, fakeRisk: 0.45 },
-  { id: 'sylph', name: 'シルフ', genre: '限定フィギュア', ext: 3112, kind: 'hype', retail: 9800, size: 'M', demand: 2.4, release: weekAt(7, 1), peak: 2.2, floor: 1.3, decay: 0.07, restock: 0.05, odds: 0.22, fakeRisk: 0.3 },
-  { id: 'golden_boots', name: 'コボルドの黄金ブーツ', genre: '超限定スニーカー', ext: 5531, kind: 'hype', retail: 38000, size: 'M', demand: 2.0, release: weekAt(9, 1), peak: 3.2, floor: 1.8, decay: 0.08, restock: 0.02, odds: 0.08, fakeRisk: 0.55 },
-  { id: 'nectar', name: 'ネクタール', genre: 'プレミアウイスキー', ext: 5058, kind: 'hype', retail: 11000, size: 'M', demand: 1.6, release: weekAt(10, 2), peak: 3.6, floor: 3.0, decay: 0.05, restock: 0.01, odds: 0.15, alcohol: true, fakeRisk: 0.25 },
-  { id: 'photon', name: 'フォトングラス', genre: '新型VRゲーム機', ext: 5075, kind: 'hype', retail: 49980, size: 'M', demand: 3.0, release: weekAt(11, 4), peak: 1.8, floor: 1.2, decay: 0.06, restock: 0.12, odds: 0.12, fakeRisk: 0.1 },
+  { id: 'heiho', name: '兵法書', genre: '人気トレカ新弾BOX', ext: 4016, kind: 'hype', rep: 17016, retail: 5500, size: 'S', demand: 3.2, release: weekAt(4, 3), peak: 3.0, floor: 1.7, decay: 0.09, restock: 0.07, odds: 0.3, fakeRisk: 0.35, fakeNote: '再シュリンク品' },
+  { id: 'western_boots', name: '大西部のブーツ', genre: 'コラボスニーカー', ext: 4031, kind: 'hype', rep: 17031, retail: 22000, size: 'M', demand: 2.6, release: weekAt(5, 2), peak: 2.4, floor: 1.4, decay: 0.07, restock: 0.04, odds: 0.2, fakeRisk: 0.45 },
+  { id: 'sylph', name: 'シルフ', genre: '限定フィギュア', ext: 3112, kind: 'hype', rep: 17112, retail: 9800, size: 'M', demand: 2.4, release: weekAt(7, 1), peak: 2.2, floor: 1.3, decay: 0.07, restock: 0.05, odds: 0.22, fakeRisk: 0.3 },
+  { id: 'golden_boots', name: 'コボルドの黄金ブーツ', genre: '超限定スニーカー', ext: 5531, kind: 'hype', rep: 16031, retail: 38000, size: 'M', demand: 2.0, release: weekAt(9, 1), peak: 3.2, floor: 1.8, decay: 0.08, restock: 0.02, odds: 0.08, fakeRisk: 0.55 },
+  { id: 'nectar', name: 'ネクタール', genre: 'プレミアウイスキー', ext: 5058, kind: 'hype', rep: 17058, retail: 11000, size: 'M', demand: 1.6, release: weekAt(10, 2), peak: 3.6, floor: 3.0, decay: 0.05, restock: 0.01, odds: 0.15, alcohol: true, fakeRisk: 0.25 },
+  { id: 'photon', name: 'フォトングラス', genre: '新型VRゲーム機', ext: 5075, kind: 'hype', rep: 17075, retail: 49980, size: 'M', demand: 3.0, release: weekAt(11, 4), peak: 1.8, floor: 1.2, decay: 0.06, restock: 0.12, odds: 0.12, fakeRisk: 0.1 },
 
   { id: 'tsumi', name: '罪と罰', genre: '絶版本', ext: 4008, kind: 'collect', retail: 9000, size: 'S', demand: 0.7, base: 1.0, drift: 0.006, used: true, fakeRisk: 0 },
   { id: 'taito', name: '大唐西域記', genre: '絶版トレカBOX', ext: 5016, kind: 'collect', retail: 58000, size: 'S', demand: 0.6, base: 1.0, drift: 0.015, used: true, fakeRisk: 0.4, fakeNote: 'シュリンク偽装' },
@@ -194,4 +194,5 @@ export function shipFor(platform, product) {
   return shippingCost(product) * (platform === 'exp' ? 3 : 1);
 }
 
-export const productImage = (product) => `assets/extensions/${product.ext}.png`;
+// rep：再販版（MCHのRepレアリティの画像）。再販が決まったあとに仕入れた品は再販版になる
+export const productImage = (product, rep = false) => `assets/extensions/${rep && product.rep ? product.rep : product.ext}.png`;
