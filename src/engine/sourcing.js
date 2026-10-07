@@ -170,12 +170,14 @@ function reachable(run) {
 }
 
 // オート：ルートの順に、棚を全部見ながら閉店まで回ったら見つかる分
-export function autoVisible(step) {
+export function autoVisible(step, s = null) {
   const run = step.run;
   if (!run) return step.offers;
   if (run.kind !== 'store') return step.offers.filter((o) => !o.filler); // 相場どおりの出品はオートでは見ない
   // 回る順に見つけた品を、今までの仕入れ候補の数まで（オートの仕入れ量を以前と同じにする）
-  const ids = reachable(run).flatMap((x) => x.sec.oids);
+  const reach = reachable(run);
+  if (s) s.stats.maxStores = Math.max(s.stats.maxStores || 0, new Set(reach.map((x) => x.st)).size); // オートでも回った店の数を数える
+  const ids = reach.flatMap((x) => x.sec.oids);
   const seen = new Set(run.n ? ids.slice(0, run.n) : ids);
   return step.offers.filter((o) => seen.has(o.oid));
 }
@@ -264,6 +266,7 @@ export function negotiate(s, o, cut) {
   if (chance(s, p)) {
     o.price = roundPrice(o.price * (1 - cut));
     o.negotiated = 'ok';
+    s.stats.negoWins = (s.stats.negoWins || 0) + 1;
     return { ok: true, text: pick(s, ['いいですよ〜。専用の出品にしますね！', '少しならお値下げできます。価格を変更しました。', 'わかりました、その金額で大丈夫です。']) };
   }
   if (cut >= 0.2 && chance(s, 0.35)) {

@@ -230,6 +230,7 @@ const HANDLERS = {
     const base = lotteryEntries(s);
     const names = open.map((p) => `「${p.name}」`).join('');
     const register = (mode, extra) => {
+      s.stats.lotteryApplied = (s.stats.lotteryApplied || 0) + 1;
       for (const p of open) s.lotteries.push({ pid: p.id, entries: base + extra, mode, week: s.week });
       return [info('応募完了', [`${names}に各${base + extra}口ずつ応募した`, `当選確率の目安: 1口あたり約${Math.round(lotteryWinRate(s, open[0]) * 100)}%`, '結果は来週わかる'])];
     };
@@ -328,6 +329,7 @@ const HANDLERS = {
     return [narr('倉庫で一日中ピッキング。腰は痛いが、確実にお金が入る。'), info('バイト代', [`${yen(cmd.pay)}を手に入れた`], 'good')];
   },
   play(s) {
+    s.stats.playCount = (s.stats.playCount || 0) + 1;
     const d = addMood(s, 1);
     return [sfx('heal'), narr(pick(s, ['公園でぼーっとした。スマホの通知はオフにした。', '喫茶店で、相場のことを考えずにコーヒーを飲んだ。'])), info('リフレッシュ', ['体力 +15', d ? 'やる気が上がった' : ''], 'good')];
   },

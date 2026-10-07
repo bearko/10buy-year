@@ -2,7 +2,9 @@
 // 一覧ですべてを見比べるのではなく、その店・その棚の前で「買うか、買わないか」を決める。
 // 移動と棚を見る時間はスキル・目利き・車で短くなり、回れる店が増えていく（engine/sourcing.js）
 import { hhmm, soldHistory } from '../engine/sourcing.js';
-import { productOf } from '../data/products.js';
+import { PRODUCTS, productImage, productOf } from '../data/products.js';
+import { CAST } from '../data/cast.js';
+import { folkEvent, storeFolk } from '../engine/storefolk.js';
 import { portraitOf } from '../data/cast.js';
 import { cardAvailable } from '../engine/inventory.js';
 import { playSe } from './audio.js';
@@ -25,6 +27,9 @@ export function storeMode(ctx) {
   const cart = new Map(); // oid -> 個数
   let receipt = null;
   let busy = null; // 移動中・棚を見ている最中の演出
+  let cartOpen = false; // カゴの中身を広げているか
+  let talk = null; // 「！」の人との会話
+  let me = null; // 店内のクリスの位置（品定め中の売り場）
   const bought = { n: 0, yen: 0 };
 
   const left = () => clock.close - now;
@@ -91,37 +96,100 @@ export function storeMode(ctx) {
     await wait(900);
     now += t;
     at = st;
+    at.folk ||= storeFolk(s, at);
+    me = null;
     visited.push(st);
+    s.stats.maxStores = Math.max(s.stats.maxStores || 0, visited.length);
     phase = 'store';
     busy = null;
     playSe('hint');
     ctx.render();
   }
 
-  // ---- 店の中 ----
+  // ---- 店の中：店内の見取り図。売り場をタップして品定めする ----
   function storeView() {
     const st = at;
     const body = h('div', { class: 'shop-body sr-body' });
-    body.append(bar(), h('div', { class: 'sr-front', style: { '--c': st.color } },
-      h('div', { class: 'sr-front-sign' }, h('small', {}, st.label), h('b', {}, st.name)),
-      h('p', {}, st.enter),
-    ));
+    body.append(bar(), floor(st));
     if (receipt) body.append(receiptView());
-    st.sections.forEach((sec, i) => body.append(sectionView(st, sec, i)));
+    const found = st.sections.map((sec, i) => [sec, i]).filter(([, i]) => searched.has(`${st.id}:${i}`));
+    if (found.length) body.append(h('div', { class: 'sr-found-h' }, '見つけた品（タップで商品を見る）'), ...found.map(([sec, i]) => sectionView(st, sec, i)));
+    else body.append(h('p', { class: 'sr-hint' }, st.enter, h('br'), '見たい売り場をタップしよう。'));
     return [head(st.name, st.label, st.color), body, storeFooter()];
+  }
+
+  // 売り場の名前から、店のどのあたりにあるかを決める（セール品のワゴンは入口の近く）
+  const SLOTS = {
+    back: { x: 3, y: 15, w: 55, h: 21 },
+    backR: { x: 61, y: 15, w: 36, h: 21 },
+    mid: { x: 57, y: 45, w: 40, h: 17 },
+    center: { x: 22, y: 42, w: 32, h: 17 },
+    front: { x: 3, y: 66, w: 38, h: 17 },
+  };
+  const kindOf = (name) => (/ワゴン|かご|均一/.test(name) ? 'front' : /ショーケース/.test(name) ? 'mid' : /コーナー|新入荷|新作|レジ横|おすすめ/.test(name) ? 'backR' : /売り場/.test(name) ? 'center' : 'back');
+  function layout(st) {
+    if (st.layout) return st.layout;
+    const used = new Set();
+    st.layout = st.sections.map((sec) => {
+      const want = kindOf(sec.name);
+      const slot = [want, 'back', 'backR', 'mid', 'center', 'front'].find((k) => !used.has(k));
+      used.add(slot);
+      return slot;
+    });
+    return st.layout;
+  }
+  // 棚に並んでいる品（飾り）。店と売り場で決まった品を並べる
+  const deco = (st, i, n) => {
+    const pool = PRODUCTS.filter((p) => !p.spot && !p.know);
+    return Array.from({ length: n }, (_, k) => pool[(st.id * 7 + i * 13 + k * 5 + st.name.length) % pool.length]);
+  };
+  // 人が立つ通路（売り場と重ならない場所。avoid の売り場がある店では使わない）
+  const NPC_SPOTS = [{ x: 12, y: 55, avoid: 'front' }, { x: 80, y: 80 }, { x: 40, y: 54, avoid: 'center' }, { x: 62, y: 82 }, { x: 30, y: 90 }];
+
+  function floor(st) {
+    const slots = layout(st);
+    const zones = st.sections.map((sec, i) => {
+      const key = `${st.id}:${i}`;
+      const done = searched.has(key);
+      const ok = now + clock.search <= clock.close;
+      const pos = SLOTS[slots[i]];
+      const items = sec.oids.map((id) => byId.get(id)).filter(Boolean);
+      return h('button', {
+        class: `sr-zone ${slots[i]} ${done ? 'done' : ok ? 'open' : 'late'}`,
+        style: { left: `${pos.x}%`, top: `${pos.y}%`, width: `${pos.w}%`, height: `${pos.h}%` },
+        disabled: !!busy,
+        onclick: () => (done ? document.getElementById(`sr-sec-${key}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }) : ok ? search(key, i) : toast('閉店まで時間がない', 'bad')),
+      },
+      h('div', { class: 'sr-shelf' }, ...(done && items.length ? items : deco(st, i, slots[i] === 'mid' ? 3 : 5)).map((x) => h('img', { class: done && items.length ? 'hit' : '', src: productImage(x.pid ? productOf(x.pid) : x), alt: '' }))),
+      h('span', { class: 'sr-zone-l' }, sec.name, h('em', {}, done ? (items.length ? `✓ ${items.length}点` : '✓ なし') : ok ? `${clock.search}分` : '時間切れ')));
+    });
+    const spots = NPC_SPOTS.filter((p) => !(p.avoid === 'center' && slots.includes('center')));
+    const folk = (st.folk || []).map((f, i) => {
+      const pos = spots[i % spots.length];
+      const c = CAST[f.who];
+      return h('button', {
+        class: `sr-npc ${f.role} ${f.bang ? 'bang' : ''}`,
+        style: { left: `${pos.x}%`, top: `${pos.y}%` },
+        title: c?.name || '',
+        onclick: () => (f.bang && !busy ? meet(f) : null),
+      },
+      f.bang ? h('i', { class: 'sr-bang' }, '!') : h('span', { class: 'sr-bubble' }, f.line),
+      h('img', { src: portraitOf(f.who, 'idle'), alt: '' }),
+      h('small', {}, f.role === 'staff' ? '店員' : f.role === 'rival' ? '同業者' : '客'));
+    });
+    const mePos = me != null ? SLOTS[slots[me]] : null;
+    return h('div', { class: 'sr-floor', style: { '--c': st.color } },
+      h('div', { class: 'sr-wall' }, h('b', {}, st.name)),
+      ...zones,
+      ...folk,
+      h('img', { class: 'sr-me', src: portraitOf('chris', 'idle'), alt: 'クリス', style: mePos ? { left: `${mePos.x + mePos.w / 2 - 6}%`, top: `${mePos.y + mePos.h - 10}%` } : { left: '44%', top: '80%' } }),
+      h('div', { class: 'sr-door' }, '入口'));
   }
 
   function sectionView(st, sec, i) {
     const key = `${st.id}:${i}`;
-    const done = searched.has(key);
-    if (!done) {
-      const ok = now + clock.search <= clock.close;
-      return h('button', { class: 'sr-sec closed', disabled: !ok || !!busy, onclick: () => search(key) },
-        h('b', {}, sec.name),
-        h('small', {}, ok ? `品定めする（${clock.search}分）` : '閉店まで時間がない'));
-    }
     const items = sec.oids.map((id) => byId.get(id)).filter(Boolean);
-    return h('div', { class: 'sr-sec open' },
+    return h('div', { class: 'sr-sec open', id: `sr-sec-${key}` },
       h('div', { class: 'sr-sec-h' }, h('b', {}, sec.name), h('small', {}, items.length ? `${items.length}点 目に留まった` : '')),
       items.length
         ? h('div', { class: 'shop-grid sr-grid' }, ...items.map((o) => {
@@ -133,21 +201,72 @@ export function storeMode(ctx) {
     );
   }
 
-  async function search(key) {
+  async function search(key, i) {
+    me = i;
     busy = { kind: 'search', key };
     ctx.render();
-    await wait(650);
+    await wait(750);
     now += clock.search;
     searched.add(key);
     busy = null;
     ctx.render();
+    document.getElementById(`sr-sec-${key}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
+
+  // 「！」の人に話しかける
+  function meet(f) {
+    const r = folkEvent(s, f, at);
+    if (r.offer) {
+      step.offers.push(r.offer);
+      byId.set(r.offer.oid, r.offer);
+      ctx.qty.set(r.offer.oid, 1);
+      at.sections.push({ name: '店員さんのおすすめ', oids: [r.offer.oid] });
+      searched.add(`${at.id}:${at.sections.length - 1}`);
+    }
+    talk = r;
+    playSe('hint');
+    ctx.onChange?.();
+    ctx.render();
+  }
+
+  function talkLayer() {
+    if (!talk) return null;
+    const c = CAST[talk.who];
+    return h('div', { class: 'sr-talk', onclick: (e) => { if (e.target === e.currentTarget) { talk = null; ctx.render(); } } },
+      h('div', { class: 'sr-talk-box' },
+        h('div', { class: 'sr-talk-who' }, h('img', { src: portraitOf(talk.who, 'idle'), alt: '' }), h('b', {}, c ? (c.title ? `${c.name}（${c.title}）` : c.name) : '')),
+        ...talk.lines.map((l) => h('p', {}, `「${l}」`)),
+        h('div', { class: `sr-talk-res ${talk.tone || ''}` }, ...talk.result.map((l) => h('div', {}, l))),
+        h('button', { class: 'btn primary', onclick: () => { talk = null; ctx.render(); } }, 'OK')));
+  }
+
+  function setCart(id, q) {
+    const o = byId.get(id);
+    const minQ = o.minQty || 1;
+    if (q < minQ) cart.delete(id);
+    else cart.set(id, Math.min(q, o.maxQty));
+    ctx.render();
+  }
+  const stepper = (id, q) => h('div', { class: 'stepper' },
+    h('button', { class: 'btn small', onclick: () => setCart(id, q - 1) }, '−'),
+    h('span', {}, `${q}`),
+    h('button', { class: 'btn small', disabled: q >= byId.get(id).maxQty, onclick: () => setCart(id, q + 1) }, '＋'));
 
   function storeFooter() {
     if (cart.size) {
       const total = cartTotal();
       return h('div', { class: 'shop-footer sr-foot' },
-        h('div', { class: 'sr-cart' }, h('span', {}, `カゴ ${cartCount()}点`), h('b', {}, yen(total)), h('button', { class: 'btn small', onclick: () => { cart.clear(); ctx.render(); } }, '棚に戻す')),
+        cartOpen ? h('div', { class: 'sr-cart-list' }, ...[...cart].map(([id, q]) => {
+          const o = byId.get(id);
+          return h('div', { class: 'sr-cart-row' },
+            h('img', { src: productImage(productOf(o.pid)), alt: '' }),
+            h('span', { class: 'sr-cart-n' }, productOf(o.pid).name, h('small', {}, `${yen(o.price)} × ${q}（残り${o.maxQty}）`)),
+            stepper(id, q));
+        })) : null,
+        h('div', { class: 'sr-cart' },
+          h('button', { class: 'btn small sr-cart-btn', onclick: () => { cartOpen = !cartOpen; ctx.render(); } }, `カゴ ${cartCount()}点 ${cartOpen ? '▼' : '▲'}`),
+          h('b', {}, yen(total)),
+          h('button', { class: 'btn small', onclick: () => { cart.clear(); cartOpen = false; ctx.render(); } }, '全部棚に戻す')),
         h('div', { class: 'sr-pay' },
           h('button', { class: 'btn bb-card', disabled: total > cardAvailable(s) + s.points, onclick: () => checkout('card') }, 'カードで払う'),
           h('button', { class: 'btn bb-cash', disabled: total > s.cash + s.points, onclick: () => checkout('cash') }, `レジで現金払い（${clock.checkout}分）`)),
@@ -173,6 +292,7 @@ export function storeMode(ctx) {
       }
     }
     cart.clear();
+    cartOpen = false;
     now += clock.checkout;
     receipt = { store: at.name, method, lines };
     playSe(lines.some((x) => x.ok) ? 'coin' : 'lose');
@@ -230,12 +350,13 @@ export function storeMode(ctx) {
     cls: 'sr',
     list() {
       const parts = phase === 'done' ? doneView() : phase === 'store' && at ? storeView() : routeView();
-      return [...parts, busyLayer()];
+      return [...parts, busyLayer(), talkLayer()];
     },
     escape() {
       leave();
       return true;
     },
+    extrasLabel: () => 'スマホで相場',
     itemTitle: () => at?.name,
     itemColor: () => at?.color,
     // 店では、スマホで売り切れ相場を調べられる（少し時間を使う）
@@ -243,7 +364,7 @@ export function storeMode(ctx) {
       if (o.unknown) return [];
       return [ctx.section('スマホで相場を調べる', o.soldHist
         ? soldList(o)
-        : h('button', { class: 'qa-ask', onclick: () => { o.soldHist = soldHistory(s, o.pid); now += clock.research; ctx.render(); } }, `フリマの売り切れ価格を検索する（${clock.research}分）`))];
+        : h('button', { class: 'qa-ask', onclick: () => { o.soldHist = soldHistory(s, o.pid); s.stats.soldChecks = (s.stats.soldChecks || 0) + 1; now += clock.research; ctx.render(); } }, `フリマの売り切れ価格を検索する（${clock.research}分）`))];
     },
     itemBar(o) {
       const minQ = o.minQty || 1;
@@ -251,10 +372,12 @@ export function storeMode(ctx) {
       const inCart = cart.get(o.oid);
       const q = Math.max(minQ, Math.min(ctx.qty.get(o.oid), Math.max(1, o.maxQty)));
       if (inCart) {
+        // カゴに入れたあとも、ここで個数を変えられる
         return h('div', { class: 'buy-bar' },
-          h('span', { class: 'bb-note' }, `カゴに ${inCart}個`),
+          h('span', { class: 'bb-note' }, 'カゴに'),
+          stepper(o.oid, inCart),
           h('button', { class: 'btn bb-card', onclick: () => { cart.delete(o.oid); ctx.render(); } }, '棚に戻す'),
-          h('button', { class: 'btn bb-cash', onclick: () => ctx.back() }, '売り場にもどる'));
+          h('button', { class: 'btn bb-cash', onclick: () => ctx.back() }, '売り場へ'));
       }
       return h('div', { class: 'buy-bar' },
         o.maxQty > minQ

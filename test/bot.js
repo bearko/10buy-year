@@ -30,7 +30,7 @@ export function play(s, steps, policy) {
     } else if (st.t === 'defer') {
       queue.unshift(...(st.run() || []));
     } else if (st.t === 'offers') {
-      policy.buyOffers(s, autoVisible(st));
+      policy.buyOffers(s, autoVisible(st, s));
     } else if (st.t === 'gallery') {
       policy.buyGallery?.(s, st.items);
     }

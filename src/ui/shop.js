@@ -46,6 +46,7 @@ export function offersModal(s, step, onChange) {
   let filter = null;
   let open = null; // 開いている商品ページ
   let shot = 0;
+  let tab = 'info'; // 商品ページのタブ
   const got = []; // この画面で仕入れた商品（閉じたあとステージに並べる）
 
   const root = h('div', { class: 'shop' });
@@ -66,12 +67,13 @@ export function offersModal(s, step, onChange) {
   function openItem(o) {
     open = o;
     shot = 0;
+    tab = 'info';
     render();
   }
   window.addEventListener('keydown', onKey);
   $('#modal-root').append(root);
 
-  const ctx = { s, step, root, got, qty, onChange, render: () => render(), openItem, back, close, wallet, gridItem, section, doBuy, isOpen: () => open };
+  const ctx = { s, step, root, got, qty, onChange, render: () => render(), openItem, back, close, wallet, gridItem, section, doBuy, isOpen: () => open, setTab: (x) => { tab = x; } };
   const mode = step.run?.kind === 'store' ? storeMode(ctx) : step.run?.kind === 'online' ? phoneMode(ctx) : {};
 
   function render() {
@@ -168,15 +170,14 @@ export function offersModal(s, step, onChange) {
       h('button', { class: 'shop-x', onclick: back, 'aria-label': '戻る' }, '‹'),
       h('b', { class: 'shop-logo' }, mode.itemTitle?.(o) || site.name),
     );
-    const body = h('div', { class: 'shop-body item' });
-
-    body.append(
+    // スクロールしなくても見られるように、写真と値段を上に小さくまとめ、詳しい情報はタブで切りかえる
+    const top = h('div', { class: 'it-top' },
       h('div', { class: 'gallery' },
         photo(o, cur, { big: true, stock }),
         photos.length > 1 ? h('div', { class: 'thumbs' }, ...photos.map((part, i) => h('button', { class: i === shot ? 'on' : '', onclick: () => { shot = i; render(); } }, photo(o, part, { stock: L.stockPhoto && part !== L.qa?.addPhoto })))) : null,
       ),
-      h('div', { class: 'it-sec' },
-        h('h2', { class: 'it-title' }, `${p.name}　${p.genre}`),
+      h('div', { class: 'it-head' },
+        h('h2', { class: 'it-title' }, p.name, h('small', {}, p.genre)),
         mode.itemPrice?.(o) || h('div', { class: 'it-price' }, yen(o.price), h('small', {}, store ? '（税込）' : site.kind === 'mall' ? '（税込）送料無料' : '（税込）送料込み')),
         h('div', { class: 'it-badges' },
           store ? h('span', { class: 'it-deal' }, o.label) : null,
@@ -186,13 +187,23 @@ export function offersModal(s, step, onChange) {
         ),
       ),
     );
-
-    if (L.description) body.append(section('商品の説明', h('p', { class: 'it-desc' }, L.description)));
-    body.append(section('商品の情報', h('table', { class: 'it-info' }, ...(L.info || []).map(([k, v]) => h('tr', {}, h('th', {}, k), h('td', {}, v))))));
-    if (L.seller) body.append(section('出品者', sellerCard(L.seller)));
-    if (L.qa) body.append(section(o.source === 'used' ? '店員さんに聞く' : 'コメント', qaBlock(o)));
-    for (const x of mode.itemExtras?.(o) || []) if (x) body.append(x);
-    body.append(section('自分のメモ', memo(o), 'memo'));
+    const extras = (mode.itemExtras?.(o) || []).filter(Boolean);
+    const tabs = [
+      ['info', '商品の情報', () => [
+        L.description ? section('商品の説明', h('p', { class: 'it-desc' }, L.description)) : null,
+        section('商品の情報', h('table', { class: 'it-info' }, ...(L.info || []).map(([k, v]) => h('tr', {}, h('th', {}, k), h('td', {}, v))))),
+        L.seller ? section('出品者', sellerCard(L.seller)) : null,
+        L.qa ? section(o.source === 'used' ? '店員さんに聞く' : 'コメント', qaBlock(o)) : null,
+      ]],
+      extras.length ? ['extra', mode.extrasLabel?.(o) || '相場を調べる', () => extras] : null,
+      ['memo', '自分のメモ', () => [section('自分のメモ', memo(o), 'memo')]],
+    ].filter(Boolean);
+    if (!tabs.some(([id]) => id === tab)) tab = tabs[0][0];
+    const pane = h('div', { class: 'it-pane' }, ...tabs.find(([id]) => id === tab)[2]().filter(Boolean));
+    const body = h('div', { class: 'shop-body item tabbed' },
+      top,
+      h('div', { class: 'it-tabs' }, ...tabs.map(([id, label]) => h('button', { class: tab === id ? 'on' : '', onclick: () => { tab = id; render(); } }, label))),
+      pane);
     return [head, body, mode.itemBar?.(o) || buyBar(o)];
   }
 

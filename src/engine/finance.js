@@ -123,6 +123,7 @@ export function repay(s, amount) {
   addCash(s, -amount, '繰上げ返済');
   s.debt -= amount;
   s.stats.repaid += amount;
+  s.stats.prepaid = (s.stats.prepaid || 0) + amount; // 繰上げ返済（ミッション）
   return amount;
 }
 
