@@ -13,7 +13,7 @@ import { sizeLabel } from './shoes.js';
 const CAT_OF = {
   boots: 'sneaker', western_boots: 'sneaker', golden_boots: 'sneaker',
   pocket_watch: 'watch', queen_watch: 'watch',
-  scroll: 'tcg', heiho: 'tcg', taito: 'tcg',
+  scroll: 'tcg', heiho: 'tcg', taito: 'tcg', packs: 'tcg',
   sylph: 'figure', winter: 'figure', kaeru: 'figure', old_figure: 'figure',
   sake: 'liquor', nectar: 'liquor',
   photon: 'device',
@@ -221,7 +221,9 @@ export function buildListing(s, o) {
   L.description = makeDescription(s, o, site, p, cat, L.accessories);
 
   // 商品の情報
-  const cond = o.import
+  const cond = o.junk
+    ? 'ジャンク品（動作未確認・ノークレーム）'
+    : o.import
     ? '新品（簡易包装・検品前）'
     : (p.used && !o.brandNew) || site.kind === 'pro' || o.source === 'used'
     ? pick(s, ['目立った傷や汚れなし', 'やや傷や汚れあり', '未使用に近い'])

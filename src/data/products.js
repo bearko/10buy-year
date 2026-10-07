@@ -59,6 +59,7 @@ export const PRODUCTS = [
   { id: 'pocket_watch', name: '懐中時計', genre: '定番ウォッチ', ext: 1111, kind: 'staple', retail: 26000, size: 'S', demand: 1.8, base: 0.98, fakeRisk: 0.3 },
   { id: 'sake', name: 'サケ', genre: '地酒', ext: 1058, kind: 'staple', retail: 3300, size: 'M', demand: 2.0, base: 1.0, alcohol: true, fakeRisk: 0 },
   { id: 'scroll', name: 'スクロール', genre: 'トレカBOX（定番）', ext: 1016, kind: 'staple', retail: 5500, size: 'S', demand: 3.4, base: 1.1, fakeRisk: 0.15 },
+  { id: 'packs', name: 'スクロール・パック', genre: 'トレカのバラパック（10パック束）', ext: 14016, kind: 'staple', retail: 2200, size: 'S', demand: 2.8, base: 1.0, fakeRisk: 0.5, fakeNote: 'サーチ済みパック', searchable: true },
   { id: 'novice_book', name: 'ノービスブック', genre: '古本', ext: 1008, kind: 'collect', retail: 900, size: 'S', demand: 2.6, base: 1.0, drift: 0, used: true, fakeRisk: 0 },
 
   { id: 'heiho', name: '兵法書', genre: '人気トレカ新弾BOX', ext: 4016, kind: 'hype', rep: 17016, retail: 5500, size: 'S', demand: 3.2, release: weekAt(4, 3), peak: 3.0, floor: 1.7, decay: 0.09, restock: 0.07, odds: 0.3, fakeRisk: 0.35, fakeNote: '再シュリンク品' },

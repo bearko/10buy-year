@@ -1470,3 +1470,27 @@ test('スニーカーのサイズ：人気サイズは高く、ワゴンの売�
   const steps = troubleSteps(s, { kind: 'size', sale: { pid: 'boots', unit: u, id: 'x', ship: 700, price: 9000, net: 7000 } });
   assert.ok(steps.some((x) => x.t === 'choice'));
 });
+
+test('ジャンク品は動作確認・修理で価値が変わる。安すぎるバラパックはサーチ済みで、売るとトラブルになる', async () => {
+  const { buy } = await import('../src/engine/inventory.js');
+  const { specialOffer } = await import('../src/engine/offers.js');
+  const { unitPrice } = await import('../src/engine/market.js');
+  const { workOnJunk } = await import('../src/engine/junk.js');
+  const { troubleSteps } = await import('../src/data/troubles.js');
+  const s = createGame(101);
+  s.cash = 1000000;
+  s.stamina = 100;
+  for (const state of ['works', 'fix', 'dead']) buy(s, specialOffer(s, 'cyber_staff', { source: 'used', label: 'ジャンクかご', price: 2000, maxQty: 1, junk: state }), 1);
+  const [w, f, d] = s.inventory.slice(-3);
+  const full = unitPrice(s, { ...w, junk: undefined });
+  assert.equal(unitPrice(s, w), Math.round(full * 0.25), '未確認はジャンク値');
+  workOnJunk(s, w);
+  workOnJunk(s, d);
+  assert.ok(unitPrice(s, w) > full * 0.8 && unitPrice(s, d) < full * 0.1);
+  workOnJunk(s, f);
+  s.abilities.pack = 200;
+  for (let i = 0; i < 10 && f.junk.state === 'fix'; i++) workOnJunk(s, f);
+  assert.equal(f.junk.state, 'works', '直せそうな品は修理で動くようになる');
+  const steps = troubleSteps(s, { kind: 'fake', sale: { pid: 'packs', unit: { fake: true }, id: 'z', ship: 200, price: 1500, net: 1200, platform: 'merc' } });
+  assert.ok(steps.some((x) => x.t === 'talk' && /サーチ済み/.test(x.text)));
+});
