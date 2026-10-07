@@ -41,7 +41,7 @@ export function startWeek(s) {
     s.pending = s.pending.filter((p) => p.week > s.week);
     s.cash += total;
     record(s, `売上金の入金（${arrived.length}件）`, total);
-    steps.push(sfx('coin'), info('売上金が入金された', [`${arrived.length}件 / ${yen(total)}`], 'good'));
+    steps.push(sfx('coin'), info('週明け：先週までの売上金が入金された', [`${arrived.length}件 / ${yen(total)}`], 'good'));
   }
 
   // 予約品の到着
