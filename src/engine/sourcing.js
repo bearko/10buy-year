@@ -73,6 +73,10 @@ const GENRE_TYPES = {
   クリスマス限定ぬいぐるみ: ['zakka', 'hobby'], 雛人形: ['zakka'], ブラインドボックスぬいぐるみ: ['zakka', 'hobby'],
 };
 const BOOKS = ['novice_book', 'tsumi'];
+const FLYERS = {
+  kaden: ['型落ち家電の処分セール', '展示品限りの値下げ'], drug: ['ポイント5倍デー', '季節品の在庫一掃'], zakka: ['在庫処分ワゴン増量中', '季節雑貨のセール'],
+  hobby: ['値下げワゴン追加', '週末の入荷情報'], used: ['週末の値下げ', 'ジャンク大放出'], book: ['均一棚の入れ替え'],
+};
 // その品が並んでいそうな店の種類
 export function storeTypesOf(p) {
   if (BOOKS.includes(p.id)) return ['book'];
@@ -166,6 +170,12 @@ export function buildStoreRun(s, list, clock, n = 0) {
   });
   const run = { kind: 'store', clock, stores, n };
   if (n) balanceRoute(s, run, list, tags, types, n);
+  // セールのチラシ：品のある店はたいてい何か載せている（品のない店がチラシを出していることもある）
+  for (const st of run.stores) {
+    const fl = FLYERS[st.type];
+    const has = st.sections.some((sec) => sec.oids.length);
+    if (fl && chance(s, has ? 0.7 : 0.15)) st.flyer = pick(s, fl);
+  }
   return run;
 }
 

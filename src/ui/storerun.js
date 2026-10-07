@@ -70,7 +70,7 @@ export function storeMode(ctx) {
     body.append(h('div', { class: 'sr-say' },
       h('img', { src: portraitOf('chris', 'idle'), alt: '' }),
       h('p', {}, first
-        ? `${hhmm(now)}、出発。閉店の${hhmm(clock.close)}までに、回れるだけ回ろう。`
+        ? `${hhmm(now)}、出発。閉店の${hhmm(clock.close)}までに、回れるだけ回ろう。${cands.some((st) => st.flyer) ? 'セールのチラシが出ている店は狙い目だ。' : ''}`
         : cands.some(canReach) ? 'さて、次はどっちに行こう？' : 'どの店も、着くころには閉店だ…。'),
     ));
     if (cands.length) {
@@ -82,6 +82,7 @@ export function storeMode(ctx) {
             h('span', {}, `移動 ${travelOf(st)}分`),
             h('span', {}, `売り場 ${st.sections.length}か所`),
             ok ? h('span', {}, `着くのは ${hhmm(now + travelOf(st))}`) : h('span', { class: 'bad' }, '閉店に間に合わない')),
+          st.flyer ? h('div', { class: 'sr-flyer' }, h('small', {}, 'チラシ'), st.flyer) : null,
         );
       })));
     }
