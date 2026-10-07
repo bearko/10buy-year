@@ -1359,3 +1359,21 @@ body.partner-on #side { display: none !important; }
 .pk-boxes { display: flex; gap: 4px; margin: 4px 0; }
 .pk-box.ng { text-decoration: line-through; opacity: 0.5; }
 .pk-row.done { opacity: 0.85; }
+/* 業者オークションの競り・問屋の見積書（ui/pro.js） */
+.seri { display: flex; gap: 12px; align-items: center; padding: 12px; border-radius: 10px; background: #1d1a14; border: 2px solid #5b4a2e; }
+.seri.me { border-color: var(--good); }
+.seri.rival { border-color: var(--bad); }
+.seri.won { background: #13301f; }
+.seri-img { width: 96px; height: 96px; object-fit: contain; image-rendering: pixelated; background: #f2ead8; border-radius: 8px; }
+.seri-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.seri-info small { color: var(--muted); }
+.seri-est { font-size: 12px; color: var(--muted); }
+.seri-price { font: 700 26px/1.2 'Orbitron', sans-serif; color: #ffd76a; }
+.seri-count { letter-spacing: 4px; color: #ffd76a; }
+.seri-who { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 14px; }
+.seri-who img { width: 48px; height: 48px; object-fit: contain; image-rendering: pixelated; }
+.quote { padding: 12px; border-radius: 6px; background: #fbfaf5; color: #222; font-size: 13px; box-shadow: 0 2px 6px #0006; }
+.quote-head { display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 6px; margin-bottom: 6px; border-bottom: 2px solid #222; }
+.quote-head b { font-size: 16px; letter-spacing: 0.3em; }
+.quote-row { display: flex; justify-content: space-between; gap: 8px; padding: 4px 0; border-bottom: 1px dotted #aaa; }
+.quote-acts { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }

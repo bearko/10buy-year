@@ -1354,3 +1354,25 @@ test('撮影の出来で売れ行きが変わり、箱が大きすぎると送�
   const steps = monthEnd(s);
   assert.ok(steps.some((x) => x.t === 'mail' && x.mails[0].subject.includes('ご利用代金確定')));
 });
+
+test('業者オークションの競りのロットと、問屋の見積書の交渉', async () => {
+  const { seriLots, negotiateQuote } = await import('../src/engine/pro.js');
+  const { wholesaleOffers } = await import('../src/engine/offers.js');
+  const s = createGame(51);
+  s.week = 200;
+  s.stage = 3;
+  const lots = seriLots(s, 2);
+  assert.equal(lots.length, 2);
+  for (const l of lots) assert.ok(l.start < l.rivalMax && l.step > 0 && l.start < l.est * 1.2);
+  const offs = wholesaleOffers(s);
+  const before = offs.map((o) => [o.price, o.minQty]);
+  assert.equal(negotiateQuote(s, offs, 'rate', false), false);
+  assert.deepEqual(offs.map((o) => [o.price, o.minQty]), before, '断られたら何も変わらない');
+  negotiateQuote(s, offs, 'rate', true);
+  negotiateQuote(s, offs, 'lot', true);
+  offs.forEach((o, i) => {
+    if (o.source !== 'wholesale') return;
+    assert.ok(o.price < before[i][0]);
+    assert.equal(o.minQty, 10);
+  });
+});

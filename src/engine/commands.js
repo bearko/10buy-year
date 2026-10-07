@@ -6,6 +6,7 @@ import { auctionOffers, lotteryEntries, lotteryWinRate, onlineOffers, openLotter
 import { importOpen, INSPECT_FEE } from './importer.js';
 import { pickRegion } from './storemap.js';
 import { listBoostOf } from './worklife.js';
+import { seriLots } from './pro.js';
 import { hasCar } from './lifestyle.js';
 
 export const EXPEDITION_AFTER = 10; // 店舗せどりを何回したら遠征できるか
@@ -312,6 +313,7 @@ const HANDLERS = {
     return [
       ...found,
       narr('会員証を見せて、業者オークションの会場に入った。プロの目利きが静かに札を入れていく。'),
+      { t: 'seri', lots: seriLots(s) }, // 会場の競り（画面だけ。オートは参加しない）
       offers(auctionOffers(s), '業者オークションの出品物', '真贋チェック済みが多い'),
     ];
   },
@@ -341,7 +343,7 @@ const HANDLERS = {
     return [
       ...found,
       narr('問屋の担当者と商談。「ロットでまとめていただけるなら、この掛け率で出せます」'),
-      offers(wholesaleOffers(s), '問屋の卸値リスト', '最低ロット20個'),
+      ...((list) => [{ t: 'quote', offers: list }, offers(list, '問屋の卸値リスト', '最低ロット20個')])(wholesaleOffers(s)), // 見積書の交渉は画面だけ
     ];
   },
   listing(s) {
