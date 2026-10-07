@@ -127,6 +127,7 @@ export function endWeek(s) {
     authFailed: sales.authFailed,
     takedowns: sales.takedowns,
     staminaUsed: sales.staminaUsed || 0,
+    staffShipped: sales.staffShipped || 0,
     outsourced: sales.outsourced || 0,
     delayed: sales.delayed,
   });

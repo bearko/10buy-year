@@ -13,6 +13,7 @@ import { perk } from './perks.js';
 import { listBoostOf } from './worklife.js';
 import { sizeReturnWeight } from './shoes.js';
 import { CLAIM_BUYERS, claimTakedowns } from './regulated.js';
+import { staffDamageRate } from './staff.js';
 
 export const OUTSOURCE_SHIP_FEE = 400;
 
@@ -134,6 +135,8 @@ export function shipAll(s, out) {
       // 倉庫から出荷されるので何もしなくていい
     } else if (hasSkill(s, 'out_ship')) {
       outsourced++;
+    } else if (s.staff) {
+      out.staffShipped = (out.staffShipped || 0) + 1; // スタッフが梱包・発送（engine/staff.js）
     } else {
       const cost = Math.ceil(SIZE_INFO[product.size].stamina * mult);
       if (s.stamina >= cost && s.sick <= 0) {
@@ -191,7 +194,8 @@ export function finalizeSale(s, sale, out) {
   addRating(s, hasSkill(s, 'quick_reply') ? 0.9 : 0.6);
 
   // 配送破損（倉庫出荷はプロの梱包なので起きない）
-  const dmgRate = hasSkill(s, 'pack_master') || hasSkill(s, 'out_ship') || sale.platform === 'ama' ? 0 : 0.03 * (1 - s.abilities.pack / 120) * (product.size === 'L' ? 2 : 1);
+  const staffRate = staffDamageRate(s);
+  const dmgRate = hasSkill(s, 'pack_master') || hasSkill(s, 'out_ship') || sale.platform === 'ama' ? 0 : (staffRate ?? 0.03 * (1 - s.abilities.pack / 120)) * (product.size === 'L' ? 2 : 1);
   if (!u.fake && chance(s, dmgRate)) {
     out?.troubles.push({ kind: 'damage', sale });
     return;
