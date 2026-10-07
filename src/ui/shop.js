@@ -56,6 +56,7 @@ export function offersModal(s, step, onChange) {
     else if (!mode.escape?.()) close();
   };
   function close() {
+    mode.onClose?.();
     root.remove();
     window.removeEventListener('keydown', onKey);
     resolveClosed(got);

@@ -988,6 +988,7 @@ body.partner-on #side { display: none !important; }
 .ph-note:nth-child(4) { animation-delay: 0.45s; }
 @keyframes ph-drop { from { transform: translateY(-14px); opacity: 0; } to { transform: none; opacity: 1; } }
 .ph-note.gone { opacity: 0.55; }
+.ph-notes.still .ph-note { animation: none; }
 .ph-note-h { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; font-size: 11px; color: #666; }
 .ph-note-h i, .ph-app i, .ph-tab i { display: grid; place-items: center; width: 18px; height: 18px; border-radius: 5px; background: var(--c); color: #fff; font-style: normal; font-weight: 700; font-size: 11px; }
 .ph-note-h small { margin-left: auto; }

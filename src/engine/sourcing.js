@@ -13,7 +13,10 @@ import { chance, pick, randInt, randRange } from './rng.js';
 import { nodeLv } from './abilities.js';
 
 // ---------------- 時計 ----------------
-export const hhmm = (m) => `${Math.floor(m / 60) % 24}:${String(Math.round(m) % 60).padStart(2, '0')}`;
+export const hhmm = (m) => {
+  const t = Math.floor(m);
+  return `${Math.floor(t / 60) % 24}:${String(t % 60).padStart(2, '0')}`;
+};
 
 // 店舗巡り：昼は12時に出て20時の閉店まで。夜は18時半から22時まで
 export function storeClock(s, night = false) {
