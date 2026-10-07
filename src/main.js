@@ -34,6 +34,7 @@ import { celebrate, goalPopup } from './ui/goal.js';
 import { logModal, pushLog } from './ui/log.js';
 import { offersModal } from './ui/shop.js';
 import { initFontScale } from './ui/a11y.js';
+import { getLang, initLang, setLang } from './i18n/index.js';
 import { listNowPrompt } from './ui/listnow.js';
 import { autoVisible } from './engine/sourcing.js';
 import { mailbox, salesMails } from './ui/mail.js';
@@ -791,6 +792,7 @@ function showTitle() {
         h('button', { class: 'btn', onclick: () => rankingModal() }, 'ランキング'),
         h('button', { class: 'btn', onclick: () => recordsModal() }, '実績'),
         h('button', { class: 'btn', onclick: () => aboutModal() }, 'このゲームについて'),
+        langButton(),
         h('button', {
           class: 'btn sound-toggle',
           onclick: (e) => {
@@ -804,6 +806,11 @@ function showTitle() {
   );
   showScreen('title-screen');
   playBgm('land');
+}
+
+// 言語の切りかえ（表示はそれぞれの言語で書いておき、訳さない）
+function langButton() {
+  return h('button', { class: 'btn lang-toggle', 'data-no-tr': '', onclick: () => setLang(getLang() === 'en' ? 'ja' : 'en') }, getLang() === 'en' ? '日本語で遊ぶ' : 'Play in English');
 }
 
 // 現実の季節に合わせた期間限定フェアの告知
@@ -956,4 +963,5 @@ async function shareResult(r) {
 }
 
 initFontScale();
+await initLang(); // 英語版なら訳を読みこんでから
 showTitle();
