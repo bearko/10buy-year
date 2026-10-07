@@ -6,7 +6,7 @@ import { playSe } from './audio.js';
 import { $, h, yenFmt } from './dom.js';
 import { roomLayer, setBackground } from './stage.js';
 
-const PER_BOX = 4;
+const PER_BOX = 1; // 注文ごとに別の段ボールで送る
 
 export async function shipScene(sold) {
   const items = shipTargets(sold);
@@ -16,7 +16,8 @@ export async function shipScene(sold) {
   const room = roomLayer();
   room.hidden = false;
   let skip = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const speed = items.length > 8 ? 0.6 : 1;
+  // 注文が多いほどテンポを上げる（1件あたり約1.3秒 → 多いときは0.4秒くらいまで）
+  const speed = Math.max(0.3, Math.min(1, 5 / items.length));
   const ms = (t) => (skip ? 0 : t * speed);
   const wait = (t) => new Promise((r) => setTimeout(r, ms(t)));
   let total = 0;
