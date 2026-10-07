@@ -142,6 +142,16 @@ export const PRODUCTS = [
   { id: 'imp_light', name: '水晶玉', genre: 'LEDのインテリアライト', ext: 1098, kind: 'staple', retail: 2980, size: 'M', demand: 2.0, base: 1.0, fakeRisk: 0, imported: true },
   { id: 'imp_case', name: 'ルーン石板', genre: 'スマホスタンド・小物', ext: 1050, kind: 'staple', retail: 1980, size: 'S', demand: 3.0, base: 1.0, fakeRisk: 0, imported: true },
   { id: 'queen_watch', name: '王妃の黄金時計', genre: '高級腕時計', ext: 5111, kind: 'luxury', retail: 1280000, size: 'S', demand: 0.45, base: 1.35, fakeRisk: 0.5 },
+
+  // 期間限定フェア（現実の季節に合わせる。data/live.js）。フェアの間だけ定価で仕入れられ、相場は peak。
+  // フェアが終わると仕入れられなくなり、相場は after に近づく（1より上なら「限定品」として値上がり、下なら売れ残りの値崩れ）
+  // ※乱数の並びを変えないよう、商品リストのいちばん最後に置く
+  { id: 'live_newyear', name: 'ぴっぴ教 開運招福尊師像', genre: '新春限定の開運置物', ext: 4674, kind: 'live', live: 'newyear', retail: 6600, size: 'M', demand: 1.6, peak: 1.6, after: 1.25, fakeRisk: 0.05 },
+  { id: 'live_valentine', name: 'スウィートパンケーキ', genre: 'バレンタイン限定のチョコ缶', ext: 3129, kind: 'live', live: 'valentine', retail: 3240, size: 'S', demand: 2.4, peak: 1.6, after: 0.6, fakeRisk: 0 },
+  { id: 'live_sakura', name: '鬼灯ランタン', genre: '桜の季節限定のタンブラー', ext: 3150, kind: 'live', live: 'sakura', retail: 4950, size: 'S', demand: 2.6, peak: 1.8, after: 1.05, fakeRisk: 0.1 },
+  { id: 'live_summer', name: 'ウィズダムセンス', genre: '夏祭り限定の扇子', ext: 3032, kind: 'live', live: 'summer', retail: 3300, size: 'S', demand: 1.8, peak: 1.5, after: 0.75, fakeRisk: 0.05 },
+  { id: 'live_halloween', name: '魔女のホーキ', genre: 'ハロウィン限定のコラボ雑貨', ext: 3080, kind: 'live', live: 'halloween', retail: 5500, size: 'M', demand: 2.2, peak: 1.9, after: 0.85, fakeRisk: 0.1 },
+  { id: 'live_xmas', name: '雪の結晶のタリスマン', genre: 'クリスマス限定のオーナメント', ext: 3173, kind: 'live', live: 'xmas', retail: 7700, size: 'S', demand: 2.0, peak: 1.8, after: 1.3, fakeRisk: 0.15 },
 ];
 
 // 獲得したときに見せるひとこと説明
@@ -196,6 +206,12 @@ const DESC = {
   bonsai: '手のひらサイズの苔玉盆栽。訪日客へのお土産に人気。',
   haori: '古着の紋付羽織。海外では日本の美として高く評価される。',
   queen_watch: '高級腕時計。正規店でまれに定価で買える。資産として持つ人も多い。',
+  live_newyear: '新春のフェアでしか買えない開運の置物。縁起物は、年が明けてもコレクターが探している。',
+  live_valentine: 'バレンタイン限定のチョコ缶。2月14日を過ぎると、とたんに売れなくなる。',
+  live_sakura: '桜の季節だけの限定タンブラー。毎年デザインが変わるので、前の年の柄を探す人もいる。',
+  live_summer: '夏祭りの限定扇子。お祭りが終わると、季節外れの品になる。',
+  live_halloween: 'ハロウィン限定のコラボ雑貨。10月31日を過ぎると需要が蒸発する。',
+  live_xmas: 'クリスマス限定のオーナメント。年ごとの限定品として、あとから値上がりすることがある。',
 };
 for (const p of PRODUCTS) p.desc = DESC[p.id] || p.genre;
 

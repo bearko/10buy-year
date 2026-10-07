@@ -15,6 +15,7 @@ import { investPrice, investQty, investWeight } from './lifestyle.js';
 import { IMPORT_WEEKS } from './importer.js';
 import { isSneaker, pickSize, rollLeftover, sizeMult } from './shoes.js';
 import { JUNK_PIDS, rollJunk, UNCHECKED_MULT } from './junk.js';
+import { LIVE_MAP } from '../data/live.js';
 
 let oidSeq = 1;
 // 新ジャンル（know）はここでは除き、genreOffer で知っているものだけ出す。開拓先のシリーズ（spot）も除く
@@ -165,6 +166,7 @@ export function storeOffers(s, n = storeOfferCount(s), { trip = false } = {}) {
     offers.push(makeOffer(s, p.id, { source: 'store', label: pick(s, ['使用期限が近い品の見切り', '箱つぶれ品の処分']), price: round10(p.retail * randRange(s, 0.35, 0.5)), maxQty: randInt(s, 3, 8) }));
   }
   if (!s.stats.purchases) offers.unshift(firstWagon(s));
+  liveOffer(s, offers, 'store', 0.6);
   return withUnknown(s, withSpec(s, offers, 'store'));
 }
 
@@ -241,7 +243,17 @@ export function onlineOffers(s) {
   gens.push(genreGen(s, 'flea', 0.65, 0.9), ...spotGens(s, 'online'), nicheGen(s, 'online', ['dream_set', 'cyber_staff', 'star_globe']));
   const offers = applySaturation(s, generate(s, gens, n), 'online');
   for (const o of offers) if (o.price === 0) o.price = productOf(o.pid).retail;
+  liveOffer(s, offers, 'online', 0.5);
   return withUnknown(s, withSpec(s, offers, 'online'));
+}
+
+// 期間限定フェア（data/live.js）の品：フェアの間だけ、ふつうの候補とは別に定価で並ぶ。
+// フェアがないときは乱数を使わない（デイリー・週替わりチャレンジの展開を変えない）
+function liveOffer(s, offers, source, rate) {
+  const ev = s.live && LIVE_MAP[s.live.id];
+  if (!ev || !chance(s, rate)) return;
+  const p = productOf(ev.pid);
+  offers.push(makeOffer(s, p.id, { source, label: `${ev.name}の限定品（お一人様3点まで）`, price: p.retail, maxQty: 3, scarce: true, live: true }));
 }
 
 function generate(s, gens, n) {

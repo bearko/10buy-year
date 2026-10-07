@@ -10,6 +10,7 @@ import { chance, gauss, hashNoise, randInt, randRange } from './rng.js';
 import { clamp, hasSkill, tired } from './effects.js';
 import { woy, yearOf } from './calendar.js';
 import { perk } from './perks.js';
+import { liveActive, liveKnown } from './live.js';
 
 const PRODUCT_INDEX = Object.fromEntries(PRODUCTS.map((p, i) => [p.id, i]));
 
@@ -50,6 +51,7 @@ export const priceOf = (s, pid) => Math.round(productOf(pid).retail * s.market[p
 // 一度でも発売されていれば true（2年目以降は前年モデルが流通している）
 export function isReleased(s, product, week = s.week) {
   if (product.launch !== undefined && week < product.launch) return false; // シリーズの次の世代はまだ出ていない
+  if (product.kind === 'live') return liveKnown(s, product); // 期間限定フェアの品は、フェアが来てから出回る
   if (product.kind === 'hype' || product.kind === 'seasonal') return yearOf(week) > 1 || woy(week) >= product.release;
   return true;
 }
@@ -67,6 +69,7 @@ export function isAnnounced(s, product, week = s.week) {
   if (product.kind === 'hype') return isReleased(s, product, week) || woy(week) >= product.release - 4;
   if (product.kind === 'seasonal') return isReleased(s, product, week) || woy(week) >= product.release - 2;
   if (product.kind === 'perishable') return product.eventWeeks.some((w) => w - 2 <= woy(week) && woy(week) <= w + 1);
+  if (product.kind === 'live') return liveKnown(s, product);
   return true;
 }
 
@@ -163,6 +166,11 @@ export function updateMarket(s) {
         break;
       case 'seasonal':
         updateSeasonal(s, p, m, news);
+        break;
+      case 'live':
+        // 期間限定フェア（現実の季節）：フェア中は高く、終わったら after に近づく。出回っていないあいだは乱数を使わない
+        if (liveActive(s, p)) m.p = clamp(p.peak + gauss(s) * 0.05, p.peak * 0.85, p.peak * 1.15);
+        else if (liveKnown(s, p)) m.p = clamp(m.p + (p.after - m.p) * 0.2 + gauss(s) * 0.02, Math.min(p.after, 1) * 0.8, Math.max(p.after, p.peak) * 1.1);
         break;
       case 'boom':
         updateBoom(s, p, m, news);
@@ -289,6 +297,11 @@ export function demandOf(s, product) {
     const w = woy(s.week);
     if (w < product.release) d *= m.seasonDone ? 0.25 : 0;
     else if (w > product.peakWeek) d *= 0.4;
+  }
+  if (product.kind === 'live') {
+    if (!liveKnown(s, product)) d = 0;
+    else if (!liveActive(s, product) && product.after < 1) d *= 0.4; // 季節外れ
+    else if (!liveActive(s, product)) d *= 0.7; // 限定品はコレクターだけが探す
   }
   if (isRetired(s, product)) d *= 0.5; // 型落ちは買い手が半分
   if (product.kind === 'boom' && m.phase === 'boom') d *= 1.8;

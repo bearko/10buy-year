@@ -1709,3 +1709,34 @@ test('オンラインランキング：Upstash の REST API に送るコマン�
   const top = await st.top('2026-W41', 50);
   assert.deepEqual(top.map((e) => [e.name, e.netWorth]), [['X', 300], [undefined, 100]]);
 });
+
+import { LIVE_EVENTS, liveEventOn } from '../src/data/live.js';
+import { productOf } from '../src/data/products.js';
+import { syncLive } from '../src/engine/live.js';
+import { isAnnounced as announced, priceOf as livePrice, updateMarket as stepMarket } from '../src/engine/market.js';
+test('期間限定フェア：現実の日付で決まり、フェア中だけ仕入れられ、終わると相場が after に向かう', () => {
+  assert.equal(liveEventOn(new Date(2026, 9, 7)).id, 'halloween');
+  assert.equal(liveEventOn(new Date(2026, 11, 25)).id, 'xmas');
+  assert.equal(liveEventOn(new Date(2026, 5, 1)), null);
+  for (const e of LIVE_EVENTS) assert.equal(productOf(e.pid).live, e.id, e.id);
+  const s = createGame(21);
+  const p = productOf('live_halloween');
+  assert.ok(!announced(s, p), 'フェアの前は相場画面にも出ない');
+  assert.ok(syncLive(s, 'halloween').length > 0);
+  assert.ok(announced(s, p));
+  let seen = 0;
+  for (let i = 0; i < 20; i++) seen += storeOffers(s).filter((o) => o.pid === p.id).length;
+  assert.ok(seen > 0, 'フェア中は店に並ぶ');
+  stepMarket(s);
+  assert.ok(livePrice(s, p.id) > p.retail * 1.4, 'フェア中は相場が高い');
+  syncLive(s, null);
+  assert.ok(s.liveDone.halloween !== undefined);
+  for (let i = 0; i < 30; i++) stepMarket(s);
+  assert.ok(livePrice(s, p.id) < p.retail * 1.0, 'ハロウィンが終わると値崩れ');
+  assert.ok(storeOffers(s).every((o) => o.pid !== p.id), '終わったら仕入れられない');
+  // チャレンジ（同じ条件で競う）ではフェアを開かない
+  const c = createGame(22);
+  c.weekly = '2026-W41';
+  assert.deepEqual(syncLive(c, 'halloween'), []);
+  assert.equal(c.live, undefined);
+});
