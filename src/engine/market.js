@@ -75,9 +75,14 @@ export function unitPrice(s, u) {
   let mult = m.p;
   if (p.kind === 'hype' && u.edition && m.edition && u.edition < m.edition) mult = m.oldP;
   if (p.used || u.used) mult *= usedRegimeMult(s); // 認定中古市場
+  if (u.rep) mult *= REP_MULT; // 再販版は初版より安い
   mult *= annalMult(s, u.pid);
   return Math.round(p.retail * mult * (u.damaged ? 0.5 : 1));
 }
+
+export const REP_MULT = 0.9;
+// その仕入れ候補が再販版か（再販が決まった年のモデルを、そのあとに仕入れる）
+export const isRepOffer = (s, p, offer) => !!p.rep && !offer.upcoming && !!s.market[p.id]?.repEdition && (offer.edition ?? s.market[p.id].edition) === s.market[p.id].repEdition;
 
 // シリーズの前の世代（次の世代が出て型落ちになった）
 export const isRetired = (s, p, week = s.week) => p.retire != null && week >= p.retire;
@@ -211,6 +216,7 @@ function updateHype(s, p, m, news) {
     m.restockWeek = s.week;
     m.restocks++;
     m.floor = Math.max(0.85, m.floor * 0.85);
+    m.repEdition = m.edition; // これ以降に出回るこの年のモデルは「再販版」
     applyShock(s, p.id, 0.72, `【再販決定】メーカーが「${p.name}」の再販を発表。相場が急落中…`, news);
   }
   m.p = clamp(m.p, 0.6, 6);

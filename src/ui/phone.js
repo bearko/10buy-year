@@ -312,7 +312,7 @@ export function phoneMode(ctx) {
     const p = productOf(o.pid);
     const sold = !avail(o);
     return h('button', { class: `ph-tile ${sold ? 'sold' : ''}`, onclick: () => open(o) },
-      h('div', { class: 'ph-img' }, h('img', { src: productImage(p), alt: '' }),
+      h('div', { class: 'ph-img' }, h('img', { src: productImage(p, o.rep), alt: '' }),
         h('span', { class: 'ph-price' }, yen(o.price)),
         sold ? h('span', { class: 'sh-sold' }, 'SOLD') : null,
         o.negotiated === 'ok' ? h('span', { class: 'ph-badge' }, '専用') : null),
@@ -327,7 +327,7 @@ export function phoneMode(ctx) {
     const state = a.done ? { won: '落札', lost: '落札できず', over: '終了', unpaid: '支払えず' }[a.done] : bid ? (bid.snipe ? '終了間際に入札予定' : bid.max > a.rivalMax ? '最高額入札者' : '高値更新された') : '';
     const good = a.done === 'won' || state === '最高額入札者';
     return h('button', { class: `ph-tile auc ${a.done ? 'sold' : ''}`, onclick: () => open(o) },
-      h('div', { class: 'ph-img' }, h('img', { src: productImage(p), alt: '' }),
+      h('div', { class: 'ph-img' }, h('img', { src: productImage(p, o.rep), alt: '' }),
         h('span', { class: 'ph-price' }, yen(a.cur)),
         a.done ? h('span', { class: 'sh-sold' }, state) : null),
       h('div', { class: 'ph-name' }, p.name),
@@ -339,7 +339,7 @@ export function phoneMode(ctx) {
     const p = productOf(o.pid);
     const sold = !avail(o);
     return h('button', { class: `ph-tile mall ${sold ? 'sold' : ''}`, onclick: () => open(o) },
-      h('div', { class: 'ph-img' }, h('img', { src: productImage(p), alt: '' }),
+      h('div', { class: 'ph-img' }, h('img', { src: productImage(p, o.rep), alt: '' }),
         h('span', { class: 'ph-price' }, yen(o.price)),
         o.points ? h('span', { class: 'ph-pt' }, `+${Math.round(o.points * 100)}%`) : null,
         sold ? h('span', { class: 'sh-sold' }, '在庫切れ') : null),

@@ -18,7 +18,7 @@ const KIND_LABEL = {
   staple: '定番', hype: '限定', collect: 'コレクター', seasonal: '季節', perishable: '生もの', boom: 'ブーム', luxury: '高級', home: '家の不用品',
 };
 
-const itemIcon = (pid) => h('img', { class: 'item-icon', src: productImage(productOf(pid)), alt: '' });
+const itemIcon = (pid, rep = false) => h('img', { class: 'item-icon', src: productImage(productOf(pid), rep), alt: '' });
 const canCalc = (s) => hasSkill(s, 'eye_calc');
 const estLabel = (s) => (hasSkill(s, 'eye_market') ? '推定相場' : '相場（ざっくり）');
 
@@ -290,6 +290,7 @@ export function inventoryModal(s, onChange) {
           editionTag(s, u0),
           g.damaged ? h('span', { class: 'tag bad' }, '傷あり') : null,
           g.authFail ? h('span', { class: 'tag bad' }, '鑑定NG（偽物）') : null,
+          g.rep ? h('span', { class: 'tag' }, '再販版') : null,
           market === 'exp' && !g.listing && abroadMult(s, g.units[0]) >= 1.1 ? h('span', { class: 'tag good' }, `海外なら相場×${abroadMult(s, g.units[0]).toFixed(1)}`) : null,
           g.expire !== null && g.expire !== undefined ? h('span', { class: 'tag bad' }, `賞味期限 ${weekLabel(g.expire)}まで`) : null,
           x.waiting ? h('span', { class: 'tag' }, `${u0.imported ? '国際便・' : ''}${weekLabel(g.arrive)}に届く`) : null,
@@ -302,7 +303,7 @@ export function inventoryModal(s, onChange) {
         ),
       );
       const iconBox = h('div', { class: 'inv-icon' },
-        itemIcon(g.pid),
+        itemIcon(g.pid, g.rep),
         x.waiting ? null : h('button', { class: `sel-dot ${on ? 'on' : ''}`, 'aria-label': on ? '選択を外す' : '選択', onclick: (e) => { e.stopPropagation(); toggle(g.key); } }, '✓'),
       );
       const card = h('div', { class: `card inv ${g.listing ? 'listed' : ''} ${on ? 'selected' : ''} ${selecting ? 'selecting' : ''}` }, iconBox, head);

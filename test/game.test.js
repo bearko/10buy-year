@@ -31,7 +31,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const exists = (rel) => existsSync(join(ROOT, rel));
 
 test('すべての商品・キャラ・背景の画像が assets にある', () => {
-  for (const p of PRODUCTS) assert.ok(exists(productImage(p)), `missing ${productImage(p)}`);
+  for (const p of PRODUCTS) for (const rep of [false, true]) assert.ok(exists(productImage(p, rep)), `missing ${productImage(p, rep)}`);
   for (const [key, c] of Object.entries(CAST)) {
     if (c.poses) for (const src of Object.values(c.poses)) assert.ok(exists(src), `${key}: ${src}`);
     else assert.ok(exists(portraitOf(key)), `${key}: ${portraitOf(key)}`);
@@ -1396,4 +1396,27 @@ test('シリーズの世代交代：次の世代は発売まで出回らず、�
   assert.ok(s.market.organ1.p < 0.75, `型落ちの相場 ${s.market.organ1.p}`);
   assert.ok(demandOf(s, g1) < d0 * 0.6);
   assert.ok(visibleProducts(s).some((p) => p.id === 'organ2'));
+});
+
+test('再販版：再販が決まった年のモデルをそのあとに仕入れると再販版（Rep画像・相場は1割安い）', async () => {
+  const { productImage, productOf } = await import('../src/data/products.js');
+  const { specialOffer } = await import('../src/engine/offers.js');
+  const { buy } = await import('../src/engine/inventory.js');
+  const { unitPrice } = await import('../src/engine/market.js');
+  const s = createGame(71);
+  s.cash = 1000000;
+  s.market.heiho.edition = 1;
+  const before = specialOffer(s, 'heiho', { source: 'store', price: 5500, maxQty: 2 });
+  assert.ok(!before.rep);
+  s.market.heiho.repEdition = 1; // 再販決定
+  const o = specialOffer(s, 'heiho', { source: 'store', price: 5500, maxQty: 2 });
+  assert.ok(o.rep);
+  assert.ok(productImage(productOf('heiho'), true).endsWith('17016.png'));
+  buy(s, before, 1);
+  buy(s, o, 1);
+  const [a, b] = s.inventory.slice(-2);
+  assert.ok(!a.rep && b.rep);
+  assert.equal(unitPrice(s, b), Math.round(unitPrice(s, a) * 0.9));
+  const next = specialOffer(s, 'heiho', { source: 'store', price: 5500, maxQty: 2, edition: 2 });
+  assert.ok(!next.rep, '翌年のモデルは初版');
 });

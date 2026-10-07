@@ -32,7 +32,7 @@ function photo(o, part, { big = false, stock = false } = {}) {
   const parts = catInfo(o.pid).photos;
   const shot = SHOT[Math.max(0, parts.indexOf(part)) % SHOT.length];
   return h('div', { class: `ph ${big ? 'big' : ''}` },
-    h('img', { src: productImage(productOf(o.pid)), alt: '', style: { transform: `scale(${shot.scale})`, transformOrigin: `${shot.x}% ${shot.y}%` } }),
+    h('img', { src: productImage(productOf(o.pid), o.rep), alt: '', style: { transform: `scale(${shot.scale})`, transformOrigin: `${shot.x}% ${shot.y}%` } }),
     stock ? h('span', { class: 'ph-stock' }, 'SAMPLE') : null,
     big ? h('span', { class: 'ph-label' }, part) : null,
   );
@@ -147,6 +147,7 @@ export function offersModal(s, step, onChange) {
           : h('span', { class: 'sh-price' }, yen(o.price)),
         o.points ? h('span', { class: 'sh-badge pt' }, `${Math.round(o.points * 100)}%還元`) : null,
         o.upcoming ? h('span', { class: 'sh-badge' }, '予約') : null,
+        o.rep ? h('span', { class: 'sh-badge rep' }, '再販版') : null,
         sold ? h('span', { class: 'sh-sold' }, 'SOLD') : null,
       ),
       h('div', { class: 'sh-name' }, p.name),

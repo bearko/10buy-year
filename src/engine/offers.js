@@ -2,7 +2,7 @@
 import { PRODUCTS, productOf } from '../data/products.js';
 import { chance, pick, randInt, randRange, weightedPick } from './rng.js';
 import { flag, hasSkill } from './effects.js';
-import { beforeRelease, estimate, estimateUpcoming, inBoom, inPreSale, isReleased, isRestockWeek, isRetired, priceOf, roundPrice } from './market.js';
+import { beforeRelease, estimate, estimateUpcoming, inBoom, inPreSale, isReleased, isRepOffer, isRestockWeek, isRetired, priceOf, REP_MULT, roundPrice } from './market.js';
 import { woy, yearOf } from './calendar.js';
 import { perk } from './perks.js';
 import { buildListing, catOf } from './listing.js';
@@ -24,7 +24,8 @@ const round10 = (v) => Math.max(10, Math.round(v / 10) * 10);
 function makeOffer(s, pid, fields) {
   const product = productOf(pid);
   const offer = { oid: oidSeq++, pid, maxQty: 1, points: 0, fakeRate: 0, ...fields };
-  offer.est = offer.upcoming ? estimateUpcoming(s, pid) : estimate(s, pid);
+  offer.rep = isRepOffer(s, product, offer); // 再販版
+  offer.est = offer.upcoming ? estimateUpcoming(s, pid) : Math.round(estimate(s, pid) * (offer.rep ? REP_MULT : 1));
   // まとめ買い：数を選べる候補だけ（限定品・一点物・ロット仕入れは除く）
   if (!offer.scarce && !offer.minQty && offer.maxQty >= 2) offer.maxQty += perk(s, 'offerQty');
   // 偽物かどうかは出品の時点で決まっている。高額品ほど「巧妙な偽物」が多い
