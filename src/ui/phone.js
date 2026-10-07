@@ -10,7 +10,7 @@ import { productImage, productOf } from '../data/products.js';
 import { weekLabel } from '../engine/calendar.js';
 import { cardAvailable } from '../engine/inventory.js';
 import {
-  ADS, APPS, appOf, bidStep, hhmm, LATE_EXTRA, LATE_STAMINA, NEGO_OPTIONS, negotiate, PHONE_COST, settleAuction, soldHistory,
+  ADS, APPS, appOf, bidStep, hhmm, LATE_EXTRA, LATE_STAMINA, NEGO_OPTIONS, negotiate, PHONE_COST, settleAuction, soldHistory, getPhoneSessionTime,
 } from '../engine/sourcing.js';
 import { playSe } from './audio.js';
 import { h, yenFmt } from './dom.js';
@@ -23,12 +23,18 @@ const dur = (m) => (m >= 60 ? `${Math.floor(m / 60)}時間${m % 60}分` : `${Mat
 export function phoneMode(ctx) {
   const { s, step } = ctx;
   const run = step.run;
+
+  // 滞在時間をスキルレベルに応じて計算
+  const sessionTimeSeconds = getPhoneSessionTime(s);
+  run.end = run.start + Math.ceil(sessionTimeSeconds / 60);
+
   let now = run.start;
   let late = false;
   let app = 'home';
   let prompt = null; // 'late'：深夜1時の確認
   let done = false;
   let settling = false; // オークションの決着で買うときは、購入の時間を足さない
+  let autoLoopId = null; // 自動進行ループのID
   const sort = { flea: 'new', auction: 'end', mall: 'pt', shady: 'new' };
   const bids = new Map(); // oid -> { max, snipe }
   const results = []; // 寝る前に見る今夜のまとめ
@@ -38,6 +44,19 @@ export function phoneMode(ctx) {
   const byApp = (a) => offers.filter((o) => (o.unknown ? 'flea' : appOf(o)) === a);
   const limit = () => run.end + (late ? LATE_EXTRA : 0);
   const avail = (o) => !o.gone && !o.unknown && o.maxQty >= (o.minQty || 1) && !(o.auction?.done);
+
+  // リアルタイム自動進行ループ
+  function startAutoLoop() {
+    autoLoopId = setInterval(() => {
+      if (done) {
+        clearInterval(autoLoopId);
+        return;
+      }
+      now += 0.2; // 200ms = 0.2分 経過
+      tick();
+      ctx.render();
+    }, 200);
+  }
 
   // ---- 時計 ----
   function tick() {
@@ -92,6 +111,7 @@ export function phoneMode(ctx) {
 
   function finish() {
     if (done) return;
+    clearInterval(autoLoopId);
     // 寝ている間に終わるオークション（ふつうの入札は上限額のまま自動で競る。終了間際の入札はできない）
     for (const o of offers) if (o.auction && !o.auction.done) settle(o, { asleep: true });
     done = true;
@@ -332,6 +352,9 @@ export function phoneMode(ctx) {
       h('button', { class: 'btn bb-card', disabled: !canAct() || a.endsAt - now > limit() - now, onclick: () => place(true) }, '終了間際に入札'),
       h('button', { class: 'btn bb-cash', disabled: !canAct(), onclick: () => place(false) }, '入札する'));
   }
+
+  // 自動進行ループを開始
+  startAutoLoop();
 
   return {
     cls: 'phone',

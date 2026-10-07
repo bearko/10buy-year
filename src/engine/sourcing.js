@@ -10,6 +10,7 @@ import { hasCar } from './lifestyle.js';
 import { isReleased, priceOf, roundPrice } from './market.js';
 import { SPOT_MAP } from './pioneer.js';
 import { chance, pick, randInt, randRange } from './rng.js';
+import { nodeLv } from './abilities.js';
 
 // ---------------- 時計 ----------------
 export const hhmm = (m) => `${Math.floor(m / 60) % 24}:${String(Math.round(m) % 60).padStart(2, '0')}`;
@@ -186,6 +187,17 @@ export function autoVisible(step, s = null) {
 // 21時から深夜1時まで。行動ごとに時間がたち、安い出品はほかの人に買われていく
 export const PHONE_START = 21 * 60;
 export const PHONE_END = 25 * 60;
+
+// 夜のスマホ滞在時間を計算（秒単位）。スキルレベルで延びる
+export function getPhoneSessionTime(s) {
+  let seconds = 180; // 基本3分
+  const onSearchLv = nodeLv(s, 'on_search') || 0;
+  seconds += 30 * onSearchLv;
+  const onBuyLv = nodeLv(s, 'on_buy') || 0;
+  seconds += 30 * onBuyLv;
+  if (hasSkill(s, 'eye_ai')) seconds += 120; // AIツール +2分
+  return seconds;
+}
 export const PHONE_COST = { open: 2, research: 5, ask: 15, nego: 20, ad: 5, buy: 2, snipe: 0 };
 export const LATE_EXTRA = 60;
 export const LATE_STAMINA = 8;
