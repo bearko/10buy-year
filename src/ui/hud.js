@@ -1,7 +1,7 @@
 import { TOTAL_WEEKS, weekLabel } from '../engine/calendar.js';
 import { EXP_TYPES } from '../engine/abilities.js';
 import { MOOD_LABELS } from '../engine/effects.js';
-import { MIN_PAYMENT } from '../engine/finance.js';
+import { minPayment } from '../engine/finance.js';
 import { goalOf, stageOf } from '../engine/career.js';
 import { currentMission } from '../engine/tutorial.js';
 import { $, clear, h, yenFmt } from './dom.js';
@@ -92,7 +92,7 @@ export function renderHud(s) {
       )
       : null,
     mission ? h('div', { class: 'hud-mission' }, h('b', {}, `目標：${mission.title}`), h('small', {}, mission.hint)) : null,
-    s.week % 4 === 3 && s.debt > 0 ? h('div', { class: 'hud-alert' }, `今週末は返済日！ 最低 ${yenFmt(Math.min(MIN_PAYMENT, s.debt))}${s.card.due ? ` ＋カード ${yenFmt(s.card.due)}` : ''}`) : null,
+    s.week % 4 === 3 && s.debt > 0 ? h('div', { class: 'hud-alert' }, `今週末は返済日！ 最低 ${yenFmt(Math.min(minPayment(s), s.debt))}${s.card.due ? ` ＋カード ${yenFmt(s.card.due)}` : ''}`) : null,
   ];
   el.append(...rows.filter(Boolean));
 }

@@ -2,6 +2,7 @@ import { INITIAL_SKILLS } from '../data/skills.js';
 import { initMarket, updateMarket } from './market.js';
 import { addUnits } from './inventory.js';
 import { emptyMonth } from './kpi.js';
+import { DIFFICULTIES } from './finance.js';
 
 export const SAVE_VERSION = 2;
 
@@ -14,8 +15,9 @@ export const STARTING_HOME_ITEMS = [
 // 「家の中を探す」でこれから見つかる物
 export const HOME_POOL = ['novice_book', 'novice_book', 'old_figure', 'fountain_pen', 'old_hat', 'gift_glass', 'old_violin', 'novice_book', 'old_figure', 'gift_glass'];
 
-export function createGame(seed = (Date.now() ^ (Math.random() * 1e9)) >>> 0) {
+export function createGame(seed = (Date.now() ^ (Math.random() * 1e9)) >>> 0, difficulty = 'normal') {
   const s = {
+    difficulty,
     version: SAVE_VERSION,
     seed,
     rng: seed >>> 0,
@@ -31,7 +33,7 @@ export function createGame(seed = (Date.now() ^ (Math.random() * 1e9)) >>> 0) {
     points: 0,
     cardPoints: 0,
     pending: [],
-    debt: 1500000,
+    debt: (DIFFICULTIES[difficulty] || DIFFICULTIES.normal).debt,
     delinquency: 0,
     card: { limit: 100000, current: 0, due: 0 }, // 利用枠は「カード増枠の申請」で上げていく
     stamina: 100,

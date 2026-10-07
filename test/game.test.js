@@ -21,7 +21,7 @@ import { checkTutorial, MISSIONS, treeOpen } from '../src/engine/tutorial.js';
 import { checkPromotion, goalOf, stageProgress } from '../src/engine/career.js';
 import { kpiLevel } from '../src/engine/kpi.js';
 import { taxFor } from '../src/engine/finance.js';
-import { monthEnd, MIN_PAYMENT } from '../src/engine/finance.js';
+import { DIFFICULTIES, minPayment, monthEnd } from '../src/engine/finance.js';
 import { updateMarket, priceOf } from '../src/engine/market.js';
 import { TOTAL_WEEKS } from '../src/engine/calendar.js';
 import { runGame } from './bot.js';
@@ -87,7 +87,7 @@ test('カード増枠の申請：売上とステージで審査され、通れ�
 
 test('月末：返済できなければ滞納、3回で債務整理', () => {
   const s = createGame(3);
-  s.cash = MIN_PAYMENT;
+  s.cash = minPayment(s);
   monthEnd(s);
   assert.equal(s.cash, 0);
   assert.equal(s.delinquency, 0);
@@ -1171,4 +1171,20 @@ test('店の人たち：独り言は10文字以内、「！」で出会いのイ
     }
   }
   assert.deepEqual([...kinds].sort(), ['exp', 'offer', 'quest', 'route']);
+});
+
+test('難易度：借金・最低返済・金利が変わり、古いセーブは「ふつう」で遊べる', () => {
+  const hard = createGame(5, 'hard');
+  assert.equal(hard.debt, DIFFICULTIES.hard.debt);
+  hard.cash = 1000000;
+  const before = hard.debt;
+  monthEnd(hard);
+  const interest = Math.round((before * DIFFICULTIES.hard.rate) / 12);
+  assert.equal(hard.debt, before + interest - DIFFICULTIES.hard.minPay);
+  const easy = createGame(5, 'easy');
+  assert.equal(easy.debt, DIFFICULTIES.easy.debt);
+  assert.equal(minPayment(easy), DIFFICULTIES.easy.minPay);
+  const old = createGame(5);
+  delete old.difficulty;
+  assert.equal(minPayment(old), DIFFICULTIES.normal.minPay);
 });

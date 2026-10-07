@@ -1259,3 +1259,8 @@ body.partner-on #side { display: none !important; }
   #side-btns .side-btn.log { grid-column: auto; }
   #side-btns .side-btn.quest, #side-btns .side-btn.tree { grid-column: 1 / -1; padding: 6px 4px; font-size: 12px; }
 }
+
+/* 難易度の選択 */
+.diff-btn { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; margin-bottom: 8px; padding: 10px 14px; text-align: left; }
+.diff-btn b { font-size: 16px; }
+.diff-btn small { font-size: 12px; opacity: 0.85; font-weight: normal; }
