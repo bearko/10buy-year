@@ -263,6 +263,8 @@ export const bidStep = (v) => (v < 1000 ? 10 : v < 5000 ? 100 : v < 10000 ? 250 
 // 電脳のオファーに「いつ出品されたか」「いつ売れてしまうか」「オークション形式か」をつける
 export function buildPhoneRun(s, list) {
   const notices = [];
+  // フリマの掘り出し物（相場どおりの出品ではないもの）は、少なくとも1つは即決で残す（フリマのタブが相場どおりの出品だけにならないように）
+  let fixedLeft = list.filter((o) => o.source === 'flea' && !o.filler && !o.unknown).length;
   for (const o of list) {
     if (o.unknown) continue;
     const site = o.source;
@@ -272,7 +274,8 @@ export function buildPhoneRun(s, list) {
       const cheap = o.est ? Math.max(0, 1 - o.price / o.est) : 0.1;
       o.life = Math.round(randRange(s, 40, 160) * (1 - Math.min(0.6, cheap * 1.5)));
       // フリマ出品の一部はオークション形式で出ている
-      if (site === 'flea' && chance(s, 0.4)) {
+      if (site === 'flea' && chance(s, 0.4) && (o.filler || fixedLeft > 1)) {
+        if (!o.filler) fixedLeft--;
         const rival = roundPrice(o.price * randRange(s, 0.9, 1.15));
         o.auction = { start: roundPrice(o.price * randRange(s, 0.35, 0.6)), rivalMax: rival, bids: randInt(s, 0, 9), endsAt: PHONE_START + randInt(s, 30, 230), extend: chance(s, 0.6) };
         o.auction.cur = o.auction.bids ? roundPrice(o.auction.start + (rival - o.auction.start) * randRange(s, 0.2, 0.6)) : o.auction.start;
