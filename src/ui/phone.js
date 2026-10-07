@@ -6,6 +6,7 @@
 // ・オークションは上限額を決めて自動入札。自動延長がなければ、終了間際の入札でライバルを出し抜ける
 // 行動するたびに時計が進み、深夜1時を過ぎたら寝る（夜更かしは来週の体力に響く）
 import { portraitOf } from '../data/cast.js';
+import { abbr } from '../i18n/index.js';
 import { productImage, productOf } from '../data/products.js';
 import { weekLabel } from '../engine/calendar.js';
 import { cardAvailable } from '../engine/inventory.js';
@@ -151,7 +152,7 @@ export function phoneMode(ctx) {
 
   function nav() {
     const tab = (id, label, color) => h('button', { class: `ph-tab ${app === id ? 'on' : ''}`, style: { '--c': color }, onclick: () => { app = id; ctx.render(); } },
-      h('i', {}, label.slice(0, 1)), h('small', {}, label),
+      h('i', {}, abbr(label, 1)), h('small', {}, label),
       id !== 'home' && byApp(id).filter(avail).length ? h('em', {}, byApp(id).filter(avail).length) : null);
     return h('nav', { class: 'ph-nav' },
       tab('home', 'ホーム', '#555'),
@@ -242,7 +243,7 @@ export function phoneMode(ctx) {
         const a = APPS[n.app];
         const gone = !avail(n.o);
         return h('button', { class: `ph-note ${gone ? 'gone' : ''}`, style: { '--c': a.color }, onclick: () => open(n.o) },
-          h('div', { class: 'ph-note-h' }, h('i', {}, a.name.slice(0, 1)), h('b', {}, a.name), h('small', {}, gone ? '売り切れ' : `${Math.max(1, (n.o.posted || 5) % 20)}分前`)),
+          h('div', { class: 'ph-note-h' }, h('i', {}, abbr(a.name, 1)), h('b', {}, a.name), h('small', {}, gone ? '売り切れ' : `${Math.max(1, (n.o.posted || 5) % 20)}分前`)),
           h('div', {}, n.text));
       })));
       notesShown = true;
@@ -251,7 +252,7 @@ export function phoneMode(ctx) {
     body.append(h('p', { class: 'ph-section-title' }, 'アプリ'), h('div', { class: 'ph-apps' },
       ...Object.entries(APPS).filter(([id]) => byApp(id).length).map(([id, a]) =>
         h('button', { class: 'ph-app', style: { '--c': a.color }, onclick: () => { app = id; ctx.render(); } },
-          h('i', {}, a.name.slice(0, 1)), h('b', {}, a.name), h('small', {}, a.sub)))));
+          h('i', {}, abbr(a.name, 1)), h('b', {}, a.name), h('small', {}, a.sub)))));
 
     body.append(adBanner(0));
     if (results.length) body.append(resultsBox());

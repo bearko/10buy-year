@@ -2,6 +2,7 @@
 // 一覧ですべてを見比べるのではなく、その店・その棚の前で「買うか、買わないか」を決める。
 // 移動と棚を見る時間はスキル・目利き・車で短くなり、回れる店が増えていく（engine/sourcing.js）
 import { hhmm, soldHistory, soldMedian, storeTypesOf } from '../engine/sourcing.js';
+import { abbr } from '../i18n/index.js';
 import { PRODUCTS, productImage, productOf } from '../data/products.js';
 import { CAST } from '../data/cast.js';
 import { isReleased } from '../engine/market.js';
@@ -49,7 +50,7 @@ export function storeMode(ctx) {
       h('div', { class: 'sr-time' }, h('i', { style: { width: `${pct}%` } })),
       h('div', { class: 'sr-route' },
         h('span', { class: 'sr-home' }, '家'),
-        ...visited.map((st) => h('span', { class: `sr-dot ${st === at ? 'here' : ''}`, style: { '--c': st.color }, title: st.name }, st.label.slice(0, 2))),
+        ...visited.map((st) => h('span', { class: `sr-dot ${st === at ? 'here' : ''}`, style: { '--c': st.color }, title: st.name }, abbr(st.label, 2))),
         phase !== 'done' && next().length ? h('span', { class: 'sr-dot next' }, '？') : null,
       ),
     );

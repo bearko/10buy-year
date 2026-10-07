@@ -37,6 +37,8 @@ CLI の場合はリポジトリのルートで `npx vercel`（本番は `npx ver
 - 月の純利益などのKPIでキャリアステージが上がる（副業スタート → 副業安定 → 専業 → 法人化・拡大 → 事業化・多角化）。
 - 10年後の純資産がスコア。エンディングはキャリアで変わる。
 
+English: open with `?lang=en` or press “Play in English” on the title screen.
+
 ## ドキュメント
 
 | ファイル | 内容 |

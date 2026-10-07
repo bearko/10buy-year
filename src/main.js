@@ -34,7 +34,7 @@ import { celebrate, goalPopup } from './ui/goal.js';
 import { logModal, pushLog } from './ui/log.js';
 import { offersModal } from './ui/shop.js';
 import { initFontScale } from './ui/a11y.js';
-import { getLang, initLang, setLang } from './i18n/index.js';
+import { getLang, initLang, setLang, tr } from './i18n/index.js';
 import { listNowPrompt } from './ui/listnow.js';
 import { autoVisible } from './engine/sourcing.js';
 import { mailbox, salesMails } from './ui/mail.js';
@@ -941,7 +941,7 @@ function row(label, value) {
 const GAME_URL = 'https://10buy-year.vercel.app/';
 function resultText(r) {
   const vision = r.vision ? `\n志：${r.vision.name}（達成 ${r.vision.done}/3）` : '';
-  return `10 buy year！ 最終査定【${r.rank}】${r.ending.title}\n${r.stage}／称号：${r.title}${vision}\n純資産 ${yenFmt(r.netWorth)} / 売上 ${yenFmt(r.revenue)}`;
+  return tr(`10 buy year！ 最終査定【${r.rank}】${r.ending.title}\n${r.stage}／称号：${r.title}${vision}\n純資産 ${yenFmt(r.netWorth)} / 売上 ${yenFmt(r.revenue)}`); // 英語版では訳す（DOMを通らないので）
 }
 
 function copyResult(r) {
