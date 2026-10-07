@@ -1343,7 +1343,8 @@ body.partner-on #side { display: none !important; }
 .map-legend { margin-top: 12px; font-size: 12px; color: var(--muted); }
 .map-legend summary { cursor: pointer; }
 /* 部屋に積み上がる在庫：仕入れた品のアイコン（ui/stage.js setClutter）。ドット絵は等倍の64px */
-#stage-boxes { position: absolute; inset: auto 0 0 0; height: 70%; pointer-events: none; }
+/* z-index: 0 で重なりの層をつくり、品どうしの前後は層の中だけで決める（クリスや右側のボタンより必ず後ろ） */
+#stage-boxes { position: absolute; inset: auto 0 0 0; height: 70%; pointer-events: none; z-index: 0; }
 #stage-boxes .room-item { position: absolute; width: 64px; height: 64px; margin-left: -32px; image-rendering: pixelated; filter: brightness(0.85) drop-shadow(0 3px 0 #0006); animation: room-in 0.3s ease-out; }
 #stage-boxes.over .room-item { filter: brightness(0.7) saturate(0.85) drop-shadow(0 3px 0 #0006); }
 @keyframes room-in { from { transform: translateY(-14px); opacity: 0; } to { transform: none; opacity: 1; } }
