@@ -4,7 +4,7 @@
 // モードは一覧（list）・商品ページの下のバー（itemBar）・追加の欄（itemExtras）・外枠（wrap）を差しかえられる
 import { productImage, productOf, SIZE_INFO } from '../data/products.js';
 import { weekLabel } from '../engine/calendar.js';
-import { flag, hasSkill } from '../engine/effects.js';
+import { flag, hasSkill, tired } from '../engine/effects.js';
 import { buy, capacity, cardAvailable, spaceUsed } from '../engine/inventory.js';
 import { askSeller, catInfo, siteOf, visibleChecks } from '../engine/listing.js';
 import { confidenceLabel } from '../engine/market.js';
@@ -250,6 +250,7 @@ export function offersModal(s, step, onChange) {
     const checks = visibleChecks(o);
     const touchable = !['flea', 'shady'].includes(siteOf(o).kind);
     return h('div', {},
+      tired(s) ? h('div', { class: 'warn' }, '疲れていて、相場の見立てがぶれやすく、細かいところを見落としやすい（体力30未満）') : null,
       h('div', { class: 'mm-row' }, h('span', {}, hasSkill(s, 'eye_market') ? '推定相場' : '相場（ざっくり）'), h('b', {}, `${yen(o.est)}`), h('small', {}, `確度${confidenceLabel(s)}`)),
       o.soldHist ? h('div', { class: 'mm-row' }, h('span', {}, '売り切れ相場'), h('b', {}, yen(soldMedian(o.soldHist))), h('small', {}, '最近売れた値段の真ん中')) : null,
       h('div', { class: 'mm-row' }, h('span', {}, '相場との比較'), h('b', {}, `${ratio}%`)),

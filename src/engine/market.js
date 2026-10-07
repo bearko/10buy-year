@@ -4,7 +4,7 @@ import { madeToOrder, usedRegimeMult } from './regimes.js';
 import { AUD_OF } from '../data/careers.js';
 import { PRODUCTS, productOf } from '../data/products.js';
 import { chance, gauss, hashNoise, randInt, randRange } from './rng.js';
-import { clamp, hasSkill } from './effects.js';
+import { clamp, hasSkill, tired } from './effects.js';
 import { woy, yearOf } from './calendar.js';
 import { perk } from './perks.js';
 
@@ -240,6 +240,7 @@ export function estimateError(s) {
   if (hasSkill(s, 'eye_market')) amp *= 0.75;
   if (hasSkill(s, 'eye_ai')) amp *= 0.7;
   if (hasSkill(s, 'crowd_madness')) amp *= 0.5;
+  if (tired(s)) amp *= 1.3; // 疲れていると判断が甘くなる
   return amp * perk(s, 'estErr');
 }
 
