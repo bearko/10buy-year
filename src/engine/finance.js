@@ -7,7 +7,7 @@ import { collectionMonthly, museumIncome } from './collection.js';
 import { mediaIncome } from './careers.js';
 import { visionMonthly } from './visions.js';
 import { dividend, lifestyleMonthly } from './lifestyle.js';
-import { addCash, addHate, addMood, addToku, hasSkill, record, setFlag, yen } from './effects.js';
+import { addCash, addExp, addHate, addMood, addToku, hasSkill, record, setFlag, yen } from './effects.js';
 import { celebrate, info, sfx, talk } from './steps.js';
 import { monthlyNodeFees } from './abilities.js';
 import { addExpense, closeMonth, inventoryStats } from './kpi.js';
@@ -95,6 +95,7 @@ export function monthEnd(s) {
       s.debt -= pay;
       s.delinquency = 0; // 払えれば滞納カウントはリセット（3か月連続の滞納で債務整理）
       s.stats.repaid += pay;
+      addExp(s, { mind: 3 }); // 毎月の返済を続けることで、精神が鍛えられる
       steps.push(sfx('coin'), info('月末返済', [`${yen(pay)} を返済した`, `残りの借金: ${yen(s.debt)}`], 'good'));
     } else {
       s.delinquency++;

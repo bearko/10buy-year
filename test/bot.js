@@ -7,7 +7,7 @@ import { buy, activeUnits, cardAvailable, listUnits, feeRate, sellToBuyer } from
 import { estimateUnit, priceOf, estimate } from '../src/engine/market.js';
 import { queueTargets, openLotteries } from '../src/engine/offers.js';
 import { autoVisible } from '../src/engine/sourcing.js';
-import { ABILITIES, learnSkill, nodeState, raiseAbility, skillCost } from '../src/engine/abilities.js';
+import { ABILITIES, abilityCost, convertExp, learnSkill, nodeState, raiseAbility, skillCost } from '../src/engine/abilities.js';
 import { SKILLS, SKILL_MAP } from '../src/data/skills.js';
 import { productOf, shippingCost } from '../src/data/products.js';
 import { repay } from '../src/engine/finance.js';
@@ -136,7 +136,41 @@ function priorityFor(s) {
   return route(s) === 'light' ? all.filter((id) => SKILL_MAP[id]?.route !== 'dark') : all;
 }
 
+// プレイヤーと同じく、余っている経験点を足りない種類に振り替える（×0.5）。いちばん多い種類から、150は残して
+function topUp(s, need) {
+  for (const [k, v] of Object.entries(need)) {
+    const lack = v - (s.exp[k] || 0);
+    if (lack <= 0) continue;
+    const [from, have] = Object.entries(s.exp).filter(([x]) => x !== k).sort((a, b) => b[1] - a[1])[0];
+    if (have - lack * 2 >= 150) convertExp(s, from, k, lack * 2);
+  }
+}
+
+// 目指すルートの到達点に、経験点の種類が足りなければ振り替える（能力の前提に要る分も）
+function aimCapstones(s) {
+  if (s.stage < 3) return; // 稼ぎが安定してから（序盤は稼ぐためのパネルが先）
+  const plan = ROUTE_PLANS[s.seed % ROUTE_PLANS.length];
+  // 目指すルートの道のりのパネル（段の浅い順）。経験点の種類が足りないだけなら振り替えて取る
+  for (const sk of SKILLS.filter((x) => plan.includes(x.route) && x.kind !== 'repeat' && x.kind !== 'capstone').sort((a, b) => a.depth - b.depth)) {
+    if (nodeState(s, sk.id) !== 'available') continue;
+    topUp(s, skillCost(s, sk.id));
+    learnSkill(s, sk.id);
+  }
+  for (const sk of SKILLS) {
+    if (sk.kind !== 'capstone' || !plan.includes(sk.route) || s.skills.includes(sk.id)) continue;
+    const need = {};
+    for (const [a, target] of Object.entries(sk.need || {})) {
+      for (let lv = s.abilities[a]; lv < target; lv++) for (const [k, v] of Object.entries(abilityCost(a, lv))) need[k] = (need[k] || 0) + v;
+    }
+    topUp(s, need);
+    for (const [a, target] of Object.entries(sk.need || {})) if (s.abilities[a] < target) raiseAbility(s, a, target - s.abilities[a]);
+    if (Object.entries(sk.need || {}).every(([a, t]) => s.abilities[a] >= t)) topUp(s, skillCost(s, sk.id));
+    if (nodeState(s, sk.id) === 'available') learnSkill(s, sk.id);
+  }
+}
+
 function growth(s) {
+  aimCapstones(s);
   for (const id of priorityFor(s)) {
     const st = nodeState(s, id);
     if (st === 'available' || st === 'red') learnSkill(s, id);
