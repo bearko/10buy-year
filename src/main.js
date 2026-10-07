@@ -8,7 +8,8 @@ import { hasSkill, MOOD_MULT } from './engine/effects.js';
 import { finalResult } from './engine/ending.js';
 import { activeUnits, idleListing, listedUnits } from './engine/inventory.js';
 import { autoBuy } from './engine/automation.js';
-import { clearSave, loadDaily, loadGame, loadRanking, pushDaily, pushRanking, saveGame } from './engine/save.js';
+import { clearSave, loadDaily, loadGame, loadLegacy, loadRanking, pushDaily, pushLegacy, pushRanking, saveGame } from './engine/save.js';
+import { SKILL_MAP, SKILLS } from './data/skills.js';
 import { dailyLabel, dailySeed, todayKey } from './engine/daily.js';
 import { createGame } from './engine/state.js';
 import { endWeek, startWeek } from './engine/turn.js';
@@ -627,11 +628,33 @@ function pickDifficulty() {
 }
 
 // daily：デイリーチャレンジの日付（難易度は「ふつう」で固定）
+// 前の周の到達点から1つ選ぶ（引き継がないなら ''、やめたら null）
+function pickLegacy(ids) {
+  let pick = null;
+  const m = openModal('前の周から引き継ぐ', (body, api) => {
+    body.append(h('p', { class: 'note' }, '前の周でたどり着いたルートの到達点を、1つだけ最初から持って始められる。'));
+    for (const id of ids) {
+      const sk = SKILL_MAP[id];
+      body.append(h('button', { class: 'btn diff-btn', onclick: () => { pick = id; api.close(); } }, h('b', {}, sk.name), h('small', {}, sk.desc)));
+    }
+    body.append(h('button', { class: 'btn diff-btn primary', onclick: () => { pick = ''; api.close(); } }, h('b', {}, '引き継がない'), h('small', {}, 'まっさらな状態から始める')));
+  }, { closeLabel: 'やめる' });
+  return m.closed.then(() => pick);
+}
+
 async function newGame({ daily = null } = {}) {
   const difficulty = daily ? 'normal' : await pickDifficulty();
   if (!difficulty) return;
+  // デイリーチャレンジは同じ条件で競うので、引き継ぎはしない
+  const legacyIds = daily ? [] : loadLegacy().filter((id) => SKILL_MAP[id]);
+  const legacy = legacyIds.length ? await pickLegacy(legacyIds) : '';
+  if (legacy === null) return;
   state = createGame(daily ? dailySeed(daily) : undefined, difficulty);
   if (daily) state.daily = daily;
+  if (legacy) {
+    state.skills.push(legacy);
+    state.legacy = legacy;
+  }
   clearSave();
   showScreen('game-screen');
   refresh();
@@ -728,6 +751,10 @@ function showEnding() {
   };
   const ranking = pushRanking(entry);
   if (state.daily) pushDaily(state.daily, entry);
+  const before = new Set(loadLegacy());
+  const caps = SKILLS.filter((x) => x.kind === 'capstone' && state.skills.includes(x.id)).map((x) => x.id);
+  const newCaps = state.daily ? [] : caps.filter((id) => !before.has(id));
+  if (!state.daily) pushLegacy(caps);
   const el = clear($('#ending-screen'));
   playBgm('land');
   playSe(['arrested', 'bankrupt', 'vanished'].includes(r.ending.id) ? 'lose' : 'win');
@@ -755,6 +782,7 @@ function showEnding() {
         row('取引トラブル', `${r.troubles}件`),
         row('定価で確保した品薄商品', `${r.scarceBought}個`),
       ),
+      newCaps.length ? h('p', { class: 'note' }, `次の周に引き継げる到達点が増えた：${newCaps.map((id) => SKILL_MAP[id].name).join('、')}`) : null,
       h('p', { class: 'note' }, r.scarceBought ? `あなたが確保した${r.scarceBought}個の品薄商品。その向こうには、定価で買えなかった誰かがいたかもしれないし、近くの店で買えずにあなたから買えて喜んだ誰かもいたかもしれない。` : '品薄の限定品には手を出さず、価格差で稼ぎきった10年だった。'),
       h('div', { class: 'sub' }, 'この端末のランキング'),
       ...ranking.slice(0, 5).map((x, i) => h('div', { class: 'ledger-row' }, h('small', {}, `${i + 1}位`), h('span', {}, `${x.ending}／${x.title}`), h('b', {}, yenFmt(x.netWorth)))),
