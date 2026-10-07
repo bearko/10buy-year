@@ -6,6 +6,8 @@ export const MOOD_LABELS = ['絶不調', '不調', '普通', '好調', '絶好�
 export const MOOD_MULT = [0.6, 0.8, 1.0, 1.2, 1.4];
 
 export const hasSkill = (s, id) => s.skills.includes(id);
+// 体力が30を切ると疲れている：相場の見立てがぶれ、偽物の手がかりを1つ見落とす
+export const tired = (s) => s.stamina < 30;
 export const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 export const yen = (n) => `${Math.round(n).toLocaleString('ja-JP')}円`;
 

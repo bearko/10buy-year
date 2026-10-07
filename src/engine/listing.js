@@ -4,7 +4,7 @@
 // 本物にも怪しい要素は混じるし、巧妙な偽物は見た目では分からない。細部を見抜けるかは目利き次第。
 import { productOf } from '../data/products.js';
 import { chance, pick, randInt } from './rng.js';
-import { hasSkill } from './effects.js';
+import { hasSkill, tired } from './effects.js';
 import { perk } from './perks.js';
 import { SPOTS } from './pioneer.js';
 
@@ -270,7 +270,7 @@ export function buildListing(s, o) {
 
 // 目利きで見抜ける細部の数
 export function seenChecks(s) {
-  return Math.floor(s.abilities.eye / 25) + (hasSkill(s, 'eye_fake') ? 1 : 0) + Math.round(perk(s, 'fakeDetect') * 5);
+  return Math.max(0, Math.floor(s.abilities.eye / 25) + (hasSkill(s, 'eye_fake') ? 1 : 0) + Math.round(perk(s, 'fakeDetect') * 5) - (tired(s) ? 1 : 0));
 }
 
 // 写っていない部分は確認できない（店頭・業者オークションは手に取れる）
