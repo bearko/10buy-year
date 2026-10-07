@@ -915,6 +915,8 @@ body.partner-on #side { display: none !important; }
 .sr-sign b { font-size: 19px; letter-spacing: 0.05em; }
 .sr-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 8px 14px; font-size: 12px; color: #555; }
 .sr-meta .bad { color: #d33; font-weight: 700; }
+.sr-flyer { display: flex; align-items: center; gap: 6px; margin: 0 10px 10px; padding: 5px 8px; border-radius: 6px; background: #fff6d0; border: 1px dashed #d8b84a; font-size: 12px; font-weight: 700; color: #6a4a00; }
+.sr-flyer small { padding: 0 5px; border-radius: 3px; background: #e8413c; color: #fff; font-size: 10px; }
 .sr-front { --c: #555; margin: 0 0 8px; background: #fff; }
 .sr-front-sign { display: flex; flex-direction: column; align-items: center; padding: 14px 10px 10px; background: var(--c); color: #fff; border-bottom: 6px solid #0003; animation: sr-in 0.35s ease-out; }
 .sr-front-sign small { font-size: 11px; opacity: 0.85; }
