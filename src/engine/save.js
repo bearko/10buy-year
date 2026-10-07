@@ -7,6 +7,7 @@ const RANK_KEY = '10buy-year:ranking';
 const DAILY_KEY = '10buy-year:daily';
 const LEGACY_KEY = '10buy-year:legacy';
 const MENTOR_KEY = '10buy-year:mentors';
+const RECORD_KEY = '10buy-year:records';
 
 function storage() {
   try {
@@ -130,4 +131,28 @@ export function pushMentor(rec) {
     /* noop */
   }
   return list;
+}
+
+// 実績と、見たエンディング（この端末に記録）
+export function loadRecords() {
+  try {
+    return { achievements: {}, endings: {}, ...JSON.parse(storage()?.getItem(RECORD_KEY) || '{}') };
+  } catch {
+    return { achievements: {}, endings: {} };
+  }
+}
+
+// 増えた実績の id を返す
+export function pushRecords(achievementIds, endingId) {
+  const rec = loadRecords();
+  const date = new Date().toLocaleDateString('ja-JP');
+  const fresh = achievementIds.filter((id) => !rec.achievements[id]);
+  for (const id of fresh) rec.achievements[id] = date;
+  if (endingId && !rec.endings[endingId]) rec.endings[endingId] = date;
+  try {
+    storage()?.setItem(RECORD_KEY, JSON.stringify(rec));
+  } catch {
+    /* noop */
+  }
+  return fresh;
 }

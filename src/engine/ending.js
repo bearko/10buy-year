@@ -154,3 +154,12 @@ export function finalResult(s) {
     weeks: s.week,
   };
 }
+
+// エンディングの一覧（回収率の表示用）
+export function allEndings() {
+  return [
+    ...Object.entries(ENDINGS).map(([id, e]) => ({ id, title: e.title })),
+    ...Object.entries(VISIONS).map(([id, v]) => ({ id: `vision_${id}`, title: v.full.title })),
+    { id: 'vision_half', title: '志半ばEND' },
+  ];
+}

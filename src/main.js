@@ -8,8 +8,10 @@ import { hasSkill, MOOD_MULT } from './engine/effects.js';
 import { finalResult } from './engine/ending.js';
 import { activeUnits, idleListing, listedUnits } from './engine/inventory.js';
 import { autoBuy } from './engine/automation.js';
-import { clearSave, loadDaily, loadGame, loadLegacy, loadMentors, loadRanking, pushDaily, pushLegacy, pushMentor, pushRanking, saveGame } from './engine/save.js';
+import { clearSave, loadDaily, loadGame, loadLegacy, loadMentors, loadRanking, loadRecords, pushDaily, pushLegacy, pushMentor, pushRanking, pushRecords, saveGame } from './engine/save.js';
 import { mentorRecord } from './engine/mentor.js';
+import { ACHIEVEMENTS, checkAchievements } from './engine/achievements.js';
+import { allEndings } from './engine/ending.js';
 import { SKILL_MAP, SKILLS } from './data/skills.js';
 import { dailyLabel, dailySeed, todayKey } from './engine/daily.js';
 import { SPECIALTIES, STYLES, styleLabel, styleOf } from './engine/style.js';
@@ -721,6 +723,7 @@ function showTitle() {
         h('button', { class: `btn big ${hasSave ? '' : 'primary'}`, onclick: () => { if (!hasSave || window.confirm('セーブデータを消して最初から始めますか？')) newGame(); } }, 'はじめから'),
         h('button', { class: 'btn', onclick: () => { if (!hasSave || window.confirm('セーブデータを消して、今日のチャレンジを始めますか？')) newGame({ daily: todayKey() }); } }, `今日のチャレンジ（${dailyLabel(todayKey())}）`),
         h('button', { class: 'btn', onclick: () => rankingModal() }, 'ランキング'),
+        h('button', { class: 'btn', onclick: () => recordsModal() }, '実績'),
         h('button', { class: 'btn', onclick: () => aboutModal() }, 'このゲームについて'),
         h('button', {
           class: 'btn sound-toggle',
@@ -753,6 +756,22 @@ function rankingModal() {
   });
 }
 
+// 実績とエンディングの回収
+function recordsModal() {
+  openModal('実績', (body) => {
+    const rec = loadRecords();
+    const ends = allEndings();
+    const seenEnds = ends.filter((e) => rec.endings[e.id]).length;
+    const got = ACHIEVEMENTS.filter((a) => rec.achievements[a.id]).length;
+    body.append(
+      h('div', { class: 'sub' }, `エンディング ${seenEnds}/${ends.length}（${Math.round((seenEnds / ends.length) * 100)}%）`),
+      h('div', { class: 'ach-grid' }, ...ends.map((e) => h('div', { class: `ach ${rec.endings[e.id] ? 'on' : ''}` }, h('b', {}, rec.endings[e.id] ? e.title : '？？？'), rec.endings[e.id] ? h('small', {}, rec.endings[e.id]) : null))),
+      h('div', { class: 'sub' }, `実績 ${got}/${ACHIEVEMENTS.length}`),
+      ...ACHIEVEMENTS.map((a) => h('div', { class: `ach row ${rec.achievements[a.id] ? 'on' : ''}` }, h('b', {}, a.name), h('small', {}, a.desc), rec.achievements[a.id] ? h('small', { class: 'ach-date' }, rec.achievements[a.id]) : null)),
+    );
+  });
+}
+
 function aboutModal() {
   openModal('このゲームについて', (body) => {
     body.append(
@@ -780,6 +799,7 @@ function showEnding() {
     pushLegacy(caps);
     pushMentor(mentorRecord(state, r));
   }
+  const newAch = pushRecords(checkAchievements(state, r), r.ending.id);
   const el = clear($('#ending-screen'));
   playBgm('land');
   playSe(['arrested', 'bankrupt', 'vanished'].includes(r.ending.id) ? 'lose' : 'win');
@@ -807,6 +827,7 @@ function showEnding() {
         row('取引トラブル', `${r.troubles}件`),
         row('定価で確保した品薄商品', `${r.scarceBought}個`),
       ),
+      newAch.length ? h('div', { class: 'ach-new' }, h('b', {}, '実績を解除'), ...newAch.map((id) => { const a = ACHIEVEMENTS.find((x) => x.id === id); return h('div', {}, `${a.name}（${a.desc}）`); })) : null,
       newCaps.length ? h('p', { class: 'note' }, `次の周に引き継げる到達点が増えた：${newCaps.map((id) => SKILL_MAP[id].name).join('、')}`) : null,
       h('p', { class: 'note' }, r.scarceBought ? `あなたが確保した${r.scarceBought}個の品薄商品。その向こうには、定価で買えなかった誰かがいたかもしれないし、近くの店で買えずにあなたから買えて喜んだ誰かもいたかもしれない。` : '品薄の限定品には手を出さず、価格差で稼ぎきった10年だった。'),
       h('div', { class: 'sub' }, 'この端末のランキング'),
