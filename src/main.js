@@ -29,6 +29,7 @@ import { groupItems, showItems } from './ui/loot.js';
 import { celebrate, goalPopup } from './ui/goal.js';
 import { logModal, pushLog } from './ui/log.js';
 import { offersModal } from './ui/shop.js';
+import { initFontScale } from './ui/a11y.js';
 import { listNowPrompt } from './ui/listnow.js';
 import { autoVisible } from './engine/sourcing.js';
 import { mailbox, salesMails } from './ui/mail.js';
@@ -888,6 +889,7 @@ function showEnding() {
       ...ranking.slice(0, 5).map((x, i) => h('div', { class: 'ledger-row' }, h('small', {}, `${i + 1}位`), h('span', {}, `${x.ending}／${x.title}`), h('b', {}, yenFmt(x.netWorth)))),
       h('div', { class: 'title-buttons' },
         h('button', { class: 'btn primary big', onclick: () => window.location.reload() }, 'タイトルへ'),
+        h('button', { class: 'btn', onclick: () => shareResult(r) }, 'シェアする'),
         h('button', { class: 'btn', onclick: () => copyResult(r) }, '結果をコピー'),
       ),
     ),
@@ -899,10 +901,30 @@ function row(label, value) {
   return h('div', { class: 'lg-row' }, h('span', {}, label), h('b', {}, value));
 }
 
-function copyResult(r) {
+// シェアの文面：結果と、遊んだ場所のURL・ハッシュタグ
+const GAME_URL = 'https://10buy-year.vercel.app/';
+function resultText(r) {
   const vision = r.vision ? `\n志：${r.vision.name}（達成 ${r.vision.done}/3）` : '';
-  const text = `10 buy year！ 最終査定【${r.rank}】${r.ending.title}\n${r.stage}／称号：${r.title}${vision}\n純資産 ${yenFmt(r.netWorth)} / 売上 ${yenFmt(r.revenue)}`;
-  navigator.clipboard?.writeText(text).catch(() => {});
+  return `10 buy year！ 最終査定【${r.rank}】${r.ending.title}\n${r.stage}／称号：${r.title}${vision}\n純資産 ${yenFmt(r.netWorth)} / 売上 ${yenFmt(r.revenue)}`;
 }
 
+function copyResult(r) {
+  navigator.clipboard?.writeText(`${resultText(r)}\n${GAME_URL}`).then(() => toast('結果をコピーした', 'good')).catch(() => {});
+}
+
+// スマホは端末のシェア画面、PCはXの投稿画面を開く
+async function shareResult(r) {
+  const text = `${resultText(r)}\n#10buyyear`;
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: '10 buy year！', text, url: GAME_URL });
+      return;
+    } catch (e) {
+      if (e?.name === 'AbortError') return;
+    }
+  }
+  window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(GAME_URL)}`, '_blank', 'noopener');
+}
+
+initFontScale();
 showTitle();
