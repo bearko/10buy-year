@@ -60,6 +60,9 @@ export function salesModal(s, step) {
         ),
       );
     }
+    for (const x of step.authFailed || []) {
+      body.append(h('div', { class: 'card row muted' }, itemIcon(x.pid), h('div', { class: 'grow' }, `${productOf(x.pid).name}（ホンモノ堂）…鑑定で偽物と判定され、送り返されてきた`)));
+    }
     for (const x of step.auctionsUnsold) {
       body.append(h('div', { class: 'card row muted' }, itemIcon(x.pid), h('div', { class: 'grow' }, `${productOf(x.pid).name}（ミィーム）…${x.bidders ? '最低落札価格に届かず' : '入札なし'}で流札`)));
     }
@@ -129,6 +132,7 @@ export function inventoryModal(s, onChange) {
         uids: g.units.slice(0, cur.qty).map((u) => u.uid),
         waiting: g.arrive > s.week,
         blocked: p.alcohol && flag(s, 'noAlcohol'),
+        authFail: g.authFail,
         canHere: platformsFor(s, u0).some((m) => m.id === platform) && !banned(s, platform),
       };
     }
@@ -180,7 +184,7 @@ export function inventoryModal(s, onChange) {
           h('p', {}, pf.desc),
           h('div', { class: 'nums' },
             h('span', {}, `手数料 ${Math.round(feeRate(s, market) * 100)}%${pf.perUnit ? `＋${pf.perUnit}円/個` : ''}`),
-            h('span', {}, market === 'ama' ? '送料：倉庫から出荷（不要）' : market === 'exp' ? `送料：3倍／為替 ×${(s.fx || 1).toFixed(2)}` : market === 'black' ? '送料：手渡し（不要）' : '送料：出品者負担'),
+            h('span', {}, market === 'ama' ? '送料：倉庫から出荷（不要）' : market === 'exp' ? `送料：3倍／為替 ×${(s.fx || 1).toFixed(2)}` : market === 'black' ? '送料：手渡し（不要）' : market === 'spec' ? '送料：鑑定センターへ（出品者負担）／相場×1.1で売れる' : '送料：出品者負担'),
             market === 'auc' ? h('span', {}, '価格は最低落札価格') : null,
           ),
         )
@@ -283,6 +287,7 @@ export function inventoryModal(s, onChange) {
           g.home ? h('span', { class: 'tag' }, `家の不用品・${p.genre}`) : null,
           editionTag(s, u0),
           g.damaged ? h('span', { class: 'tag bad' }, '傷あり') : null,
+          g.authFail ? h('span', { class: 'tag bad' }, '鑑定NG（偽物）') : null,
           g.expire !== null && g.expire !== undefined ? h('span', { class: 'tag bad' }, `賞味期限 ${weekLabel(g.expire)}まで`) : null,
           x.waiting ? h('span', { class: 'tag' }, `${weekLabel(g.arrive)}に届く`) : null,
           !x.waiting && kpiLevel(s) >= 2 ? h('span', { class: `tag ${days >= 90 ? 'bad' : ''}` }, `在庫${days}日`) : null,
@@ -364,7 +369,7 @@ export function inventoryModal(s, onChange) {
           h('div', { class: 'inv-sub' }, feelLbl, profitLbl),
           g.units.length > 1 ? h('div', { class: 'inv-line' }, h('span', {}, '個数'), slider(1, g.units.length, 1, cur.qty, (v) => { cur.qty = v; }), qtyLbl) : null,
           x.cap < Infinity ? h('div', { class: 'warn' }, `規制により、この販路では${yenFmt(x.cap)}までしか出品できない`) : null,
-          !x.canHere ? h('div', { class: 'warn' }, banned(s, platform) ? `${PLATFORMS[platform].name}は停止中` : `${PLATFORMS[platform].name}には出品できない（新品だけ）`) : null,
+          !x.canHere ? h('div', { class: 'warn' }, banned(s, platform) ? `${PLATFORMS[platform].name}は停止中` : `${PLATFORMS[platform].name}には出品できない（${PLATFORMS[platform].cats ? (x.authFail ? '鑑定NGの品' : 'スニーカー・トレカだけ') : platform === 'exp' ? '輸出規制' : '新品だけ'}）`) : null,
         ),
         selecting
           ? null

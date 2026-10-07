@@ -120,6 +120,7 @@ export function endWeek(s) {
     week: weekLabel(s.week),
     sold: sales.sold.map((x) => ({ pid: x.pid, price: x.price, platform: x.platform, net: x.net, profit: x.profit, delayed: !!x.delayed })),
     auctionsUnsold: sales.auctionsUnsold.map((x) => ({ pid: x.pid, bidders: x.bidders })),
+    authFailed: sales.authFailed,
     staminaUsed: sales.staminaUsed || 0,
     outsourced: sales.outsourced || 0,
     delayed: sales.delayed,

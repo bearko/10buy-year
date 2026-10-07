@@ -44,6 +44,10 @@ export function salesMails(st) {
       tone: 'good',
     });
   });
+  for (const x of st.authFailed || []) {
+    const p = productOf(x.pid);
+    mails.push({ from: 'ホンモノ堂', subject: `【ホンモノ堂】鑑定結果のお知らせ：${p.name}`, body: '鑑定の結果、正規品と確認できませんでした。お品物はご返送いたします。（出品は取り消されました）', tone: 'bad' });
+  }
   for (const x of st.auctionsUnsold) {
     const p = productOf(x.pid);
     mails.push({ from: 'ミィーム', subject: `【ミィーム】オークションが終了しました：${p.name}`, body: x.bidders ? '最低落札価格に届かず、落札者はいませんでした。' : '入札はありませんでした。再出品できます。', tone: 'bad' });

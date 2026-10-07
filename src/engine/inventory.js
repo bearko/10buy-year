@@ -1,5 +1,6 @@
 // 在庫・購入・出品の管理
 import { productOf, SIZE_INFO } from '../data/products.js';
+import { catOf } from './listing.js';
 import { chance } from './rng.js';
 import { addCash, hasSkill, record, yen } from './effects.js';
 import { yearOf } from './calendar.js';
@@ -18,6 +19,7 @@ export const PLATFORMS = {
   auc: { id: 'auc', node: 'ch_miime', name: 'ミィーム', fee: 0.1, desc: 'オークション。手数料10%。1週間で落札。コレクター品は競り上がりやすいが、入札ゼロもある' },
   ama: { id: 'ama', node: 'ch_amacri', name: 'アマクリ', fee: 0.15, perUnit: 300, desc: '大手EC・倉庫委託。手数料15%＋納品料300円/個。新品だけ出品でき、買い手が多く発送の手間がない' },
   exp: { id: 'exp', cert: 'export', name: '海外EC', fee: 0.13, desc: '海外のECサイト。手数料13%、送料3倍。為替で売値が変わり、円安の週は高く売れる' },
+  spec: { id: 'spec', stage: 2, cats: ['sneaker', 'tcg'], name: 'ホンモノ堂', fee: 0.2, desc: 'スニーカー・トレカの専門マーケット。手数料20%。品物はいったん鑑定センターを通るので、すり替えや偽物騒ぎが起きず、買い手は安心料として相場の1割増しで買う。偽物は鑑定ではじかれて戻ってくる' },
   black: { id: 'black', underworld: true, name: '裏市場', fee: 0.2, desc: '裏のサービス。仲介料20%。表の数倍の値で売れるが、表の人間には使えない' },
 };
 
@@ -26,12 +28,15 @@ export function platformOpen(s, pf) {
   if (s.underworld) return !!pf.underworld;
   if (pf.underworld) return false;
   if (pf.cert) return !!s.certs?.includes(pf.cert);
+  // 専門マーケット：ステージ2から（その商材の専門家なら最初から）
+  if (pf.stage) return s.stage >= pf.stage || (s.style?.type === 'spec' && pf.cats.includes(s.style.cat));
   return hasSkill(s, pf.node);
 }
 
 // 販路ごとの売値の倍率（海外ECは為替、裏市場は表の数倍）
 export function platformMult(s, platform) {
   if (platform === 'exp') return s.fx || 1;
+  if (platform === 'spec') return 1.1;
   if (platform === 'black') return 2.5 * (hasSkill(s, 'cap_dark') ? 1.2 : 1);
   return 1;
 }
@@ -52,6 +57,7 @@ export function platformsFor(s, u) {
     if (!platformOpen(s, pf)) return false;
     if (pf.id === 'ama' && (u?.used || u?.home || u?.damaged)) return false;
     if (pf.id === 'exp' && u && exportBlocked(s, u.pid)) return false; // 輸出規制
+    if (pf.cats && u && (!pf.cats.includes(catOf(u.pid)) || u.damaged || u.authFail)) return false; // 専門外・傷あり・鑑定NG
     return true;
   });
 }
@@ -177,8 +183,8 @@ export function removeUnit(s, uid) {
 export function groupInventory(s) {
   const groups = new Map();
   for (const u of s.inventory) {
-    const key = [u.pid, u.cost, u.edition || '', u.home ? 'home' : '', u.arrive > s.week ? 'wait' : '', u.damaged ? 'dmg' : '', u.listing ? `${u.listing.platform}:${u.listing.price}` : ''].join('|');
-    if (!groups.has(key)) groups.set(key, { key, pid: u.pid, cost: u.cost, units: [], listing: u.listing, arrive: u.arrive, damaged: u.damaged, expire: u.expire, home: u.home, edition: u.edition, week: u.week });
+    const key = [u.pid, u.cost, u.edition || '', u.home ? 'home' : '', u.arrive > s.week ? 'wait' : '', u.damaged ? 'dmg' : '', u.authFail ? 'ng' : '', u.listing ? `${u.listing.platform}:${u.listing.price}` : ''].join('|');
+    if (!groups.has(key)) groups.set(key, { key, pid: u.pid, cost: u.cost, units: [], listing: u.listing, arrive: u.arrive, damaged: u.damaged, authFail: u.authFail, expire: u.expire, home: u.home, edition: u.edition, week: u.week });
     groups.get(key).units.push(u);
   }
   return [...groups.values()];

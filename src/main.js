@@ -151,7 +151,7 @@ async function playSteps(steps) {
       case 'sales':
         if (isAuto()) {
           if (st.sold.length) await showInfo('今週の取引', [`${st.sold.length}件売れた（売上金 ${yenFmt(st.sold.reduce((a, x) => a + x.net, 0))}）`], 'good');
-        } else if (st.sold.length || st.auctionsUnsold.length) {
+        } else if (st.sold.length || st.auctionsUnsold.length || st.authFailed?.length) {
           // 売れた知らせはメールで届く。メールアプリを開いてから、まとめて取引結果を見る
           await mailbox(salesMails(st));
           await salesModal(state, st);

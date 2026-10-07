@@ -1199,3 +1199,29 @@ test('デイリーチャレンジ：同じ日なら同じシード、日が変�
   const b = createGame(dailySeed(key));
   assert.deepEqual(a.market, b.market);
 });
+
+test('専門マーケット：スニーカー・トレカだけ、ステージ2から。偽物は鑑定ではじかれ、本物は相場の1割増しで売れる', async () => {
+  const { platformsFor, addUnits } = await import('../src/engine/inventory.js');
+  const { resolveSales } = await import('../src/engine/sales.js');
+  const s = createGame(11);
+  s.flags.tutorialDone = true;
+  addUnits(s, 'boots', 1, 5000);
+  addUnits(s, 'sake', 1, 5000);
+  const [boots, sake] = s.inventory.slice(-2);
+  assert.ok(!platformsFor(s, boots).some((x) => x.id === 'spec'), 'ステージ1ではまだ使えない');
+  s.stage = 2;
+  assert.ok(platformsFor(s, boots).some((x) => x.id === 'spec'));
+  assert.ok(!platformsFor(s, sake).some((x) => x.id === 'spec'), '専門外のジャンルは出せない');
+  const t = createGame(11);
+  t.style = { type: 'spec', cat: 'tcg' };
+  addUnits(t, 'scroll', 1, 5000);
+  assert.ok(platformsFor(t, t.inventory.at(-1)).some((x) => x.id === 'spec'), 'その商材の専門家なら最初から');
+
+  boots.fake = true;
+  boots.listing = { platform: 'spec', price: 100, week: s.week };
+  const out = resolveSales(s);
+  assert.equal(out.authFailed.length, 1);
+  assert.ok(!out.sold.some((x) => x.uid === boots.uid));
+  assert.ok(boots.authFail && !boots.listing);
+  assert.ok(!platformsFor(s, boots).some((x) => x.id === 'spec'), '鑑定NGの品は出し直せない');
+});
