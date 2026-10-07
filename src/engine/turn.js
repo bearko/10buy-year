@@ -25,6 +25,7 @@ import { stageOf, yearStart } from './career.js';
 import { sumNet } from './kpi.js';
 import { info, offers, sfx, talk } from './steps.js';
 import { familyWeek } from './family.js';
+import { snsWeek } from './sns.js';
 
 export function startWeek(s) {
   const steps = [];
@@ -51,6 +52,7 @@ export function startWeek(s) {
     steps.push(talk('narr', '年明けの月曜。年末から休み中に売れた分の発送が、部屋に山積みになっている…。'), talk('chris', '梱包、梱包、梱包…。正月気分が一瞬で吹き飛んだ…。', 'cry'), info('年明けの発送ラッシュ', ['体力 -10']));
   }
   steps.push(...familyWeek(s));
+  if (s.week > 0) snsWeek(s);
   if (s.week > 0 && woy(s.week) === 0) steps.push(...yearStart(s, yearOf(s.week)));
 
   // 売上金の入金

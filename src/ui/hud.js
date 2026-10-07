@@ -5,6 +5,7 @@ import { minPayment } from '../engine/finance.js';
 import { goalOf, stageOf } from '../engine/career.js';
 import { currentMission } from '../engine/tutorial.js';
 import { $, clear, h, yenFmt } from './dom.js';
+import { openModal } from './modal.js';
 
 const MOOD_CLASS = ['m0', 'm1', 'm2', 'm3', 'm4'];
 
@@ -97,21 +98,32 @@ export function renderHud(s) {
   el.append(...rows.filter(Boolean));
 }
 
-// ニュース。はみ出すときは横にスクロールさせる（同じ内容なら描き直さない）
-let lastTicker = '';
-export function renderTicker(s) {
+// ニュースとSNS。7秒ごとに今週のニュースとSNSの投稿を順に流し、はみ出すときは横にスクロールさせる。
+// タップすると、ニュースとSNSのタイムラインを開く
+let tickerItems = [];
+let tickerKey = '';
+let tickerIdx = 0;
+let tickerTimer = null;
+let tickerState = null;
+
+function tickerList(s) {
+  const posts = (s.sns || []).filter((p) => p.week === s.week);
+  return [
+    ...(s.news || []).map((n) => ({ text: n.text, cls: `news ${n.kind}` })),
+    ...posts.map((p) => ({ who: p.who, text: p.text, cls: `sns ${p.kind}` })),
+  ];
+}
+
+function drawTicker() {
   const el = $('#news-ticker');
-  const item = s.news?.[0];
-  const key = item ? `${item.text}|${s.news.length}` : '';
-  if (key === lastTicker) return;
-  lastTicker = key;
   clear(el);
   el.classList.remove('scroll');
+  const item = tickerItems[tickerIdx % Math.max(1, tickerItems.length)];
   if (!item) return;
   const inner = h('div', { class: 'ticker-inner' },
-    h('span', { class: `news ${item.kind}` }, item.text),
-    s.news.length > 1 ? h('small', {}, ` ほか${s.news.length - 1}件`) : null,
-  );
+    item.who ? h('b', { class: 'tk-who' }, item.who) : null,
+    h('span', { class: item.cls }, item.text),
+    tickerItems.length > 1 ? h('small', {}, ` ${(tickerIdx % tickerItems.length) + 1}/${tickerItems.length}`) : null);
   el.append(inner);
   requestAnimationFrame(() => {
     const over = inner.scrollWidth - el.clientWidth;
@@ -119,6 +131,44 @@ export function renderTicker(s) {
     el.style.setProperty('--dist', `${-over - 16}px`);
     el.style.setProperty('--dur', `${Math.max(6, (over + 16) / 30 + 3)}s`);
     el.classList.add('scroll');
+  });
+}
+
+export function renderTicker(s) {
+  tickerState = s;
+  const el = $('#news-ticker');
+  if (!el.dataset.bound) {
+    el.dataset.bound = '1';
+    el.addEventListener('click', () => tickerState && timelineModal(tickerState));
+  }
+  const items = tickerList(s);
+  const key = items.map((x) => x.text).join('|');
+  if (key === tickerKey) return;
+  tickerKey = key;
+  tickerItems = items;
+  tickerIdx = 0;
+  drawTicker();
+  clearInterval(tickerTimer);
+  if (items.length > 1) {
+    tickerTimer = setInterval(() => {
+      tickerIdx++;
+      drawTicker();
+    }, 7000);
+  }
+}
+
+// ニュースとSNSのタイムライン
+function timelineModal(s) {
+  openModal('ニュースとSNS', (body) => {
+    body.append(h('div', { class: 'sub' }, '今週のニュース'));
+    if (!(s.news || []).length) body.append(h('p', { class: 'empty' }, 'ニュースはない'));
+    body.append(h('div', { class: 'news-list' }, ...(s.news || []).map((n) => h('div', { class: `news ${n.kind}` }, n.text))));
+    body.append(h('div', { class: 'sub' }, 'SNS'), h('p', { class: 'note' }, '「転売ヤー許さん」も「近くに売ってなくて助かった」も、どちらも本当の声。'));
+    const posts = (s.sns || []).slice(0, 30);
+    if (!posts.length) body.append(h('p', { class: 'empty' }, 'まだ投稿はない'));
+    body.append(...posts.map((p) => h('div', { class: `sns-post ${p.kind}` },
+      h('div', { class: 'sns-h' }, h('b', {}, p.who), h('small', {}, p.week === s.week ? '今週' : `${s.week - p.week}週前`)),
+      h('p', {}, p.text))));
   });
 }
 
