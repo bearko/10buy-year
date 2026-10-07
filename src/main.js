@@ -39,6 +39,7 @@ import { myStoreModal } from './ui/mystore.js';
 import { routineModal } from './ui/routine.js';
 import { storeMapModal } from './ui/storemap.js';
 import { packModal, photoModal } from './ui/worklife.js';
+import { quoteModal, seriModal } from './ui/pro.js';
 import { packTargets } from './engine/worklife.js';
 import { autoPick } from './engine/dealpolicy.js';
 import { pioneerLine } from './engine/pioneer.js';
@@ -169,6 +170,12 @@ async function playSteps(steps) {
         break;
       case 'photo':
         if (!isAuto()) await photoModal(state);
+        break;
+      case 'seri':
+        if (!isAuto() && !routineRun) await seriModal(state, st.lots);
+        break;
+      case 'quote':
+        if (!isAuto() && !routineRun) await quoteModal(state, st.offers);
         break;
       case 'mail':
         if (!isAuto()) await mailbox(st.mails, { button: '閉じる' });
