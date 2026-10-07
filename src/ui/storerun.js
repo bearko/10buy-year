@@ -1,7 +1,7 @@
 // 店舗巡り：閉店までの時間で店を回り、棚ごとに品定めして、カゴに入れた品をレジで買う。
 // 一覧ですべてを見比べるのではなく、その店・その棚の前で「買うか、買わないか」を決める。
 // 移動と棚を見る時間はスキル・目利き・車で短くなり、回れる店が増えていく（engine/sourcing.js）
-import { hhmm, soldHistory, storeTypesOf } from '../engine/sourcing.js';
+import { hhmm, soldHistory, soldMedian, storeTypesOf } from '../engine/sourcing.js';
 import { PRODUCTS, productImage, productOf } from '../data/products.js';
 import { CAST } from '../data/cast.js';
 import { folkEvent, storeFolk } from '../engine/storefolk.js';
@@ -394,7 +394,12 @@ export function storeMode(ctx) {
 }
 
 export function soldList(o) {
+  const med = soldMedian(o.soldHist);
+  const diff = Math.round((med / Math.max(1, o.est) - 1) * 100);
   return h('div', { class: 'sold-list' },
     ...o.soldHist.map((x) => h('div', { class: 'sold-row' }, h('span', { class: 'sold-tag' }, 'SOLD'), h('span', {}, x.ago), h('b', {}, yen(x.price)))),
+    h('div', { class: 'sold-sum' },
+      h('span', {}, '売れた値段の真ん中 ', h('b', {}, yen(med))),
+      h('small', {}, Math.abs(diff) < 3 ? `自分の見立て ${yen(o.est)} とほぼ同じ` : `自分の見立て ${yen(o.est)} より ${diff > 0 ? '+' : ''}${diff}%。見立ては目利きの経験とスキルで正確になる`)),
   );
 }
