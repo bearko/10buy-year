@@ -11,6 +11,9 @@ export const CAST = {
       sad: C('chris_08_sad'), talk: C('chris_speak_00_talk'), cry: C('chris_cry_01_cry'), wail: C('chris_cry_02_wail'),
     },
     blink: [C('chris_09_idle'), C('chris_10_blink'), C('chris_11_blink')],
+    // 口パク（話している間に順に切り替える）と、泣きのループ
+    speak: [C('chris_speak_01_talk'), C('chris_speak_02_talk'), C('chris_speak_03_talk'), C('chris_speak_04_talk'), C('chris_speak_00_talk')],
+    loops: { cry: [C('chris_cry_01_cry'), C('chris_cry_00_sad')], wail: [C('chris_cry_02_wail'), C('chris_cry_03_wail')] },
   },
   mine: {
     name: 'マイン',

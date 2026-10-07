@@ -37,6 +37,42 @@ export function showChris(pose = 'idle') {
   el.dataset.pose = pose;
   el.hidden = false;
   startBlink(pose);
+  startLoop(pose);
+}
+
+const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// 泣き顔はコマを切り替え続ける（しゃくり上げる）
+let loopTimer = null;
+function startLoop(pose) {
+  clearInterval(loopTimer);
+  const frames = CAST.chris.loops?.[pose];
+  if (!frames || reducedMotion()) return;
+  const el = $('#sprite-left');
+  let i = 0;
+  loopTimer = setInterval(() => {
+    if (el.dataset.pose !== pose) return clearInterval(loopTimer);
+    el.src = frames[++i % frames.length];
+  }, pose === 'wail' ? 260 : 520);
+}
+
+// 口パク：落ち着いた表情の台詞は、文字が出ている間だけ口のコマを切り替え、言い終えたらその表情になる
+const CALM = ['talk', 'sad', 'arms', 'smile', 'idle'];
+function startMouth(pose) {
+  const el = $('#sprite-left');
+  const frames = CAST.chris.speak;
+  if (!frames || reducedMotion()) return null;
+  el.dataset.pose = 'talk';
+  clearInterval(blinkTimer);
+  let i = 0;
+  const t = setInterval(() => {
+    if (el.dataset.pose !== 'talk') return clearInterval(t);
+    el.src = frames[i++ % frames.length];
+  }, 90);
+  return () => {
+    clearInterval(t);
+    if (el.dataset.pose === 'talk') showChris(pose);
+  };
 }
 
 function startBlink(pose) {
@@ -116,7 +152,9 @@ export async function say(who, text, pose) {
     showPartner(who, pose);
     if ($('#sprite-left').dataset.pose !== 'idle') showChris('idle');
   }
+  const stopMouth = who === 'chris' && CALM.includes(pose || 'talk') && textSpeed > 0 && !autoMode ? startMouth(pose || 'talk') : null;
   await typewrite(text);
+  stopMouth?.();
   box.classList.add('waiting');
   await waitAdvance();
   box.classList.remove('waiting');
