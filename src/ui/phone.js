@@ -9,6 +9,7 @@ import { portraitOf } from '../data/cast.js';
 import { productImage, productOf } from '../data/products.js';
 import { weekLabel } from '../engine/calendar.js';
 import { cardAvailable } from '../engine/inventory.js';
+import { addFamily } from '../engine/family.js';
 import {
   ADS, APPS, appOf, bidStep, hhmm, LATE_EXTRA, LATE_STAMINA, NEGO_OPTIONS, negotiate, PHONE_COST, settleAuction, soldHistory, getPhoneSessionTime,
 } from '../engine/sourcing.js';
@@ -354,7 +355,7 @@ export function phoneMode(ctx) {
         h('b', {}, `もう${hhmm(now)}だ…`),
         h('p', {}, '明日も仕入れと発送がある。そろそろ寝ないと。'),
         h('button', { class: 'btn primary', onclick: () => { finish(); ctx.render(); } }, '寝る'),
-        h('button', { class: 'btn', onclick: () => { late = true; prompt = null; s.stamina = Math.max(0, s.stamina - LATE_STAMINA); toast(`夜更かし…体力 -${LATE_STAMINA}`, 'bad'); ctx.onChange?.(); ctx.render(); } }, `夜更かしする（あと${LATE_EXTRA}分・体力 -${LATE_STAMINA}）`)));
+        h('button', { class: 'btn', onclick: () => { late = true; prompt = null; s.stamina = Math.max(0, s.stamina - LATE_STAMINA); addFamily(s, -2); toast(`夜更かし…体力 -${LATE_STAMINA}`, 'bad'); ctx.onChange?.(); ctx.render(); } }, `夜更かしする（あと${LATE_EXTRA}分・体力 -${LATE_STAMINA}）`)));
   }
 
   function doneView() {

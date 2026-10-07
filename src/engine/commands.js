@@ -10,6 +10,7 @@ import { woy } from './calendar.js';
 import { inBoom, priceOf } from './market.js';
 import { addUnits, overCapacity } from './inventory.js';
 import { drawEvents } from './events.js';
+import { addFamily } from './family.js';
 import { attendCourse, courseAvailable } from './courses.js';
 import { openShopSteps } from './mystore.js';
 import { pioneerTick } from './pioneer.js';
@@ -321,11 +322,13 @@ const HANDLERS = {
   },
   play(s) {
     s.stats.playCount = (s.stats.playCount || 0) + 1;
+    addFamily(s, 4);
     const d = addMood(s, 1);
     return [sfx('heal'), narr(pick(s, ['公園でぼーっとした。スマホの通知はオフにした。', '喫茶店で、相場のことを考えずにコーヒーを飲んだ。'])), info('リフレッシュ', ['体力 +15', d ? 'やる気が上がった' : ''], 'good')];
   },
   rest(s) {
     const heal = restHeal(s);
+    addFamily(s, 3);
     addStamina(s, heal);
     const lines = [sfx('heal'), narr(s.sick > 0 ? '布団から出られない…。' : 'ぐっすり眠った。'), info('休養', [`体力 +${heal}`], 'good')];
     if (s.sick > 0) s.sick--;
