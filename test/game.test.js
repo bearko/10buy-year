@@ -1598,3 +1598,18 @@ test('ステージ4〜5：スタッフの採用と育成、税務調査、事業
   assert.ok(s.over === 'exit' && !s.staff, '売却すると引退（イグジットEND）');
   assert.ok(cash > 0);
 });
+
+import { quickList } from '../src/engine/automation.js';
+import { listingCap, listedUnits } from '../src/engine/inventory.js';
+test('仕入れ後すぐ出品：新しく仕入れた品を相場で出品し、出品枠を超えない', () => {
+  const s = createGame(3);
+  s.cash = 1e7;
+  const before = new Set(s.inventory.map((u) => u.uid));
+  assert.equal(buy(s, { oid: 1, pid: 'boots', price: 3000, maxQty: 3, points: 0, fakeRate: 0 }, 3, 'cash').ok, true);
+  const fresh = s.inventory.filter((u) => !before.has(u.uid)).map((u) => u.uid);
+  const r = quickList(s, fresh);
+  assert.ok(r.listed > 0 && r.total > 0);
+  assert.ok(listedUnits(s).length <= listingCap(s));
+  // 以前から持っていた品は出品されない
+  assert.ok(s.inventory.filter((u) => before.has(u.uid)).every((u) => !u.listing));
+});
