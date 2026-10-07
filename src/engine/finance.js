@@ -18,7 +18,7 @@ import { yearOf } from './calendar.js';
 export const DIFFICULTIES = {
   easy: { name: 'やさしい', debt: 800000, minPay: 20000, rate: 0.1, desc: '借金80万円・最低返済 月2万円・年利10%。まずは転売の流れを楽しみたい人に' },
   normal: { name: 'ふつう', debt: 1500000, minPay: 30000, rate: 0.15, desc: '借金150万円・最低返済 月3万円・年利15%。おすすめ' },
-  hard: { name: 'きびしい', debt: 3000000, minPay: 50000, rate: 0.18, desc: '借金300万円・最低返済 月5万円・年利18%。序盤の資金繰りがきつい' },
+  hard: { name: 'きびしい', debt: 2500000, minPay: 40000, rate: 0.18, desc: '借金250万円・最低返済 月4万円・年利18%。序盤の資金繰りがきつい' },
 };
 export const difficultyOf = (s) => DIFFICULTIES[s.difficulty] || DIFFICULTIES.normal;
 export const minPayment = (s) => difficultyOf(s).minPay;
