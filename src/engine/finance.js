@@ -84,6 +84,14 @@ export function monthEnd(s) {
   }
   s.card.due = s.card.current;
   s.card.current = 0;
+  // 利用代金の確定メール（引き落としは来月末）。残高が足りなそうなら、リボの勧誘も届く
+  if (s.card.due > 0) {
+    const short = s.cash < s.card.due;
+    steps.push({ t: 'mail', mails: [
+      { from: 'マイクリカード', subject: '【マイクリカード】ご利用代金確定のお知らせ', body: `今月のご利用代金は ${yen(s.card.due)} です。来月末に、ご指定の口座から引き落とします。（現在の口座残高 ${yen(Math.max(0, s.cash))}）`, tone: short ? 'bad' : '' },
+      ...(short ? [{ from: 'マイクリカード', subject: '【ご案内】毎月のお支払いを一定に「あとからリボ」', body: 'お支払いが厳しい月も安心！ 毎月の支払額を一定にできます。※手数料は年15%です。残高不足の分は、自動でリボ払いになります。', tone: 'spam' }] : []),
+    ] });
+  }
   if (s.cardPoints > 0) {
     s.points += s.cardPoints;
     steps.push(info('カードポイント', [`${s.cardPoints.toLocaleString()}pt が付与された`], 'good'));

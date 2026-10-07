@@ -1334,3 +1334,23 @@ test('店のクセ：3回通うと覚える。クセは周ごとに決まって�
   assert.equal(of.run.clock.start, 600, '朝10時から回れる');
   assert.equal(s.cash, 94000, '交通費');
 });
+
+test('撮影の出来で売れ行きが変わり、箱が大きすぎると送料が上がる。カードの利用代金は確定メールが届く', async () => {
+  const { applyPhoto, listBoostOf, boxFit, oversizeCost, packTargets } = await import('../src/engine/worklife.js');
+  const s = createGame(41);
+  s.listBoost = true;
+  assert.equal(listBoostOf(s), 1.25, 'オートは標準の出来');
+  assert.equal(applyPhoto(s, { bg: 'floor', light: 'fluor', shots: 3 }).boost, 1.1);
+  const st = s.stamina;
+  assert.equal(applyPhoto(s, { bg: 'white', light: 'ring', shots: 10 }).boost, 1.34);
+  assert.equal(s.stamina, st - 4, '10枚撮ると疲れる');
+  assert.equal(boxFit('scroll', 60), 'ok');
+  assert.equal(boxFit('boots', 60), 'small');
+  assert.equal(boxFit('scroll', 100), 'big');
+  assert.equal(oversizeCost('scroll', 100), 360);
+  assert.deepEqual(packTargets(s, [{ pid: 'boots', platform: 'ama' }, { pid: 'boots', platform: 'merc' }]).length, 1);
+  s.card.current = 30000;
+  s.cash = 1000000;
+  const steps = monthEnd(s);
+  assert.ok(steps.some((x) => x.t === 'mail' && x.mails[0].subject.includes('ご利用代金確定')));
+});

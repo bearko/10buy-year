@@ -10,6 +10,7 @@ import { onSaleDept } from './collection.js';
 import { audienceFromSale, consignPayout } from './careers.js';
 import { addExpense, addHours, recordSale } from './kpi.js';
 import { perk } from './perks.js';
+import { listBoostOf } from './worklife.js';
 
 export const OUTSOURCE_SHIP_FEE = 400;
 
@@ -31,7 +32,7 @@ export function unitValue(s, u) {
 
 // 「買い手の人数」を決めて、安い出品から順に売れるか判定する（プンシー・アマクリ共通）
 function fixedPriceMarket(s, units, buyers, platform, out, allowNego, mult = 1) {
-  const boost = s.listBoost ? 1.25 : 1;
+  const boost = listBoostOf(s);
   const rf = ratingFactor(s);
   for (const u of units.sort((a, b) => a.listing.price - b.listing.price)) {
     const ratio = u.listing.price / Math.max(1, unitPrice(s, u) * (typeof mult === 'function' ? mult(u) : mult));
@@ -46,7 +47,7 @@ function fixedPriceMarket(s, units, buyers, platform, out, allowNego, mult = 1) 
 
 export function resolveSales(s) {
   const out = { sold: [], negotiations: [], troubles: [], delayed: 0, damaged: [], auctionsUnsold: [], authFailed: [] };
-  const boost = s.listBoost ? 1.25 : 1;
+  const boost = listBoostOf(s);
   const rf = ratingFactor(s);
 
   for (const p of PRODUCTS) {

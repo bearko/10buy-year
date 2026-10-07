@@ -5,6 +5,7 @@ import { addCash, addExp, addHate, addMood, addStamina, addToku, clamp, flag, ha
 import { auctionOffers, lotteryEntries, lotteryWinRate, onlineOffers, openLotteries, queueOffer, queueSuccessRate, queueTargets, storeOfferCount, storeOffers, wholesaleOffers, importOffers } from './offers.js';
 import { importOpen, INSPECT_FEE } from './importer.js';
 import { pickRegion } from './storemap.js';
+import { listBoostOf } from './worklife.js';
 import { hasCar } from './lifestyle.js';
 
 export const EXPEDITION_AFTER = 10; // 店舗せどりを何回したら遠征できるか
@@ -344,10 +345,11 @@ const HANDLERS = {
     ];
   },
   listing(s) {
-    s.listBoost = true;
+    s.listBoost = true; // 画面では撮影の出来で決まる（engine/worklife.js）
     return [
       talk('chris', pick(s, ['自然光で撮り直して、箱の角まで写す！', '説明文に「喫煙者・ペットなし」「即日発送」…と。', 'ハッシュタグもつけて検索に引っかかるように！']), 'guts'),
-      info('出品作業', ['今週の売れ行き×1.25']),
+      { t: 'photo' },
+      { t: 'defer', run: () => [info('出品作業', [`今週の売れ行き×${listBoostOf(s).toFixed(2)}`])] },
     ];
   },
   meetup(s) {

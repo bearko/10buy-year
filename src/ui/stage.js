@@ -24,10 +24,41 @@ export function setTextSpeed(ms) {
   textSpeed = ms;
 }
 
+let bgName = null;
 export function setBackground(name) {
   const img = $('#stage-bg');
   const src = BG(name);
   if (img.getAttribute('src') !== src) img.src = src;
+  bgName = name;
+  const boxes = $('#stage-boxes');
+  if (boxes) boxes.hidden = name !== 'home';
+}
+
+// 部屋に積み上がる段ボール（置き場の埋まり具合）。家の背景のときだけ見える
+const STACKS = [3, 88, 13, 78, 23, 68, 33, 58];
+export function setClutter(ratio) {
+  let el = $('#stage-boxes');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'stage-boxes';
+    $('#stage-bg').after(el);
+  }
+  el.hidden = bgName !== 'home';
+  const n = Math.max(0, Math.min(STACKS.length * 4, Math.round(ratio * 20)));
+  if (el.dataset.n === String(n)) return;
+  el.dataset.n = String(n);
+  el.replaceChildren();
+  for (let i = 0; i < n; i++) {
+    const col = i % STACKS.length;
+    const row = Math.floor(i / STACKS.length);
+    const b = document.createElement('i');
+    b.className = 'box';
+    b.style.left = `${STACKS[col] + ((row * 3) % 5) - 2}%`;
+    b.style.bottom = `${row * 15}%`;
+    b.style.setProperty('--w', `${46 + ((i * 7) % 14)}px`);
+    el.append(b);
+  }
+  el.classList.toggle('over', ratio > 1);
 }
 
 // 左は常にクリス、右は話し相手

@@ -6,7 +6,7 @@ import { availableCommands, availableNightCommands, COMMAND_MAP, commandPreview,
 import { claimableNodes } from './engine/abilities.js';
 import { hasSkill, MOOD_MULT } from './engine/effects.js';
 import { finalResult } from './engine/ending.js';
-import { activeUnits, idleListing, listedUnits } from './engine/inventory.js';
+import { activeUnits, capacity, idleListing, listedUnits, spaceUsed } from './engine/inventory.js';
 import { autoBuy } from './engine/automation.js';
 import { clearSave, loadDaily, loadGame, loadLegacy, loadMentors, loadRanking, loadRecords, pushDaily, pushLegacy, pushMentor, pushRanking, pushRecords, saveGame } from './engine/save.js';
 import { mentorRecord } from './engine/mentor.js';
@@ -22,7 +22,7 @@ import { playBgm, playSe, setSound, soundOn } from './ui/audio.js';
 import { $, clear, h, wait, yenFmt } from './ui/dom.js';
 import { renderHud, renderParams, renderTicker, setPreview } from './ui/hud.js';
 import { confirmBox, openModal, toast } from './ui/modal.js';
-import { choose, hidePartner, isAuto, say, setAuto, setBackground, setLogger, setMessage, setTextSpeed, showChris, showInfo } from './ui/stage.js';
+import { choose, hidePartner, isAuto, say, setAuto, setBackground, setClutter, setLogger, setMessage, setTextSpeed, showChris, showInfo } from './ui/stage.js';
 import { bizModal, menuModal } from './ui/status.js';
 import { openTree } from './ui/tree.js';
 import { groupItems, showItems } from './ui/loot.js';
@@ -38,6 +38,8 @@ import { queueScene } from './ui/queue.js';
 import { myStoreModal } from './ui/mystore.js';
 import { routineModal } from './ui/routine.js';
 import { storeMapModal } from './ui/storemap.js';
+import { packModal, photoModal } from './ui/worklife.js';
+import { packTargets } from './engine/worklife.js';
 import { autoPick } from './engine/dealpolicy.js';
 import { pioneerLine } from './engine/pioneer.js';
 import { satLine } from './engine/rivals.js';
@@ -156,11 +158,17 @@ async function playSteps(steps) {
           // 売れた知らせはメールで届く。メールアプリを開いてから、まとめて取引結果を見る
           await mailbox(salesMails(st));
           await salesModal(state, st);
+          // 自分で発送する品が少しなら、箱を選んで梱包する（多いときと、チュートリアル中は省く）
+          const pack = packTargets(state, st.sold);
+          if (pack.length && pack.length <= 6 && tutorialDone(state)) await packModal(state, pack);
         }
         else if (listedUnits(state).length) await showInfo('今週の取引', ['1つも売れなかった…'], 'bad');
         break;
       case 'queue':
         if (!isAuto()) await queueScene(st);
+        break;
+      case 'photo':
+        if (!isAuto()) await photoModal(state);
         break;
       case 'mail':
         if (!isAuto()) await mailbox(st.mails, { button: '閉じる' });
@@ -221,6 +229,7 @@ function refresh() {
   if (!document.body.classList.contains('gain-flash')) renderParams(state);
   renderTicker(state);
   renderTabs();
+  setClutter(spaceUsed(state) / Math.max(1, capacity(state))); // 部屋の段ボール
 }
 
 // ---------------- ルーティン ----------------
