@@ -66,8 +66,8 @@ export function salesModal(s, step) {
     if (step.sold.length) {
       body.append(
         h('div', { class: 'summary' },
-          h('span', {}, `売上金 ${yenFmt(totalNet)}（週明けに入金）`),
-          canCalc(s) ? h('span', { class: totalProfit >= 0 ? 'pos' : 'neg' }, `利益 ${signYen(totalProfit)}`) : null,
+          h('span', {}, `${step.sold.length > 1 ? '合計の' : ''}売上金 ${yenFmt(totalNet)}（週明けに入金）`),
+          canCalc(s) && step.sold.length > 1 ? h('span', { class: totalProfit >= 0 ? 'pos' : 'neg' }, `合計の利益 ${signYen(totalProfit)}`) : null,
           step.staminaUsed ? h('span', {}, `梱包・発送で体力 -${step.staminaUsed}`) : null,
           step.outsourced ? h('span', {}, `外注が${step.outsourced}件発送`) : null,
         ),
@@ -314,8 +314,10 @@ export function inventoryModal(s, onChange) {
         profitLbl.className = canCalc(s) ? (profit >= 0 ? 'pos' : 'neg') : 'muted';
         profitLbl.textContent = canCalc(s) ? `利益 ${signYen(profit)}/個` : '';
         qtyLbl.textContent = `${cur.qty}個`;
-        listBtn.textContent = g.listing ? `価格変更（${yenFmt(y.price)}）` : `出品（${yenFmt(y.price)}）`;
-        buyBtn.textContent = `即決買取（${yenFmt(y.quote * cur.qty)}）`;
+        // 出品と即決買取の金額を、同じ「1個の値段×個数」で比べられるようにする
+        const per = (v) => (cur.qty > 1 ? `${yenFmt(v)}×${cur.qty}` : yenFmt(v));
+        listBtn.textContent = g.listing ? `価格変更（${per(y.price)}）` : `出品（${per(y.price)}）`;
+        buyBtn.textContent = `即決買取（${per(y.quote)}）`;
         updateBulk();
       };
       const slider = (min, max, step, value, onInput) => h('input', { type: 'range', class: 'inv-range', min, max, step, value: String(value), oninput: (e) => { onInput(Number(e.target.value)); update(); } });
