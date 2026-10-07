@@ -29,6 +29,7 @@ import { groupItems, showItems } from './ui/loot.js';
 import { celebrate, goalPopup } from './ui/goal.js';
 import { logModal, pushLog } from './ui/log.js';
 import { offersModal } from './ui/shop.js';
+import { listNowPrompt } from './ui/listnow.js';
 import { autoVisible } from './engine/sourcing.js';
 import { mailbox, salesMails } from './ui/mail.js';
 import { checkQuests } from './engine/quests.js';
@@ -149,15 +150,21 @@ async function playSteps(steps) {
           if (st.autoBought?.length) toast(`外注が${st.autoBought.length}件を仕入れた`, 'good');
           if (routineRun) routineRun.week.bought.push(...routineBuy(state, autoVisible(st, state), routineRun.cfg));
         } else {
+          const before = new Set(state.inventory.map((u) => u.uid));
           const got = await offersModal(state, st, refresh);
           refresh();
           await showItems(state, '仕入れた商品', groupItems(got || []), { se: false });
+          await listNowPrompt(state, before, refresh); // 仕入れたその場で出品もできる
         }
         break;
       }
       case 'gallery':
         // 百貨店の美術画廊（ルーティン・オート中は寄らない）
-        if (!isAuto()) await galleryModal(state, st, refresh);
+        if (!isAuto()) {
+          const before = new Set(state.inventory.map((u) => u.uid));
+          await galleryModal(state, st, refresh);
+          await listNowPrompt(state, before, refresh);
+        }
         break;
       case 'items':
         await showItems(state, st.title, groupItems(st.list), st.opts || {});
@@ -182,13 +189,25 @@ async function playSteps(steps) {
         if (!isAuto()) await photoModal(state);
         break;
       case 'kuji':
-        if (!isAuto() && !routineRun) await kujiModal(state);
+        if (!isAuto() && !routineRun) {
+          const before = new Set(state.inventory.map((u) => u.uid));
+          await kujiModal(state);
+          await listNowPrompt(state, before, refresh);
+        }
         break;
       case 'seri':
-        if (!isAuto() && !routineRun) await seriModal(state, st.lots);
+        if (!isAuto() && !routineRun) {
+          const before = new Set(state.inventory.map((u) => u.uid));
+          await seriModal(state, st.lots);
+          await listNowPrompt(state, before, refresh);
+        }
         break;
       case 'quote':
-        if (!isAuto() && !routineRun) await quoteModal(state, st.offers);
+        if (!isAuto() && !routineRun) {
+          const before = new Set(state.inventory.map((u) => u.uid));
+          await quoteModal(state, st.offers);
+          await listNowPrompt(state, before, refresh);
+        }
         break;
       case 'mail':
         if (!isAuto()) await mailbox(st.mails, { button: '閉じる' });

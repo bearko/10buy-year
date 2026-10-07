@@ -21,19 +21,35 @@ export function bestPlatform(s, u) {
   return ids[0] || null;
 }
 
+// 相場どおりの出品先と値段（オークションは開始価格を相場の75%に）
+export function marketListing(s, u) {
+  if (productOf(u.pid).alcohol && s.flags.noAlcohol) return null;
+  const pf = bestPlatform(s, u);
+  if (!pf) return null;
+  const est = estimateUnit(s, u);
+  return { platform: pf, price: Math.round((pf === 'auc' ? est * 0.75 : est * 1.02) * platformMult(s, pf, u)) };
+}
+
+// 指定した在庫を、それぞれ合った販路に相場で出品する。出品できた数と、出品額の合計を返す
+export function quickList(s, uids) {
+  let n = 0;
+  let total = 0;
+  for (const uid of uids) {
+    const u = s.inventory.find((x) => x.uid === uid);
+    if (!u || u.listing || u.arrive > s.week) continue;
+    const m = marketListing(s, u);
+    if (!m) continue;
+    const k = listUnits(s, [uid], m.platform, m.price);
+    n += k;
+    if (k) total += u.listing.price;
+  }
+  return { listed: n, total };
+}
+
 // 外注：撮影・出品 … 未出品の在庫を相場で出品する
 export function autoList(s) {
   if (!hasSkill(s, 'out_list')) return 0;
-  let n = 0;
-  for (const u of activeUnits(s)) {
-    if (u.listing) continue;
-    if (productOf(u.pid).alcohol && s.flags.noAlcohol) continue;
-    const pf = bestPlatform(s, u);
-    if (!pf) continue;
-    const est = estimateUnit(s, u);
-    n += listUnits(s, [u.uid], pf, (pf === 'auc' ? est * 0.75 : est * 1.02) * platformMult(s, pf, u));
-  }
-  return n;
+  return quickList(s, activeUnits(s).filter((u) => !u.listing).map((u) => u.uid)).listed;
 }
 
 // 価格改定ツール … 2週以上売れていない出品を5%ずつ下げる（推定相場の85%まで）
