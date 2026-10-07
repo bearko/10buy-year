@@ -1,5 +1,6 @@
 // 相場シミュレーション。商品ごとに「定価に対する倍率（premium）」を持ち、毎週動かす。
 import { catOf } from './listing.js';
+import { specErr } from './style.js';
 import { madeToOrder, usedRegimeMult } from './regimes.js';
 import { AUD_OF } from '../data/careers.js';
 import { PRODUCTS, productOf } from '../data/products.js';
@@ -267,6 +268,7 @@ export function estimateError(s) {
 export function estimateAt(s, pid, week, truePrice) {
   let amp = estimateError(s);
   if (s.certs?.includes(`appraise_${catOf(pid)}`)) amp *= 0.8; // ジャンル別の目利き講座
+  amp *= specErr(s, pid); // 商材特化：専門は鋭く、専門外はぶれる
   const noise = (hashNoise(s.seed, week, PRODUCT_INDEX[pid]) * 2 - 1) * amp;
   const bias = hasSkill(s, 'optimist') ? 0.1 : 0;
   return roundPrice(truePrice * (1 + noise + bias));

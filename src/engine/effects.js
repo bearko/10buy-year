@@ -39,7 +39,7 @@ export function addRating(s, n) {
 }
 
 export function addHate(s, n, toku = true) {
-  const mult = n > 0 && hasSkill(s, 'burned') ? 1.5 : 1;
+  const mult = n > 0 ? (hasSkill(s, 'burned') ? 1.5 : 1) * (s.style?.type === 'org' ? 1.5 : 1) : 1; // 組織型は目立つ
   s.hate = clamp(s.hate + n * mult, 0, 100);
   // 炎上するようなこと（規約違反・偽物…）をすると徳も下がる。逆も同じ。
   // ふだんの商売の炎上（高値の転売・行列・自然に冷める分）は徳には響かない（toku = false）

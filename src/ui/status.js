@@ -3,6 +3,7 @@ import { productOf } from '../data/products.js';
 import { weekLabel } from '../engine/calendar.js';
 import { debtFreeSteps, difficultyOf, minPayment, repay } from '../engine/finance.js';
 import { agingChart, profitChart } from './charts.js';
+import { styleLabel, styleOf } from '../engine/style.js';
 import { computeKpis, formatKpi, KPI_DEFS, kpiLevel } from '../engine/kpi.js';
 import { STAGES, stageOf, stageProgress } from '../engine/career.js';
 import { grossProfit } from '../engine/state.js';
@@ -75,6 +76,7 @@ export function bizModal(s, onChange, playSteps) {
         row('借金', yenFmt(s.debt), s.debt ? 'neg' : ''),
         row('毎月の最低返済', s.debt ? `${yenFmt(Math.min(minPayment(s), s.debt))}（毎月第4週末）` : 'なし'),
         row('難易度', `${difficultyOf(s).name}（年利${Math.round(difficultyOf(s).rate * 100)}%）${s.daily ? `・${s.daily} のチャレンジ` : ''}`),
+        styleOf(s) !== 'normal' ? row('キャリアの型', styleLabel(s)) : null,
         row('カード 今月の利用', `${yenFmt(s.card.current)}（来月末に引き落とし）`),
         row('カード 今月末の引き落とし', yenFmt(s.card.due)),
         row('連続滞納', `${s.delinquency} / 3 か月`, s.delinquency ? 'neg' : ''),

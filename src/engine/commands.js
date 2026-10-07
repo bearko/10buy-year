@@ -11,6 +11,7 @@ import { inBoom, priceOf } from './market.js';
 import { addUnits, overCapacity } from './inventory.js';
 import { drawEvents } from './events.js';
 import { addFamily } from './family.js';
+import { canAskMentor, mentorSteps } from './mentor.js';
 import { attendCourse, courseAvailable } from './courses.js';
 import { openShopSteps } from './mystore.js';
 import { pioneerTick } from './pioneer.js';
@@ -57,6 +58,7 @@ export const COMMANDS = [
   { id: 'buying', group: 'buy', icon: E(2172), career: 'select', name: '海外買い付け', desc: 'ファッションの品を卸値で買い付ける（技術25）', stamina: 16, exp: { act: 6, info: 4 }, hours: 8, bg: 'event' },
   { id: 'appraise_job', group: 'out', icon: E(3102), career: 'appraiser', name: '鑑定の依頼', desc: '持ち込まれた品を鑑定して手数料を稼ぐ（情報20・精神10）', stamina: 8, exp: { mind: 4 }, hours: 4, bg: 'study' },
   { id: 'review', group: 'out', icon: E(1158), career: 'media', name: 'レビュー記事を書く', desc: '読者を増やす。読者が多いほど毎月の紹介料（情報30）', stamina: 8, exp: { tech: 6 }, hours: 4, bg: 'home' },
+  { id: 'mentor', group: 'out', icon: 'assets/characters/chris_01_arms_crossed.png', name: '師匠に相談', desc: '前の周の転売屋に電話で相談する（12週に1回）', stamina: 0, exp: {}, hours: 1, bg: 'home' },
   { id: 'card_up', group: 'out', icon: I('cp.png'), name: 'カード増枠の申請', desc: 'カード会社に利用枠の引き上げを申し込む。審査あり', stamina: 3, exp: { mind: 2 }, hours: 1, bg: 'study' },
   { id: 'license', group: 'out', icon: E(4016), node: 'license', name: '古物商許可を申請', desc: '警察署へ。許可まで約6週間', stamina: 8, exp: { info: 5, mind: 3 }, cost: 19000, hours: 3, bg: 'study' },
 ];
@@ -85,6 +87,7 @@ export function availableCommands(s) {
     if (c.id === 'open_shop') return !s.shop && !!s.certs?.includes('store_mgmt') && !s.underworld;
     if (c.id === 'donate') return s.stage >= 2 && !s.underworld;
     if (c.id === 'dept') return s.stage >= DEPT_STAGE && !s.underworld;
+    if (c.id === 'mentor') return canAskMentor(s);
     if (c.id === 'card_up') return nextCardTier(s) !== null && s.week >= (flag(s, 'cardApplied') ?? -99) + 8;
     return true;
   });
@@ -122,6 +125,7 @@ export function staminaCost(s, cmd) {
   if (cmd.id === 'store' && hasSkill(s, 'backpain')) cost = Math.round(cost * 1.3);
   if (cmd.id === 'store') cost = Math.round(cost * perk(s, 'storeStamina'));
   if (['store', 'auction', 'wholesale'].includes(cmd.id) && (s.lifestyle || 0) >= 2) cost = Math.round(cost * 0.85); // 車がある
+  if (cmd.group === 'buy' && s.style?.type === 'org') cost = Math.round(cost * 0.7); // 組織型：足を使うのはスタッフ
   return cost;
 }
 
@@ -333,6 +337,9 @@ const HANDLERS = {
     const lines = [sfx('heal'), narr(s.sick > 0 ? '布団から出られない…。' : 'ぐっすり眠った。'), info('休養', [`体力 +${heal}`], 'good')];
     if (s.sick > 0) s.sick--;
     return lines;
+  },
+  mentor(s) {
+    return mentorSteps(s);
   },
   open_shop(s) {
     return openShopSteps(s);

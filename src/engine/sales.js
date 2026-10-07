@@ -1,5 +1,6 @@
 // 週末の販売処理。出品中の在庫が売れたかどうか、発送、トラブル発生を判定する。
 import { PRODUCTS, productOf, shipFor, shippingCost, SIZE_INFO } from '../data/products.js';
+import { specBuyers } from './style.js';
 import { chance, gauss, poisson, randRange, weightedPick } from './rng.js';
 import { addHate, addRating, addStamina, hasSkill } from './effects.js';
 import { demandOf, roundPrice, unitPrice } from './market.js';
@@ -51,7 +52,7 @@ export function resolveSales(s) {
   for (const p of PRODUCTS) {
     const units = s.inventory.filter((u) => u.pid === p.id && u.listing);
     if (!units.length) continue;
-    const d = demandOf(s, p) * perk(s, 'buyers');
+    const d = demandOf(s, p) * perk(s, 'buyers') * specBuyers(s, p.id);
 
     // プンシー（フリマ）
     const shops = hasSkill(s, 'ch_shops') ? 1.3 : 1;

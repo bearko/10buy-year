@@ -8,9 +8,11 @@ import { hasSkill, MOOD_MULT } from './engine/effects.js';
 import { finalResult } from './engine/ending.js';
 import { activeUnits, idleListing, listedUnits } from './engine/inventory.js';
 import { autoBuy } from './engine/automation.js';
-import { clearSave, loadDaily, loadGame, loadLegacy, loadRanking, pushDaily, pushLegacy, pushRanking, saveGame } from './engine/save.js';
+import { clearSave, loadDaily, loadGame, loadLegacy, loadMentors, loadRanking, pushDaily, pushLegacy, pushMentor, pushRanking, saveGame } from './engine/save.js';
+import { mentorRecord } from './engine/mentor.js';
 import { SKILL_MAP, SKILLS } from './data/skills.js';
 import { dailyLabel, dailySeed, todayKey } from './engine/daily.js';
+import { SPECIALTIES, STYLES, styleLabel, styleOf } from './engine/style.js';
 import { createGame } from './engine/state.js';
 import { endWeek, startWeek } from './engine/turn.js';
 import { checkTutorial, currentMission, treeOpen, tutorialDone } from './engine/tutorial.js';
@@ -642,6 +644,21 @@ function pickLegacy(ids) {
   return m.closed.then(() => pick);
 }
 
+// キャリアの型を選ぶ（10年を一度でも走りきったら選べる）。やめたら null
+function pickStyle() {
+  let pick = null;
+  const m = openModal('キャリアの型', (body, api) => {
+    body.append(h('p', { class: 'note' }, '一度10年を走りきった転売屋は、最初から「型」を決めて始められる。'));
+    body.append(h('button', { class: 'btn diff-btn primary', onclick: () => { pick = { type: 'normal' }; api.close(); } }, h('b', {}, STYLES.normal.name), h('small', {}, STYLES.normal.desc)));
+    body.append(h('div', { class: 'sub' }, `${STYLES.spec.name}`), h('p', { class: 'note' }, STYLES.spec.desc));
+    for (const [cat, name] of Object.entries(SPECIALTIES)) {
+      body.append(h('button', { class: 'btn diff-btn', onclick: () => { pick = { type: 'spec', cat }; api.close(); } }, h('b', {}, `${name}専門`), h('small', {}, `${name}の見立てのぶれ0.4倍・真贋の細部+2か所・専門の掘り出し物・買い手1.25倍（専門外の見立ては1.15倍ぶれる）`)));
+    }
+    body.append(h('div', { class: 'sub' }, STYLES.org.name), h('button', { class: 'btn diff-btn', onclick: () => { pick = { type: 'org' }; api.close(); } }, h('b', {}, STYLES.org.name), h('small', {}, STYLES.org.desc)));
+  }, { closeLabel: 'やめる' });
+  return m.closed.then(() => pick);
+}
+
 async function newGame({ daily = null } = {}) {
   const difficulty = daily ? 'normal' : await pickDifficulty();
   if (!difficulty) return;
@@ -649,7 +666,12 @@ async function newGame({ daily = null } = {}) {
   const legacyIds = daily ? [] : loadLegacy().filter((id) => SKILL_MAP[id]);
   const legacy = legacyIds.length ? await pickLegacy(legacyIds) : '';
   if (legacy === null) return;
+  const veteran = !daily && loadRanking().some((r) => !r.daily);
+  const style = veteran ? await pickStyle() : { type: 'normal' };
+  if (!style) return;
   state = createGame(daily ? dailySeed(daily) : undefined, difficulty);
+  state.style = style;
+  if (!daily && loadMentors()[0]) state.mentor = loadMentors()[0]; // いちばん新しい前の周の転売屋が師匠になる
   if (daily) state.daily = daily;
   if (legacy) {
     state.skills.push(legacy);
@@ -727,7 +749,7 @@ function rankingModal() {
     body.append(h('div', { class: 'sub' }, 'これまでの記録'));
     const list = loadRanking();
     if (!list.length) body.append(h('p', { class: 'empty' }, 'まだ記録がない'));
-    list.forEach((r, i) => body.append(h('div', { class: 'card row' }, h('div', { class: `rank r${r.rank}` }, r.rank), h('div', { class: 'grow' }, h('div', { class: 'name' }, `${i + 1}位 ${yenFmt(r.netWorth)}`), h('small', {}, `${r.daily ? `チャレンジ ${dailyLabel(r.daily)}／` : ''}${r.difficulty ? `${r.difficulty}／` : ''}${r.ending}／${r.stage || ''}／${r.title}／売上 ${yenFmt(r.revenue)}／${r.date}`)))));
+    list.forEach((r, i) => body.append(h('div', { class: 'card row' }, h('div', { class: `rank r${r.rank}` }, r.rank), h('div', { class: 'grow' }, h('div', { class: 'name' }, `${i + 1}位 ${yenFmt(r.netWorth)}`), h('small', {}, `${r.daily ? `チャレンジ ${dailyLabel(r.daily)}／` : ''}${r.style ? `${r.style}／` : ''}${r.difficulty ? `${r.difficulty}／` : ''}${r.ending}／${r.stage || ''}／${r.title}／売上 ${yenFmt(r.revenue)}／${r.date}`)))));
   });
 }
 
@@ -747,14 +769,17 @@ function aboutModal() {
 function showEnding() {
   const r = finalResult(state);
   const entry = {
-    netWorth: r.netWorth, rank: r.rank, title: r.title, ending: r.ending.title, stage: r.stage, revenue: r.revenue, difficulty: difficultyOf(state).name, daily: state.daily || null, date: new Date().toLocaleDateString('ja-JP'),
+    netWorth: r.netWorth, rank: r.rank, title: r.title, ending: r.ending.title, stage: r.stage, revenue: r.revenue, difficulty: difficultyOf(state).name, style: styleOf(state) === 'normal' ? null : styleLabel(state), daily: state.daily || null, date: new Date().toLocaleDateString('ja-JP'),
   };
   const ranking = pushRanking(entry);
   if (state.daily) pushDaily(state.daily, entry);
   const before = new Set(loadLegacy());
   const caps = SKILLS.filter((x) => x.kind === 'capstone' && state.skills.includes(x.id)).map((x) => x.id);
   const newCaps = state.daily ? [] : caps.filter((id) => !before.has(id));
-  if (!state.daily) pushLegacy(caps);
+  if (!state.daily) {
+    pushLegacy(caps);
+    pushMentor(mentorRecord(state, r));
+  }
   const el = clear($('#ending-screen'));
   playBgm('land');
   playSe(['arrested', 'bankrupt', 'vanished'].includes(r.ending.id) ? 'lose' : 'win');
