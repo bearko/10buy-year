@@ -61,6 +61,28 @@ try {
 setTextSpeed(speed);
 setLogger((entry) => { if (state) pushLog(state, entry, isAuto()); });
 
+// PCのキーボード操作：数字キーで行動カード・選択肢を選ぶ。Esc／Backspaceで分類の一覧に戻る
+window.addEventListener('keydown', (e) => {
+  if (e.ctrlKey || e.metaKey || e.altKey || e.target.closest?.('input, textarea, select')) return;
+  if ($('#modal-root').children.length) return;
+  const n = Number(e.key);
+  if (n >= 1 && n <= 9) {
+    const choices = [...document.querySelectorAll('#choices button')];
+    const list = choices.length ? choices : busy ? [] : [...document.querySelectorAll('#commands button.cmd')];
+    const b = list[n - 1];
+    if (b && !b.disabled) {
+      e.preventDefault();
+      b.click();
+    }
+  } else if ((e.key === 'Escape' || e.key === 'Backspace') && !busy) {
+    const back = document.querySelector('#commands .cmd-back');
+    if (back) {
+      e.preventDefault();
+      back.click();
+    }
+  }
+});
+
 function showScreen(id) {
   for (const el of document.querySelectorAll('.screen')) el.hidden = el.id !== id;
 }
