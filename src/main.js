@@ -8,7 +8,8 @@ import { hasSkill, MOOD_MULT } from './engine/effects.js';
 import { finalResult } from './engine/ending.js';
 import { activeUnits, idleListing, listedUnits } from './engine/inventory.js';
 import { autoBuy } from './engine/automation.js';
-import { clearSave, loadGame, loadRanking, pushRanking, saveGame } from './engine/save.js';
+import { clearSave, loadDaily, loadGame, loadRanking, pushDaily, pushRanking, saveGame } from './engine/save.js';
+import { dailyLabel, dailySeed, todayKey } from './engine/daily.js';
 import { createGame } from './engine/state.js';
 import { endWeek, startWeek } from './engine/turn.js';
 import { checkTutorial, currentMission, treeOpen, tutorialDone } from './engine/tutorial.js';
@@ -603,10 +604,12 @@ function pickDifficulty() {
   return m.closed.then(() => pick);
 }
 
-async function newGame() {
-  const difficulty = await pickDifficulty();
+// daily：デイリーチャレンジの日付（難易度は「ふつう」で固定）
+async function newGame({ daily = null } = {}) {
+  const difficulty = daily ? 'normal' : await pickDifficulty();
   if (!difficulty) return;
-  state = createGame(undefined, difficulty);
+  state = createGame(daily ? dailySeed(daily) : undefined, difficulty);
+  if (daily) state.daily = daily;
   clearSave();
   showScreen('game-screen');
   refresh();
@@ -649,6 +652,7 @@ function showTitle() {
       h('div', { class: 'title-buttons' },
         hasSave ? h('button', { class: 'btn primary big', onclick: () => continueGame() }, 'つづきから') : null,
         h('button', { class: `btn big ${hasSave ? '' : 'primary'}`, onclick: () => { if (!hasSave || window.confirm('セーブデータを消して最初から始めますか？')) newGame(); } }, 'はじめから'),
+        h('button', { class: 'btn', onclick: () => { if (!hasSave || window.confirm('セーブデータを消して、今日のチャレンジを始めますか？')) newGame({ daily: todayKey() }); } }, `今日のチャレンジ（${dailyLabel(todayKey())}）`),
         h('button', { class: 'btn', onclick: () => rankingModal() }, 'ランキング'),
         h('button', { class: 'btn', onclick: () => aboutModal() }, 'このゲームについて'),
         h('button', {
@@ -670,9 +674,15 @@ const soundLabel = () => (soundOn() ? '🔊 サウンド ON' : '🔇 サウン�
 
 function rankingModal() {
   openModal('ランキング（この端末）', (body) => {
+    const key = todayKey();
+    const daily = loadDaily(key);
+    body.append(h('div', { class: 'sub' }, `今日のチャレンジ（${dailyLabel(key)}）`), h('p', { class: 'note' }, '今日は誰が遊んでも、同じ相場・同じ出来事から始まる（難易度ふつう）。'));
+    if (!daily.length) body.append(h('p', { class: 'empty' }, 'まだ記録がない'));
+    daily.forEach((r, i) => body.append(h('div', { class: 'card row' }, h('div', { class: `rank r${r.rank}` }, r.rank), h('div', { class: 'grow' }, h('div', { class: 'name' }, `${i + 1}位 ${yenFmt(r.netWorth)}`), h('small', {}, `${r.ending}／${r.stage || ''}／${r.title}`)))));
+    body.append(h('div', { class: 'sub' }, 'これまでの記録'));
     const list = loadRanking();
     if (!list.length) body.append(h('p', { class: 'empty' }, 'まだ記録がない'));
-    list.forEach((r, i) => body.append(h('div', { class: 'card row' }, h('div', { class: `rank r${r.rank}` }, r.rank), h('div', { class: 'grow' }, h('div', { class: 'name' }, `${i + 1}位 ${yenFmt(r.netWorth)}`), h('small', {}, `${r.difficulty ? `${r.difficulty}／` : ''}${r.ending}／${r.stage || ''}／${r.title}／売上 ${yenFmt(r.revenue)}／${r.date}`)))));
+    list.forEach((r, i) => body.append(h('div', { class: 'card row' }, h('div', { class: `rank r${r.rank}` }, r.rank), h('div', { class: 'grow' }, h('div', { class: 'name' }, `${i + 1}位 ${yenFmt(r.netWorth)}`), h('small', {}, `${r.daily ? `チャレンジ ${dailyLabel(r.daily)}／` : ''}${r.difficulty ? `${r.difficulty}／` : ''}${r.ending}／${r.stage || ''}／${r.title}／売上 ${yenFmt(r.revenue)}／${r.date}`)))));
   });
 }
 
@@ -691,9 +701,11 @@ function aboutModal() {
 // ---------------- エンディング ----------------
 function showEnding() {
   const r = finalResult(state);
-  const ranking = pushRanking({
-    netWorth: r.netWorth, rank: r.rank, title: r.title, ending: r.ending.title, stage: r.stage, revenue: r.revenue, difficulty: difficultyOf(state).name, date: new Date().toLocaleDateString('ja-JP'),
-  });
+  const entry = {
+    netWorth: r.netWorth, rank: r.rank, title: r.title, ending: r.ending.title, stage: r.stage, revenue: r.revenue, difficulty: difficultyOf(state).name, daily: state.daily || null, date: new Date().toLocaleDateString('ja-JP'),
+  };
+  const ranking = pushRanking(entry);
+  if (state.daily) pushDaily(state.daily, entry);
   const el = clear($('#ending-screen'));
   playBgm('land');
   playSe(['arrested', 'bankrupt', 'vanished'].includes(r.ending.id) ? 'lose' : 'win');

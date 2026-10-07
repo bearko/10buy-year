@@ -22,6 +22,7 @@ import { checkPromotion, goalOf, stageProgress } from '../src/engine/career.js';
 import { kpiLevel } from '../src/engine/kpi.js';
 import { taxFor } from '../src/engine/finance.js';
 import { DIFFICULTIES, minPayment, monthEnd } from '../src/engine/finance.js';
+import { dailySeed, todayKey } from '../src/engine/daily.js';
 import { updateMarket, priceOf } from '../src/engine/market.js';
 import { TOTAL_WEEKS } from '../src/engine/calendar.js';
 import { runGame } from './bot.js';
@@ -1187,4 +1188,14 @@ test('難易度：借金・最低返済・金利が変わり、古いセーブ�
   const old = createGame(5);
   delete old.difficulty;
   assert.equal(minPayment(old), DIFFICULTIES.normal.minPay);
+});
+
+test('デイリーチャレンジ：同じ日なら同じシード、日が変われば別のシード', () => {
+  const key = todayKey(new Date(2026, 9, 7));
+  assert.equal(key, '2026-10-07');
+  assert.equal(dailySeed(key), dailySeed('2026-10-07'));
+  assert.notEqual(dailySeed(key), dailySeed('2026-10-08'));
+  const a = createGame(dailySeed(key));
+  const b = createGame(dailySeed(key));
+  assert.deepEqual(a.market, b.market);
 });
