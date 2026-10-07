@@ -6,7 +6,7 @@ import { activeUnits, buy, capacity, cardAvailable, feeRate, listUnits, platform
 import { SIZE_INFO } from '../data/products.js';
 import { estimateUnit } from './market.js';
 import { CORP_SOCIAL, LIVING_COST } from './career.js';
-import { MIN_PAYMENT } from './finance.js';
+import { minPayment } from './finance.js';
 
 // 在庫に合った販路：新品の量産品はアマクリ、コレクター品はミィーム、それ以外はプンシー
 export function bestPlatform(s, u) {
@@ -54,7 +54,7 @@ export function autoReprice(s) {
 
 // 月末までに必要なお金（返済・カード・生活費・社会保険）
 export function reserveNeeded(s) {
-  return Math.min(s.debt, MIN_PAYMENT) + s.card.due + (s.fulltime ? LIVING_COST : 0) + (s.corp ? CORP_SOCIAL : 0) + 30000;
+  return Math.min(s.debt, minPayment(s)) + s.card.due + (s.fulltime ? LIVING_COST : 0) + (s.corp ? CORP_SOCIAL : 0) + 30000;
 }
 
 // 外注：リサーチ・仕入れ … 利益率15%以上の候補を、手元資金の範囲で自動で仕入れる

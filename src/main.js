@@ -26,6 +26,7 @@ import { offersModal } from './ui/shop.js';
 import { autoVisible } from './engine/sourcing.js';
 import { mailbox, salesMails } from './ui/mail.js';
 import { checkQuests } from './engine/quests.js';
+import { DIFFICULTIES, difficultyOf } from './engine/finance.js';
 import { questsModal } from './ui/quests.js';
 import { queueScene } from './ui/queue.js';
 import { myStoreModal } from './ui/mystore.js';
@@ -590,8 +591,22 @@ async function loop() {
   showEnding();
 }
 
+// 難易度を選ぶ（閉じたら null）
+function pickDifficulty() {
+  let pick = null;
+  const m = openModal('難易度を選ぶ', (body, api) => {
+    body.append(h('p', { class: 'note' }, '借金の額と、毎月の最低返済・金利が変わる。始めたあとは変えられない。'));
+    for (const [id, d] of Object.entries(DIFFICULTIES)) {
+      body.append(h('button', { class: `btn diff-btn ${id === 'normal' ? 'primary' : ''}`, onclick: () => { pick = id; api.close(); } }, h('b', {}, d.name), h('small', {}, d.desc)));
+    }
+  }, { closeLabel: 'やめる' });
+  return m.closed.then(() => pick);
+}
+
 async function newGame() {
-  state = createGame();
+  const difficulty = await pickDifficulty();
+  if (!difficulty) return;
+  state = createGame(undefined, difficulty);
   clearSave();
   showScreen('game-screen');
   refresh();
@@ -608,8 +623,7 @@ function continueGame() {
 }
 
 function restart() {
-  clearSave();
-  newGame();
+  newGame(); // 難易度を選んだところで、前のセーブを消す
 }
 
 function toTitle() {
@@ -658,7 +672,7 @@ function rankingModal() {
   openModal('ランキング（この端末）', (body) => {
     const list = loadRanking();
     if (!list.length) body.append(h('p', { class: 'empty' }, 'まだ記録がない'));
-    list.forEach((r, i) => body.append(h('div', { class: 'card row' }, h('div', { class: `rank r${r.rank}` }, r.rank), h('div', { class: 'grow' }, h('div', { class: 'name' }, `${i + 1}位 ${yenFmt(r.netWorth)}`), h('small', {}, `${r.ending}／${r.stage || ''}／${r.title}／売上 ${yenFmt(r.revenue)}／${r.date}`)))));
+    list.forEach((r, i) => body.append(h('div', { class: 'card row' }, h('div', { class: `rank r${r.rank}` }, r.rank), h('div', { class: 'grow' }, h('div', { class: 'name' }, `${i + 1}位 ${yenFmt(r.netWorth)}`), h('small', {}, `${r.difficulty ? `${r.difficulty}／` : ''}${r.ending}／${r.stage || ''}／${r.title}／売上 ${yenFmt(r.revenue)}／${r.date}`)))));
   });
 }
 
@@ -678,7 +692,7 @@ function aboutModal() {
 function showEnding() {
   const r = finalResult(state);
   const ranking = pushRanking({
-    netWorth: r.netWorth, rank: r.rank, title: r.title, ending: r.ending.title, stage: r.stage, revenue: r.revenue, date: new Date().toLocaleDateString('ja-JP'),
+    netWorth: r.netWorth, rank: r.rank, title: r.title, ending: r.ending.title, stage: r.stage, revenue: r.revenue, difficulty: difficultyOf(state).name, date: new Date().toLocaleDateString('ja-JP'),
   });
   const el = clear($('#ending-screen'));
   playBgm('land');

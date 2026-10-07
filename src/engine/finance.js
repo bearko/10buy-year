@@ -14,8 +14,14 @@ import { addExpense, closeMonth, inventoryStats } from './kpi.js';
 import { checkPromotion, CORP_SOCIAL, LIVING_COST } from './career.js';
 import { yearOf } from './calendar.js';
 
-export const MIN_PAYMENT = 30000;
-export const MONTHLY_INTEREST = 0.15 / 12;
+// 難易度：借金の額・毎月の最低返済・金利
+export const DIFFICULTIES = {
+  easy: { name: 'やさしい', debt: 800000, minPay: 20000, rate: 0.1, desc: '借金80万円・最低返済 月2万円・年利10%。まずは転売の流れを楽しみたい人に' },
+  normal: { name: 'ふつう', debt: 1500000, minPay: 30000, rate: 0.15, desc: '借金150万円・最低返済 月3万円・年利15%。おすすめ' },
+  hard: { name: 'きびしい', debt: 3000000, minPay: 50000, rate: 0.18, desc: '借金300万円・最低返済 月5万円・年利18%。序盤の資金繰りがきつい' },
+};
+export const difficultyOf = (s) => DIFFICULTIES[s.difficulty] || DIFFICULTIES.normal;
+export const minPayment = (s) => difficultyOf(s).minPay;
 export const MAX_DELINQUENCY = 3;
 
 export function monthEnd(s) {
@@ -74,15 +80,16 @@ export function monthEnd(s) {
 
   // 2) 利息
   if (s.debt > 0) {
-    const interest = Math.round(s.debt * MONTHLY_INTEREST);
+    const { rate } = difficultyOf(s);
+    const interest = Math.round((s.debt * rate) / 12);
     s.debt += interest;
     s.stats.interest += interest;
-    record(s, `利息（年15%）`, -interest);
+    record(s, `利息（年${Math.round(rate * 100)}%）`, -interest);
   }
 
   // 3) 最低返済
   if (s.debt > 0) {
-    const pay = Math.min(s.debt, MIN_PAYMENT);
+    const pay = Math.min(s.debt, minPayment(s));
     if (s.cash >= pay) {
       addCash(s, -pay, '月末返済');
       s.debt -= pay;

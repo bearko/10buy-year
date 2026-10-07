@@ -15,7 +15,7 @@ import {
 } from '../engine/effects.js';
 import { applyShock, inBoom, isReleased, priceOf } from '../engine/market.js';
 import { addUnits, overCapacity } from '../engine/inventory.js';
-import { fiscalIncome, MIN_PAYMENT, taxFor } from '../engine/finance.js';
+import { fiscalIncome, minPayment, taxFor } from '../engine/finance.js';
 import { bgm, choice, gain, info, items, narr, sfx, talk } from '../engine/steps.js';
 import { washHands } from '../engine/underworld.js';
 import { perk } from '../engine/perks.js';
@@ -50,8 +50,8 @@ export const EVENTS = [
     trigger: 'calendar',
     cond: (s) => s.week === 3 && s.debt > 0,
     play: (s) => [
-      talk('mine', `今週末は最初の返済日よ。最低返済額は${yen(MIN_PAYMENT)}。いまの所持金は${yen(s.cash)}。`, 'arms'),
-      talk('chris', s.cash >= MIN_PAYMENT ? 'なんとか払えそう…！' : '足りない…！ 今週は売ることに集中するか、バイトで稼ぐか…', s.cash >= MIN_PAYMENT ? 'smile' : 'sad'),
+      talk('mine', `今週末は最初の返済日よ。最低返済額は${yen(minPayment(s))}。いまの所持金は${yen(s.cash)}。`, 'arms'),
+      talk('chris', s.cash >= minPayment(s) ? 'なんとか払えそう…！' : '足りない…！ 今週は売ることに集中するか、バイトで稼ぐか…', s.cash >= minPayment(s) ? 'smile' : 'sad'),
     ],
   },
   {
