@@ -458,7 +458,7 @@ function renderTabs() {
     inv: () => inventoryModal(state, refresh),
   };
   const tabs = [
-    { id: 'quest', label: 'ミッション', open: async () => { const g = await questsModal(state); if (g && guides[g]) await guides[g](); }, badge: questNew ? '!' : questN ? `${questN}` : '' },
+    { id: 'quest', label: 'ミッション', open: async () => { const g = await questsModal(state); if (g && guides[g]) await guides[g](); }, badge: questNew ? '!' : questN ? `${questN}` : '', lock: !tutorialDone(state) && 'チュートリアルを完了すると開ける' },
     { id: 'tree', label: 'スキルツリー', open: () => openTree(state, refresh, { focus: currentMission(state)?.node }), lock: !treeOpen(state) && '最初の売上のあとに開ける', badge: treeBadge() },
     { id: 'inv', label: '在庫', open: () => inventoryModal(state, refresh), badge: unlisted ? `${unlisted}` : '' },
     {
