@@ -1298,3 +1298,18 @@ body.partner-on #side { display: none !important; }
   #commands .cmd::before, #choices button::before { content: counter(key); position: absolute; left: 5px; top: 3px; font-size: 10px; line-height: 1; color: var(--muted); pointer-events: none; }
   #choices button { position: relative; padding-left: 20px; }
 }
+
+/* ニュースのティッカーに流れるSNSの投稿と、タイムライン（engine/sns.js） */
+#news-ticker { cursor: pointer; }
+#news-ticker .tk-who { color: #8ec5ff; font-weight: 700; margin-right: 6px; }
+#news-ticker .sns.angry { color: #ffb3b3; }
+#news-ticker .sns.thanks { color: #b8f0c4; }
+.sns-post { margin-bottom: 8px; padding: 8px 10px; border-radius: 10px; background: #ffffff0d; border-left: 3px solid var(--line); }
+.sns-post.angry { border-left-color: var(--bad); }
+.sns-post.thanks { border-left-color: var(--good); }
+.sns-post.trend { border-left-color: var(--info); }
+.sns-post.rival { border-left-color: #a78bfa; }
+.sns-h { display: flex; justify-content: space-between; font-size: 12px; }
+.sns-h b { color: #8ec5ff; }
+.sns-h small { color: var(--muted); }
+.sns-post p { margin: 4px 0 0; font-size: 13px; line-height: 1.5; }
