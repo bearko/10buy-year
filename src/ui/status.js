@@ -8,6 +8,7 @@ import { computeKpis, formatKpi, KPI_DEFS, kpiLevel } from '../engine/kpi.js';
 import { STAGES, stageOf, stageProgress } from '../engine/career.js';
 import { grossProfit } from '../engine/state.js';
 import { playSe, setSound, soundOn } from './audio.js';
+import { FONT_SCALES, fontScale, setFontScale } from './a11y.js';
 import { h, signYen, yenFmt } from './dom.js';
 import { openModal, toast } from './modal.js';
 
@@ -39,7 +40,7 @@ export function bizModal(s, onChange, playSteps) {
 
     body.append(
       h('div', { class: 'stage-box' },
-        h('div', { class: 'stage-steps' }, ...STAGES.map((x) => h('span', { class: `st ${x.id === s.stage ? 'on' : x.id < s.stage ? 'done' : ''}` }, x.id))),
+        h('div', { class: 'stage-steps' }, ...STAGES.map((x) => h('span', { class: `st ${x.id === s.stage ? 'on' : x.id < s.stage ? 'done' : ''}`, 'aria-current': x.id === s.stage ? 'step' : null }, x.id < s.stage ? `✓${x.id}` : x.id))),
         h('div', { class: 'name' }, `ステージ${st.id}：${st.name}`, h('small', {}, `（目安 ${st.period}）`)),
         h('small', { class: 'desc' }, st.goal),
         h('div', { class: 'note' }, `次のステージ：${st.next}`),
@@ -151,6 +152,7 @@ export function menuModal({ s, onTitle, onSpeed, speed, onRestart, onChange, onM
       ),
       h('div', { class: 'menu-list' },
         h('button', { class: 'btn', onclick: () => { setSound(!soundOn()); api.refresh(); } }, `サウンド: ${soundOn() ? 'ON' : 'OFF'}`),
+        h('div', { class: 'seg' }, h('span', {}, '文字の大きさ '), ...FONT_SCALES.map(([label, v]) => h('button', { class: `btn small ${fontScale() === v ? 'on' : ''}`, 'aria-pressed': String(fontScale() === v), onclick: () => { setFontScale(v); api.refresh(); } }, label))),
         h('div', { class: 'seg' }, h('span', {}, '文字送り '), ...[['はやい', 8], ['ふつう', 22], ['おそい', 40], ['一瞬', 0]].map(([label, ms]) => h('button', { class: `btn small ${speed() === ms ? 'on' : ''}`, onclick: () => { onSpeed(ms); api.refresh(); } }, label))),
         s ? h('button', { class: 'btn', onclick: () => { api.close(); onDeal?.(); } }, '取引の対応（値下げ交渉・トラブル）') : null,
         s ? h('button', { class: 'btn', onclick: () => { s.settings.warnIdleListing = s.settings.warnIdleListing === false; api.refresh(); } }, `出品枠の空きを知らせる: ${s.settings.warnIdleListing === false ? 'OFF' : 'ON'}`) : null,
