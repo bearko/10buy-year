@@ -1249,3 +1249,48 @@ test('輸出：マルコ・ポーロの紹介で海外ECが開き、国内で値
   s.market.boots.p = 1.3;
   assert.equal(abroadMult(s, u), 1, '国内のほうが高ければ、倍率は為替だけ');
 });
+
+test('中国輸入：3週後に届き、関税・検品不良がある。税関で止まると遅れ、コピー品は没収される', async () => {
+  const { buy } = await import('../src/engine/inventory.js');
+  const { importOffers } = await import('../src/engine/offers.js');
+  const { importWeek, IMPORT_WEEKS, HOLD_WEEKS } = await import('../src/engine/importer.js');
+  const s = createGame(21);
+  s.stage = 2;
+  s.cash = 5000000;
+  s.flags.importIntro = true;
+  const offs = importOffers(s);
+  assert.ok(offs.length > 0 && offs.every((o) => o.import && o.minQty === 10 && o.arriveWeek === s.week + IMPORT_WEEKS));
+  const o = offs.find((x) => !x.knockoff);
+  assert.equal(buy(s, o, 5).ok, false, '最低10個から');
+  assert.notEqual(buy(s, o, 20).ok, false);
+  const lot = s.imports.at(-1);
+  lot.held = false;
+  lot.seized = false;
+  lot.defects = 3;
+  for (const u of s.inventory.filter((x) => lot.uids.includes(x.uid))) u.arrive = lot.due;
+  const cash = s.cash;
+  s.week = lot.due;
+  const steps = importWeek(s);
+  assert.ok(steps.some((x) => x.t === 'info' && /届いた/.test(x.title)));
+  assert.equal(s.cash, cash - Math.round(lot.cost * 0.1), '関税10%');
+  assert.equal(s.inventory.filter((x) => lot.uids.includes(x.uid) && x.damaged).length, 3);
+  assert.equal(s.imports.length, 0);
+
+  // 税関で止まる → 遅れて届く ／ コピー品は没収
+  const k = { ...o, knockoff: true, fakeRate: 1, arriveWeek: s.week + IMPORT_WEEKS };
+  s.inventory = [];
+  assert.notEqual(buy(s, { ...o, arriveWeek: s.week + IMPORT_WEEKS }, 10).ok, false);
+  assert.notEqual(buy(s, k, 10).ok, false);
+  const [held, seized] = s.imports.slice(-2);
+  held.held = true; held.seized = false;
+  seized.seized = true; seized.held = false;
+  for (const u of s.inventory.filter((x) => held.uids.includes(x.uid))) u.arrive = held.due + HOLD_WEEKS;
+  s.week = held.due;
+  const st = importWeek(s);
+  assert.ok(st.some((x) => x.t === 'info' && /税関で止まった/.test(x.title)));
+  assert.ok(st.some((x) => x.t === 'info' && /没収/.test(x.title)));
+  assert.equal(s.inventory.filter((x) => seized.uids.includes(x.uid)).length, 0);
+  assert.equal(s.inventory.filter((x) => held.uids.includes(x.uid)).length, 10);
+  s.week = held.due + HOLD_WEEKS;
+  assert.ok(importWeek(s).some((x) => x.t === 'info' && /届いた/.test(x.title)));
+});

@@ -12,10 +12,11 @@ import { openSpots } from './pioneer.js';
 import { applySaturation, botActive, saturation } from './rivals.js';
 import { lotteryRegimeMult, madeToOrder, queueLimited } from './regimes.js';
 import { investPrice, investQty, investWeight } from './lifestyle.js';
+import { IMPORT_WEEKS } from './importer.js';
 
 let oidSeq = 1;
 // 新ジャンル（know）はここでは除き、genreOffer で知っているものだけ出す。開拓先のシリーズ（spot）も除く
-const byKind = (kind) => PRODUCTS.filter((p) => p.kind === kind && !p.know && !p.spot && !p.niche);
+const byKind = (kind) => PRODUCTS.filter((p) => p.kind === kind && !p.know && !p.spot && !p.niche && !p.imported);
 // 定価10万円以上の高額品は、ステージ2になるまで仕入れ候補に出てこない（序盤の一攫千金を防ぐ）
 const affordableTier = (s, p) => p.retail < 100000 || s.stage >= 2;
 const round10 = (v) => Math.max(10, Math.round(v / 10) * 10);
@@ -313,6 +314,43 @@ export function wholesaleOffers(s) {
   }));
   gens.push(...spotGens(s, 'wholesale'));
   return applySaturation(s, generate(s, gens, n), 'wholesale');
+}
+
+// ---- 中国輸入（ノーブランド品をロットで。仕入れ値は為替しだい、届くのは3週後）----
+export function importOffers(s) {
+  const fx = s.fx || 1.1;
+  const n = 3 + Math.floor(s.abilities.eye / 40);
+  const gens = PRODUCTS.filter((p) => p.imported).map((p) => ({
+    weight: 2,
+    make: () => makeOffer(s, p.id, {
+      source: 'import',
+      label: `工場直送・最低10個（${IMPORT_WEEKS}週後に到着）`,
+      price: round10(p.retail * randRange(s, 0.22, 0.32) * fx),
+      maxQty: randInt(s, 30, 100),
+      minQty: 10,
+      arriveWeek: s.week + IMPORT_WEEKS,
+      import: true,
+    }),
+  }));
+  // 人気品の激安コピー（税関でほぼ没収される）
+  gens.push({
+    weight: 1,
+    make: () => {
+      const p = pick(s, PRODUCTS.filter((x) => ['kaeru', 'boots', 'scroll', 'cyber_staff'].includes(x.id)));
+      return makeOffer(s, p.id, {
+        source: 'import',
+        label: `激安！人気モデル同等品・最低10個（${IMPORT_WEEKS}週後に到着）`,
+        price: round10(p.retail * randRange(s, 0.12, 0.2) * fx),
+        maxQty: randInt(s, 20, 60),
+        minQty: 10,
+        arriveWeek: s.week + IMPORT_WEEKS,
+        import: true,
+        knockoff: true,
+        fakeRate: 1,
+      });
+    },
+  });
+  return generate(s, gens, n);
 }
 
 // ---- 美容・ガジェット・インバウンドの品（顧客層を育てる。engine/careers.js）。一般の品ぞろえとは別枠 ----

@@ -26,6 +26,7 @@ import { sumNet } from './kpi.js';
 import { info, offers, sfx, talk } from './steps.js';
 import { familyWeek } from './family.js';
 import { snsWeek } from './sns.js';
+import { importWeek } from './importer.js';
 
 export function startWeek(s) {
   const steps = [];
@@ -66,7 +67,8 @@ export function startWeek(s) {
   }
 
   // 予約品の到着
-  const delivered = s.inventory.filter((u) => u.arrive === s.week && u.week < s.week);
+  const delivered = s.inventory.filter((u) => u.arrive === s.week && u.week < s.week && !u.imported);
+  steps.push(...importWeek(s));
   if (delivered.length) steps.push(info('予約品が届いた', [...new Set(delivered.map((u) => productOf(u.pid).name))].map((n) => `「${n}」`)));
 
   // 生もの（賞味期限切れ）

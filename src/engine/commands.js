@@ -2,7 +2,8 @@
 import { productOf } from '../data/products.js';
 import { chance, pick, randInt } from './rng.js';
 import { addCash, addExp, addHate, addMood, addStamina, addToku, clamp, flag, hasSkill, removeSkill, setFlag, yen } from './effects.js';
-import { auctionOffers, lotteryEntries, lotteryWinRate, onlineOffers, openLotteries, queueOffer, queueSuccessRate, queueTargets, storeOfferCount, storeOffers, wholesaleOffers } from './offers.js';
+import { auctionOffers, lotteryEntries, lotteryWinRate, onlineOffers, openLotteries, queueOffer, queueSuccessRate, queueTargets, storeOfferCount, storeOffers, wholesaleOffers, importOffers } from './offers.js';
+import { importOpen, INSPECT_FEE } from './importer.js';
 import { buildPhoneRun, buildStoreRun, phoneFillers, storeClock, totalOffersFor } from './sourcing.js';
 import { addExpense, addHours } from './kpi.js';
 import { perk } from './perks.js';
@@ -41,6 +42,7 @@ export const COMMANDS = [
   { id: 'queue', group: 'buy', icon: E(5531), node: 'src_queue', name: '行列に並ぶ', desc: '発売日に始発で並ぶ', stamina: 28, exp: { act: 15, mind: 10 }, hours: 8, bg: 'queue' },
   { id: 'auction', group: 'buy', icon: E(5509), node: 'src_auction', name: '業者オークション', desc: '古物商だけの市場。相場の5〜7割', stamina: 10, exp: { info: 10, social: 8 }, hours: 6, bg: 'event' },
   { id: 'wholesale', group: 'buy', icon: E(1058), node: 'src_wholesale', name: '問屋と商談', desc: '定番品をロットで卸値仕入れ', stamina: 8, exp: { social: 14, info: 6 }, hours: 5, bg: 'event' },
+  { id: 'import', group: 'buy', icon: E(1009), name: '中国輸入', desc: '海外の卸サイトからノーブランド品をロットで輸入。届くのは3週後（ステージ2から）', stamina: 6, exp: { info: 8, tech: 5, social: 2 }, hours: 4, bg: 'online' },
   { id: 'listing', group: 'sell', icon: I('buf_agi.png'), name: '撮影・出品作業', desc: '今週の売れ行き1.25倍', stamina: 12, exp: { tech: 14, info: 4 }, hours: 6, bg: 'home' },
   { id: 'meetup', group: 'out', icon: E(3112), node: 'net_meetup', name: '物販交流会', desc: 'せどり仲間と情報交換', stamina: 10, exp: { social: 14, info: 6 }, cost: 3000, hours: 4, bg: 'event' },
   { id: 'study', group: 'out', icon: E(4008), name: '図書館で勉強', desc: '相場・法律・税金を学ぶ', stamina: 4, exp: { info: 9, mind: 7, tech: 2 }, hours: 3, bg: 'study' },
@@ -88,6 +90,7 @@ export function availableCommands(s) {
     if (c.id === 'donate') return s.stage >= 2 && !s.underworld;
     if (c.id === 'dept') return s.stage >= DEPT_STAGE && !s.underworld;
     if (c.id === 'mentor') return canAskMentor(s);
+    if (c.id === 'import') return importOpen(s);
     if (c.id === 'card_up') return nextCardTier(s) !== null && s.week >= (flag(s, 'cardApplied') ?? -99) + 8;
     return true;
   });
@@ -290,6 +293,26 @@ const HANDLERS = {
       ...found,
       narr('会員証を見せて、業者オークションの会場に入った。プロの目利きが静かに札を入れていく。'),
       offers(auctionOffers(s), '業者オークションの出品物', '真贋チェック済みが多い'),
+    ];
+  },
+  import(s) {
+    const first = !s.flags.importIntro;
+    s.flags.importIntro = true;
+    const go = (inspect) => () => {
+      s.flags.importInspect = inspect;
+      return [offers(importOffers(s), `中国の卸サイト・為替×${(s.fx || 1.1).toFixed(2)}・関税10%は到着時${inspect ? '・検品代行つき' : ''}`)];
+    };
+    return [
+      ...(first
+        ? [
+            talk('mine', '中国の卸サイトなら、ノーブランドの雑貨やガジェットが定価の2〜3割で仕入れられるわ。そのかわり、届くのは3週後。', 'pointer'),
+            talk('mine', '円安だと仕入れ値が上がるし、届いたら関税がかかる。税関で止まることも、開けたら不良品が混じってることもある。それと…人気品の激安品は、たいていコピー品よ。', 'arms'),
+          ]
+        : [narr('深夜、中国の卸サイトを翻訳ツールで眺める。工場直送の文字が並ぶ。')]),
+      choice([
+        { label: `検品代行を頼む（1個${INSPECT_FEE}円・不良品が減る）`, run: go(true) },
+        { label: '検品代行なしで見る', run: go(false) },
+      ], '現地の検品代行を頼む？'),
     ];
   },
   wholesale(s, cmd, { night } = {}) {
