@@ -966,6 +966,8 @@ body.partner-on #side { display: none !important; }
 .sold-list { display: flex; flex-direction: column; gap: 4px; }
 .sold-row { display: flex; align-items: center; gap: 10px; font-size: 13px; }
 .sold-row b { margin-left: auto; }
+.sold-sum { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; padding-top: 6px; border-top: 1px dashed #ccc; font-size: 13px; }
+.sold-sum small { color: #777; font-size: 11px; }
 .sold-tag { font: 700 10px/1 'Orbitron', sans-serif; color: #fff; background: #d33; padding: 3px 6px; border-radius: 3px; }
 
 /* ---------------- 夜のスマホ（ui/phone.js） ---------------- */

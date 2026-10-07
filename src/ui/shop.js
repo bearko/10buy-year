@@ -136,7 +136,9 @@ export function offersModal(s, step, onChange) {
     const site = siteOf(o);
     const sold = o.maxQty < (o.minQty || 1);
     const store = site.kind === 'store' || site.kind === 'pro';
-    const profit = expectedProfit(s, o.pid, o.est, o.price) + Math.round(o.price * (o.points || 0));
+    // 売り切れを調べたら、見立てではなく売れた値段の真ん中で見る
+    const ref = o.soldHist ? soldMedian(o.soldHist) : o.est;
+    const profit = expectedProfit(s, o.pid, ref, o.price) + Math.round(o.price * (o.points || 0));
     return h('button', { class: `sh-item ${store ? 'store' : ''} ${sold ? 'sold' : ''}`, onclick: () => (onOpen ? onOpen(o) : openItem(o)) },
       h('div', { class: 'sh-img' },
         photo(o, catInfo(o.pid).photos[0], { stock: o.listing?.stockPhoto }),
@@ -153,7 +155,7 @@ export function offersModal(s, step, onChange) {
         o.listing?.likes ? h('span', {}, `♡${o.listing.likes}`) : null,
         o.maxQty > 1 ? h('span', {}, `残り${o.maxQty}`) : null,
       ),
-      h('div', { class: 'sh-memo' }, `相場 ${yen(o.est)}`, canCalc(s) ? h('b', { class: profit >= 0 ? 'pos' : 'neg' }, ` ${signYen(profit)}`) : null),
+      h('div', { class: 'sh-memo' }, o.soldHist ? `売り切れ ${yen(ref)}` : `見立て ${yen(o.est)}`, canCalc(s) ? h('b', { class: profit >= 0 ? 'pos' : 'neg' }, ` ${signYen(profit)}`) : null),
     );
   }
 
