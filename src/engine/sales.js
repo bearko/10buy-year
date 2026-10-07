@@ -45,7 +45,7 @@ function fixedPriceMarket(s, units, buyers, platform, out, allowNego, mult = 1) 
 }
 
 export function resolveSales(s) {
-  const out = { sold: [], negotiations: [], troubles: [], delayed: 0, damaged: [], auctionsUnsold: [] };
+  const out = { sold: [], negotiations: [], troubles: [], delayed: 0, damaged: [], auctionsUnsold: [], authFailed: [] };
   const boost = s.listBoost ? 1.25 : 1;
   const rf = ratingFactor(s);
 
@@ -66,11 +66,20 @@ export function resolveSales(s) {
     // 海外EC（為替で売値が変わる）と裏市場（表の数倍）
     const exp = units.filter((u) => u.listing.platform === 'exp');
     if (exp.length) fixedPriceMarket(s, exp, poisson(s, d * 0.9 * rf), 'exp', out, false, platformMult(s, 'exp'));
-    const black = units.filter((u) => u.listing.platform === 'black');
+    // 専門マーケット（鑑定つき）：偽物は鑑定ではじかれて戻ってくる。値下げ交渉はない
+    const spec = units.filter((u) => u.listing.platform === 'spec');
+    for (const u of spec.filter((x) => x.fake)) {
+      u.listing = null;
+      u.authFail = true;
+      out.authFailed.push({ uid: u.uid, pid: p.id });
+    }
+    const real = spec.filter((u) => !u.fake);
+    if (real.length) fixedPriceMarket(s, real, poisson(s, d * rf * boost), 'spec', out, false, platformMult(s, 'spec'));
+    const black = units.filter((u) => u.listing?.platform === 'black');
     if (black.length) fixedPriceMarket(s, black, poisson(s, d * 1.5), 'black', out, false, platformMult(s, 'black'));
 
     // ミィーム（オークション）：入札者数で落札価格が決まる。最低落札価格に届かなければ流れる
-    for (const u of units.filter((x) => x.listing.platform === 'auc')) {
+    for (const u of units.filter((x) => x.listing?.platform === 'auc')) {
       const collectBonus = p.kind === 'collect' || p.kind === 'luxury' ? 1.6 : 1;
       const bidders = poisson(s, d * 1.1 * collectBonus * rf);
       const final = roundPrice(unitPrice(s, u) * (0.8 + 0.08 * Math.min(bidders, 5)) * Math.exp(gauss(s) * 0.1) * (1 + s.abilities.list / 1000));
@@ -194,6 +203,8 @@ function rollTrouble(s, sale) {
   if (s.rating < 30) rate *= 1.3;
   if (sale.platform === 'ama') rate *= 0.5;
   if (sale.platform === 'black') return null; // 裏の取引に「評価」はない
+  const authed = sale.platform === 'spec'; // 鑑定センターを通るので、すり替え・音信不通・いたずらは起きない
+  if (authed) rate *= 0.5;
   rate *= perk(s, 'trouble');
   if (sale.delayed) rate += 0.15;
   if (!s.flags.tutorialDone) rate *= 0.4; // 序盤は売る流れを覚えるのが先
@@ -201,8 +212,8 @@ function rollTrouble(s, sale) {
   if (!chance(s, rate)) return null;
   const expensive = sale.price >= 30000;
   return weightedPick(s, [
-    { k: 'ghost', weight: sale.platform === 'ama' ? 0 : 3 },
-    { k: 'swap', weight: expensive ? 3 : 1 },
+    { k: 'ghost', weight: sale.platform === 'ama' || authed ? 0 : 3 },
+    { k: 'swap', weight: authed ? 0 : expensive ? 3 : 1 },
     { k: 'claimer', weight: sale.delayed ? 4 : 2 },
     { k: 'return', weight: 1.5 },
     { k: 'bad_review', weight: 2 },
