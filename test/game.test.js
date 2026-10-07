@@ -132,8 +132,9 @@ test('自動プレイで10年（またはゲームオーバー）まで破綻な
   }
 });
 
-test('ゲーム内テキストに実在ゲームの名前を出さない', () => {
-  const banned = /パワプロ|パワフルプロ野球|サクセス/;
+test('ゲーム内テキストに実在ゲーム・実在サービス・ブランドの名前を出さない', () => {
+  // 販売サービスはパロディ名（プンシー・ミィーム・アマクリ・ホンモノ堂）。商品名・店名も架空にする
+  const banned = /パワプロ|パワフルプロ野球|サクセス|メルカリ|ラクマ|ヤフオク|Amazon|アマゾン|楽天|eBay|StockX|スニダン|ポケモン|ポケカ|遊戯王|任天堂|プレステ|ドンキ|ブックオフ|ハードオフ|ヨドバシ|ロレックス|ヴィトン|エルメス|シャネル|ディズニー|一番くじ|OpenSea/;
   const files = [];
   const walk = (dir) => {
     for (const f of readdirSync(join(ROOT, dir))) {
@@ -144,7 +145,7 @@ test('ゲーム内テキストに実在ゲームの名前を出さない', () =>
   };
   walk('src');
   files.push('index.html');
-  for (const f of files) assert.ok(!banned.test(readFileSync(join(ROOT, f), 'utf8')), `${f} に実在ゲーム名がある`);
+  for (const f of files) assert.ok(!banned.test(readFileSync(join(ROOT, f), 'utf8')), `${f} に実在の名前がある: ${readFileSync(join(ROOT, f), 'utf8').match(banned)?.[0]}`);
 });
 
 test('序盤は行動が絞られていて、チュートリアルで順に解放される', () => {

@@ -23,7 +23,8 @@ import { chance } from './rng.js';
 export const DIFFICULTIES = {
   easy: { name: 'やさしい', debt: 800000, minPay: 20000, rate: 0.1, desc: '借金80万円・最低返済 月2万円・年利10%。まずは転売の流れを楽しみたい人に' },
   normal: { name: 'ふつう', debt: 1500000, minPay: 30000, rate: 0.15, desc: '借金150万円・最低返済 月3万円・年利15%。おすすめ' },
-  hard: { name: 'きびしい', debt: 2500000, minPay: 40000, rate: 0.18, desc: '借金250万円・最低返済 月4万円・年利18%。序盤の資金繰りがきつい' },
+  // 年利は利息制限法の上限（元本100万円以上は15%）を超えないようにする
+  hard: { name: 'きびしい', debt: 2500000, minPay: 45000, rate: 0.15, desc: '借金250万円・最低返済 月4.5万円・年利15%（法律の上限）。序盤の資金繰りがきつい' },
 };
 export const difficultyOf = (s) => DIFFICULTIES[s.difficulty] || DIFFICULTIES.normal;
 export const minPayment = (s) => difficultyOf(s).minPay;
@@ -238,14 +239,15 @@ function monthReport(s, rec, fees, passive) {
 }
 
 // ---------------- 税金 ----------------
-// 個人：所得税＋住民税をざっくり累進で。法人：実効税率25%＋均等割7万円（ゲーム用の簡略化）
+// 個人：所得税（5〜45%）＋住民税（10%）を合わせた累進。基礎控除58万円。法人：実効税率25%＋均等割7万円（ゲーム用の簡略化）
 const BRACKETS = [
   [1950000, 0.15],
   [3300000, 0.2],
   [6950000, 0.3],
   [9000000, 0.33],
   [18000000, 0.43],
-  [Infinity, 0.5],
+  [40000000, 0.5],
+  [Infinity, 0.55],
 ];
 
 export function taxFor(s, income) {

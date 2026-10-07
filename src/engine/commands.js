@@ -51,7 +51,7 @@ export const COMMANDS = [
   { id: 'auction', group: 'buy', icon: E(5509), node: 'src_auction', name: '業者オークション', desc: '古物商だけの市場。相場の5〜7割', stamina: 10, exp: { info: 10, social: 8 }, hours: 6, bg: 'event' },
   { id: 'wholesale', group: 'buy', icon: E(1058), node: 'src_wholesale', name: '問屋と商談', desc: '定番品をロットで卸値仕入れ', stamina: 8, exp: { social: 14, info: 6 }, hours: 5, bg: 'event' },
   { id: 'import', group: 'buy', icon: E(1009), name: '中国輸入', desc: '海外の卸サイトからノーブランド品をロットで輸入。届くのは3週後（ステージ2から）', stamina: 6, exp: { info: 8, tech: 5, social: 2 }, hours: 4, bg: 'online' },
-  { id: 'kuji', group: 'buy', icon: E(5046), node: 'src_store', name: 'くじを引く', desc: '一番くじ風のくじ（1回750円）。A賞とラストワン賞が狙い目、下位賞はダブつきやすい', stamina: 3, exp: { mind: 4, info: 2 }, hours: 1, bg: 'store' },
+  { id: 'kuji', group: 'buy', icon: E(5046), node: 'src_store', name: 'くじを引く', desc: '等級つきのキャラクターくじ（1回750円）。A賞とラストワン賞が狙い目、下位賞はダブつきやすい', stamina: 3, exp: { mind: 4, info: 2 }, hours: 1, bg: 'store' },
   { id: 'oem', group: 'buy', icon: E(3098), name: '自社製品をつくる', desc: '工場に自社ブランドの品を発注する（最低30個・4週後に納品）。競合がいない自分だけの品', stamina: 6, exp: { tech: 10, info: 6 }, hours: 4, bg: 'event' },
   { id: 'listing', group: 'sell', icon: I('buf_agi.png'), name: '撮影・出品作業', desc: '今週の売れ行き1.25倍', stamina: 12, exp: { tech: 14, info: 4 }, hours: 6, bg: 'home' },
   { id: 'meetup', group: 'out', icon: E(3112), node: 'net_meetup', name: '物販交流会', desc: 'せどり仲間と情報交換', stamina: 10, exp: { social: 14, info: 6 }, cost: 3000, hours: 4, bg: 'event' },
