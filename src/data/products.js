@@ -125,6 +125,9 @@ export const PRODUCTS = [
   { id: 'colorcon', name: 'モノクル', genre: 'カラーコンタクト（度なし）', ext: 1102, kind: 'staple', retail: 1980, size: 'S', demand: 2.4, base: 1.0, fakeRisk: 0, reg: 'device' },
   { id: 'supple', name: '熱処理されたモスエッグ', genre: '健康サプリ（栄養補助食品）', ext: 1133, kind: 'staple', retail: 3980, size: 'S', demand: 2.2, base: 1.05, fakeRisk: 0.05, reg: 'claim' },
 
+  // 自社ブランド品（エジソンの奥義「メンロパークの研究所」で、工場に発注してつくる）
+  { id: 'own_brand', name: 'ウィズダムギョク', genre: '自社ブランドのスマートライト', ext: 3098, kind: 'staple', retail: 6980, size: 'S', demand: 2.4, base: 1.0, fakeRisk: 0, ownBrand: true },
+
   // くじの賞品（engine/kuji.js）。くじでしか手に入らない。下位賞ほど買い手が少なく、たくさん出すとダブついて相場が下がる
   { id: 'kuji_a', name: '真夜中のスタールビー', genre: 'くじのA賞（大型フィギュア）', ext: 5046, kind: 'kuji', retail: 18000, size: 'L', demand: 1.4, base: 1.0, fakeRisk: 0 },
   { id: 'kuji_b', name: 'ピジョンブラッド', genre: 'くじのB賞（フィギュア）', ext: 4046, kind: 'kuji', retail: 6000, size: 'M', demand: 1.0, base: 1.0, fakeRisk: 0 },

@@ -83,7 +83,7 @@ export function platformsFor(s, u) {
 }
 
 export const listingCap = (s) => 5 + Math.floor(s.abilities.list / 10) + nodeLv(s, 'slots') * 3 + (hasSkill(s, 'ch_shops') ? 5 : 0);
-export const capacity = (s) => ROOM_CAPACITY + (hasSkill(s, 'warehouse') ? 60 : 0) + (hasSkill(s, 'warehouse2') ? 300 : 0) + perk(s, 'capacityAdd') + ((s.lifestyle || 0) >= 2 ? 20 : 0); // 車のトランク
+export const capacity = (s) => ROOM_CAPACITY + (hasSkill(s, 'warehouse') ? 60 : 0) + (hasSkill(s, 'warehouse2') ? 300 : 0) + perk(s, 'capacityAdd') + ((s.lifestyle || 0) >= 2 ? 20 : 0) + (s.secrets?.includes('logistics') ? 40 : 0); // 車のトランク・ナポレオンの奥義
 export const activeUnits = (s) => s.inventory.filter((u) => u.arrive <= s.week);
 export const listedUnits = (s) => s.inventory.filter((u) => u.listing);
 export const spaceUsed = (s) => s.inventory.reduce((sum, u) => sum + SIZE_INFO[productOf(u.pid).size].space, 0);

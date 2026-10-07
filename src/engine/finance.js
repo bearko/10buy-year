@@ -12,6 +12,8 @@ import { celebrate, info, sfx, talk } from './steps.js';
 import { monthlyNodeFees } from './abilities.js';
 import { addExpense, closeMonth, heldDays, inventoryStats } from './kpi.js';
 import { checkPromotion, CORP_SOCIAL, LIVING_COST } from './career.js';
+// 専業の生活費（フランクリンの奥義「1ペニーの節約は1ペニーの稼ぎ」で2割安い）
+export const livingCost = (s) => Math.round(LIVING_COST * (s.secrets?.includes('penny') ? 0.8 : 1));
 import { yearOf } from './calendar.js';
 import { ORG_WAGE } from './style.js';
 import { chance } from './rng.js';
@@ -40,7 +42,7 @@ export function monthEnd(s) {
     record(s, `事業収入（${passive.names.join('・')}）`, passive.total);
     if (hasSkill(s, 'div_consult')) addHate(s, 4, false);
   }
-  if (s.fulltime) addCash(s, -LIVING_COST, '生活費（家賃・食費・国保・年金）');
+  if (s.fulltime) addCash(s, -livingCost(s), '生活費（家賃・食費・国保・年金）');
   shopMonthly(s);
   collectionMonthly(s); // コレクションの値上がり・美術館の維持費
   lifestyleMonthly(s); // 暮らしの出費
@@ -229,7 +231,7 @@ function monthReport(s, rec, fees, passive) {
   const feeTotal = fees.reduce((a, f) => a + f.amount, 0) + (s.corp ? CORP_SOCIAL : 0);
   if (feeTotal) lines.push(`固定費 ${yen(feeTotal)}`);
   if (passive.total) lines.push(`事業収入 ${yen(passive.total)}`);
-  if (s.fulltime) lines.push(`生活費 ${yen(LIVING_COST)}`);
+  if (s.fulltime) lines.push(`生活費 ${yen(livingCost(s))}`);
   return info(`${rec.month}月の締め`, lines, rec.net >= 0 ? 'good' : 'bad');
 }
 

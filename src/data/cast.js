@@ -47,6 +47,10 @@ export const CAST = {
   marie: { name: 'マリー・アントワネット', hero: 4014, title: '爆買いの王妃' },
   ryoma: { name: '坂本龍馬', hero: 5008, title: '海援隊（日本初の商社）' },
   marco: { name: 'マルコ・ポーロ', hero: 4008, title: '東方の相場を知る男' },
+  davinci: { name: 'レオナルド・ダ・ビンチ', hero: 5005, title: '万能の目利き' },
+  napoleon: { name: 'ナポレオン・ボナパルト', hero: 5002, title: '兵站の皇帝' },
+  franklin: { name: 'ベンジャミン・フランクリン', hero: 2041, title: '時は金なりの人' },
+  darwin: { name: 'ダーウィン', hero: 4028, title: '変化に適応する博物学者' },
 
   // マイクリのエネミー（トラブルの化身）
   claimer: { name: 'クレーマー', enemy: 101 },

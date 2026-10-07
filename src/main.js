@@ -38,6 +38,7 @@ import { queueScene } from './ui/queue.js';
 import { myStoreModal } from './ui/mystore.js';
 import { routineModal } from './ui/routine.js';
 import { storeMapModal } from './ui/storemap.js';
+import { companionsModal } from './ui/companions.js';
 import { photoModal } from './ui/worklife.js';
 import { shipScene } from './ui/room.js';
 import { quoteModal, seriModal } from './ui/pro.js';
@@ -561,6 +562,7 @@ function renderTabs() {
         onLife: () => after(lifestyleModal(state, refresh)),
         onCrypto: () => after(cryptoModal(state, refresh)),
         onMap: () => after(storeMapModal(state)),
+        onCompanions: () => after(companionsModal(state)),
       }),
     },
     { id: 'log', label: 'ログ', open: () => logModal(state) },

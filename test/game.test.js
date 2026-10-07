@@ -1257,6 +1257,7 @@ test('中国輸入：3週後に届き、関税・検品不良がある。税関�
   const s = createGame(21);
   s.stage = 2;
   s.cash = 5000000;
+  s.skills.push('warehouse', 'warehouse2'); // ロットが入る置き場
   s.flags.importIntro = true;
   const offs = importOffers(s);
   assert.ok(offs.length > 0 && offs.every((o) => o.import && o.minQty === 10 && o.arriveWeek === s.week + IMPORT_WEEKS));
@@ -1536,4 +1537,34 @@ test('薬機法：医薬品・カラコンは出品も買取もできず、サ�
   }
   assert.ok(removed > 0, '効能をうたった出品は、いずれ削除される');
   assert.ok(s.warnings >= 1);
+});
+
+test('仲間は20人以上、全員3段階以上の連続イベントがあり、新しい仲間の奥義が効く', async () => {
+  const { COMPANIONS, SECRETS } = await import('../src/data/companions.js');
+  const { EVENT_MAP } = await import('../src/data/events.js');
+  const { capacity } = await import('../src/engine/inventory.js');
+  const { livingCost } = await import('../src/engine/finance.js');
+  const { estimateError } = await import('../src/engine/market.js');
+  assert.ok(COMPANIONS.length >= 20);
+  for (const c of COMPANIONS) {
+    assert.ok(c.chain.length >= 3, c.who);
+    for (const id of c.chain) assert.ok(EVENT_MAP[id], `${id} がない`);
+    assert.ok(CAST[c.who], c.who);
+  }
+  const s = createGame(131);
+  const cap = capacity(s);
+  const live = livingCost(s);
+  const err = estimateError(s);
+  s.secrets = Object.keys(SECRETS);
+  assert.equal(capacity(s), cap + 40);
+  assert.equal(livingCost(s), Math.round(live * 0.8));
+  assert.ok(Math.abs(estimateError(s) - err * 0.7) < 1e-9);
+  assert.ok(availableCommands(s).some((c) => c.id === 'oem'), 'エジソンの奥義で自社製品をつくれる');
+  // 最終段の出会いで奥義を授かる
+  const t = createGame(132);
+  t.affinity.napoleon = 2;
+  t.stage = 3;
+  t.abilities.pack = 60;
+  EVENT_MAP.napoleon_3.play(t);
+  assert.ok(t.secrets.includes('logistics'));
 });
