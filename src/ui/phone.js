@@ -57,6 +57,7 @@ export function phoneMode(ctx) {
     last = t;
     if (done || prompt || document.hidden) return;
     now += dt * rate;
+    if (app === 'home' && !ctx.isOpen()) slideBanner(dt);
     const changed = tick();
     const o = ctx.isOpen();
     // 商品ページを開いている間は、その商品が変わったときだけ描き直す（入力中の上限額などを消さない）
@@ -156,11 +157,64 @@ export function phoneMode(ctx) {
       ...Object.entries(APPS).filter(([id]) => byApp(id).length).map(([id, a]) => tab(id, a.name, a.color)));
   }
 
+  function wasteAd() {
+    if (!canAct()) return;
+    spend(PHONE_COST.ad);
+    toast(`広告を開いてしまった…（${PHONE_COST.ad}分ムダにした）`, 'bad');
+    ctx.render();
+  }
+
   function adBanner(i = 0) {
     const ad = ads[i % ads.length];
-    return h('button', { class: 'ph-ad', onclick: () => { if (!canAct()) return; spend(PHONE_COST.ad); toast(`広告を開いてしまった…（${PHONE_COST.ad}分ムダにした）`, 'bad'); ctx.render(); } },
+    return h('button', { class: 'ph-ad', onclick: wasteAd },
       h('img', { src: portraitOf(ad.who, 'idle'), alt: '' }),
       h('div', {}, h('small', {}, '広告'), h('b', {}, ad.title), h('span', {}, ad.text)));
+  }
+
+  // ホームのバナー：今夜の出品から作る。タップでその商品・アプリへ。最後の1枚は広告（開くと時間をムダにする）
+  const goApp = (id) => { app = id; ctx.render(); };
+  const banners = (() => {
+    const out = [];
+    const ok = (o) => !o.unknown && !o.filler;
+    const pre = offers.find((o) => ok(o) && o.source === 'preorder');
+    if (pre) out.push({ app: 'mall', title: '予約受付スタート', text: productOf(pre.pid).name, pid: pre.pid, go: () => open(pre) });
+    const back = offers.find((o) => ok(o) && o.label?.includes('在庫復活'));
+    if (back) out.push({ app: 'mall', title: '在庫復活・数量限定', text: productOf(back.pid).name, pid: back.pid, go: () => open(back) });
+    const pts = Math.max(0, ...byApp('mall').map((o) => o.points || 0));
+    if (pts >= 0.05) out.push({ app: 'mall', title: '今夜はポイントアップ', text: `最大${Math.round(pts * 100)}%還元・エントリー不要`, go: () => goApp('mall') });
+    const aucs = byApp('auction').filter((o) => !o.auction.done).sort((x, y) => x.auction.endsAt - y.auction.endsAt);
+    if (aucs.length) out.push({ app: 'auction', title: 'まもなく終了', text: `${productOf(aucs[0].pid).name}${aucs.length > 1 ? ` ほか${aucs.length - 1}件` : ''}`, pid: aucs[0].pid, go: () => goApp('auction') });
+    const flea = byApp('flea').filter(ok);
+    if (flea.length) out.push({ app: 'flea', title: '保存した検索に新着', text: `${productOf(flea[0].pid).genre} など${flea.length}件`, pid: flea[0].pid, go: () => goApp('flea') });
+    const ad = ads[ads.length - 1];
+    out.push({ ad: true, title: ad.title, text: ad.text, who: ad.who, go: wasteAd });
+    return out;
+  })();
+  let bannerIdx = 0;
+  let bannerWait = 0; // 自動で次のバナーへ送るまでの秒数
+
+  function bannerView() {
+    const track = h('div', { class: 'ph-banners' }, ...banners.map((b) => h('div', { class: 'ph-slide' },
+      h('button', { class: `ph-banner ${b.ad ? 'ad' : ''}`, style: { '--c': b.ad ? '#a08020' : APPS[b.app].color }, onclick: b.go },
+        h('div', { class: 'ph-banner-t' }, h('small', {}, b.ad ? '広告' : APPS[b.app].name), h('b', {}, b.title), h('span', {}, b.text)),
+        b.pid ? h('img', { src: productImage(productOf(b.pid)), alt: '' }) : b.who ? h('img', { src: portraitOf(b.who, 'idle'), alt: '' }) : null))));
+    const dots = h('div', { class: 'ph-dots' }, ...banners.map((_, i) => h('i', { class: i === bannerIdx ? 'on' : '' })));
+    track.addEventListener('scroll', () => {
+      bannerIdx = Math.round(track.scrollLeft / Math.max(1, track.clientWidth));
+      [...dots.children].forEach((d, i) => d.classList.toggle('on', i === bannerIdx));
+    }, { passive: true });
+    track.addEventListener('pointerdown', () => { bannerWait = -4; }); // 指で送ったら、しばらく自動で送らない
+    requestAnimationFrame(() => { track.scrollLeft = bannerIdx * track.clientWidth; });
+    return h('div', { class: 'ph-carousel' }, track, dots);
+  }
+  function slideBanner(dt) {
+    bannerWait += dt;
+    if (bannerWait < 4) return;
+    bannerWait = 0;
+    const track = ctx.root.querySelector('.ph-banners');
+    if (!track) return;
+    bannerIdx = (bannerIdx + 1) % banners.length;
+    track.scrollTo({ left: bannerIdx * track.clientWidth, behavior: 'smooth' });
   }
 
   function open(o) {
@@ -177,24 +231,13 @@ export function phoneMode(ctx) {
       ctx.wallet(),
     );
 
-    // バナーカルーセル（セール・キャンペーン告知）
-    const banners = [
-      { bg: '#ff6b6b', text: '🎉 本日限定セール', sub: 'スマートウォッチが30%OFF' },
-      { bg: '#4ecdc4', text: '⭐ 新作続々入荷', sub: 'トレンドアイテムをいち早くGET' },
-      { bg: '#ffe66d', text: '🎁 ポイント2倍キャンペーン', sub: '今夜の購入で2倍ポイント' },
-      { bg: '#c7ceea', text: '💎 限定コラボ商品', sub: 'あの人気キャラとのコラボ' },
-    ];
-    const currentBanner = Math.floor((now - run.start) / 60) % banners.length;
-    body.append(h('div', { class: 'ph-banners' },
-      banners.map((b, i) => h('div', { class: `ph-banner ${i === currentBanner ? 'active' : ''}`, style: { background: b.bg } },
-        h('b', {}, b.text),
-        h('small', {}, b.sub)))));
+    body.append(bannerView());
 
     if (step.autoBought?.length) body.append(h('div', { class: 'shop-auto' }, h('b', {}, '外注が自動で仕入れた'), ...step.autoBought.map((m) => h('div', {}, m))));
 
     const notes = run.notices.map((n) => ({ ...n, o: offers.find((o) => o.oid === n.oid) })).filter((n) => n.o);
     if (notes.length) {
-      body.append(h('div', { class: `ph-notes ${notesShown ? 'still' : ''}` }, h('p', { class: 'ph-section-title' }, '🔔 新着通知'), ...notes.map((n) => {
+      body.append(h('div', { class: `ph-notes ${notesShown ? 'still' : ''}` }, h('p', { class: 'ph-section-title' }, '新着通知'), ...notes.map((n) => {
         const a = APPS[n.app];
         const gone = !avail(n.o);
         return h('button', { class: `ph-note ${gone ? 'gone' : ''}`, style: { '--c': a.color }, onclick: () => open(n.o) },
@@ -204,7 +247,7 @@ export function phoneMode(ctx) {
       notesShown = true;
     } else body.append(h('p', { class: 'ph-empty' }, '新しい通知はない。アプリを開いて探そう。'));
 
-    body.append(h('p', { class: 'ph-section-title' }, '📱 アプリ一覧'), h('div', { class: 'ph-apps' },
+    body.append(h('p', { class: 'ph-section-title' }, 'アプリ'), h('div', { class: 'ph-apps' },
       ...Object.entries(APPS).filter(([id]) => byApp(id).length).map(([id, a]) =>
         h('button', { class: 'ph-app', style: { '--c': a.color }, onclick: () => { app = id; ctx.render(); } },
           h('i', {}, a.name.slice(0, 1)), h('b', {}, a.name), h('small', {}, a.sub)))));
@@ -241,7 +284,7 @@ export function phoneMode(ctx) {
 
     // プロモーション表示（アプリごと）
     if (app === 'mall') body.append(h('div', { class: 'ph-promo' }, h('b', {}, '本日ポイントアップ！'), h('span', {}, '最大15%還元・エントリー不要')));
-    if (app === 'auction') body.append(h('div', { class: 'ph-promo auction' }, h('b', {}, '⏰ 終了間際は狙い目！'), h('span', {}, '最後の数分で値上がり幅が決まる')));
+    if (app === 'auction') body.append(h('div', { class: 'ph-promo auction' }, h('b', {}, '終了間際は狙い目'), h('span', {}, '最後の数分で値上がり幅が決まる')));
     if (app === 'shady') body.append(h('div', { class: 'ph-promo shady' }, h('b', {}, '★超激安★全品90%OFF★'), h('span', {}, '本物保証です！安心の取引！')));
 
     if (!list.length) body.append(h('p', { class: 'ph-empty' }, '該当する商品はありません'));
