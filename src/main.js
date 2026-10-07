@@ -14,6 +14,8 @@ import { ACHIEVEMENTS, checkAchievements } from './engine/achievements.js';
 import { allEndings } from './engine/ending.js';
 import { SKILL_MAP, SKILLS } from './data/skills.js';
 import { dailyLabel, dailySeed, todayKey } from './engine/daily.js';
+import { weekKey, weeklySeed, weekRange } from './engine/weekly.js';
+import { fetchRanking, rankingList, submitBox } from './ui/online.js';
 import { SPECIALTIES, STYLES, styleLabel, styleOf } from './engine/style.js';
 import { createGame } from './engine/state.js';
 import { endWeek, startWeek } from './engine/turn.js';
@@ -716,20 +718,23 @@ function pickStyle() {
   return m.closed.then(() => pick);
 }
 
-async function newGame({ daily = null } = {}) {
-  const difficulty = daily ? 'normal' : await pickDifficulty();
+// weekly：週替わりチャレンジの週（オンラインランキングに登録できる）
+async function newGame({ daily = null, weekly = null } = {}) {
+  const challenge = !!(daily || weekly);
+  const difficulty = challenge ? 'normal' : await pickDifficulty();
   if (!difficulty) return;
-  // デイリーチャレンジは同じ条件で競うので、引き継ぎはしない
-  const legacyIds = daily ? [] : loadLegacy().filter((id) => SKILL_MAP[id]);
+  // チャレンジは同じ条件で競うので、引き継ぎ・型・師匠はなし
+  const legacyIds = challenge ? [] : loadLegacy().filter((id) => SKILL_MAP[id]);
   const legacy = legacyIds.length ? await pickLegacy(legacyIds) : '';
   if (legacy === null) return;
-  const veteran = !daily && loadRanking().some((r) => !r.daily);
+  const veteran = !challenge && loadRanking().some((r) => !r.daily && !r.weekly);
   const style = veteran ? await pickStyle() : { type: 'normal' };
   if (!style) return;
-  state = createGame(daily ? dailySeed(daily) : undefined, difficulty);
+  state = createGame(daily ? dailySeed(daily) : weekly ? weeklySeed(weekly) : undefined, difficulty);
   state.style = style;
-  if (!daily && loadMentors()[0]) state.mentor = loadMentors()[0]; // いちばん新しい前の周の転売屋が師匠になる
+  if (!challenge && loadMentors()[0]) state.mentor = loadMentors()[0]; // いちばん新しい前の周の転売屋が師匠になる
   if (daily) state.daily = daily;
+  if (weekly) state.weekly = weekly;
   if (legacy) {
     state.skills.push(legacy);
     state.legacy = legacy;
@@ -776,6 +781,7 @@ function showTitle() {
       h('div', { class: 'title-buttons' },
         hasSave ? h('button', { class: 'btn primary big', onclick: () => continueGame() }, 'つづきから') : null,
         h('button', { class: `btn big ${hasSave ? '' : 'primary'}`, onclick: () => { if (!hasSave || window.confirm('セーブデータを消して最初から始めますか？')) newGame(); } }, 'はじめから'),
+        h('button', { class: 'btn', onclick: () => { if (!hasSave || window.confirm('セーブデータを消して、今週のチャレンジを始めますか？')) newGame({ weekly: weekKey() }); } }, '今週のチャレンジ', h('small', { class: 'btn-sub' }, `${weekRange()}・オンラインランキング`)),
         h('button', { class: 'btn', onclick: () => { if (!hasSave || window.confirm('セーブデータを消して、今日のチャレンジを始めますか？')) newGame({ daily: todayKey() }); } }, `今日のチャレンジ（${dailyLabel(todayKey())}）`),
         h('button', { class: 'btn', onclick: () => rankingModal() }, 'ランキング'),
         h('button', { class: 'btn', onclick: () => recordsModal() }, '実績'),
@@ -798,16 +804,24 @@ function showTitle() {
 const soundLabel = () => (soundOn() ? '🔊 サウンド ON' : '🔇 サウンド OFF');
 
 function rankingModal() {
-  openModal('ランキング（この端末）', (body) => {
+  // オンライン（週替わり）は読み込んでから差し込む
+  const online = h('div', { class: 'online-list' }, h('p', { class: 'note' }, '読み込み中…'));
+  fetchRanking(weekKey()).then((data) => online.replaceChildren(...rankingList(data).filter(Boolean)));
+  openModal('ランキング', (body) => {
+    body.append(
+      h('div', { class: 'sub' }, `今週のチャレンジ（${weekRange()}）オンライン`),
+      h('p', { class: 'note' }, 'この週は誰が遊んでも、同じ相場・同じ出来事から始まる（難易度ふつう）。遊び終えたら、エンディングで登録できる。'),
+      online,
+    );
     const key = todayKey();
     const daily = loadDaily(key);
-    body.append(h('div', { class: 'sub' }, `今日のチャレンジ（${dailyLabel(key)}）`), h('p', { class: 'note' }, '今日は誰が遊んでも、同じ相場・同じ出来事から始まる（難易度ふつう）。'));
+    body.append(h('div', { class: 'sub' }, `今日のチャレンジ（${dailyLabel(key)}）この端末`), h('p', { class: 'note' }, '今日は誰が遊んでも、同じ相場・同じ出来事から始まる（難易度ふつう）。'));
     if (!daily.length) body.append(h('p', { class: 'empty' }, 'まだ記録がない'));
     daily.forEach((r, i) => body.append(h('div', { class: 'card row' }, h('div', { class: `rank r${r.rank}` }, r.rank), h('div', { class: 'grow' }, h('div', { class: 'name' }, `${i + 1}位 ${yenFmt(r.netWorth)}`), h('small', {}, `${r.ending}／${r.stage || ''}／${r.title}`)))));
-    body.append(h('div', { class: 'sub' }, 'これまでの記録'));
+    body.append(h('div', { class: 'sub' }, 'これまでの記録（この端末）'));
     const list = loadRanking();
     if (!list.length) body.append(h('p', { class: 'empty' }, 'まだ記録がない'));
-    list.forEach((r, i) => body.append(h('div', { class: 'card row' }, h('div', { class: `rank r${r.rank}` }, r.rank), h('div', { class: 'grow' }, h('div', { class: 'name' }, `${i + 1}位 ${yenFmt(r.netWorth)}`), h('small', {}, `${r.daily ? `チャレンジ ${dailyLabel(r.daily)}／` : ''}${r.style ? `${r.style}／` : ''}${r.difficulty ? `${r.difficulty}／` : ''}${r.ending}／${r.stage || ''}／${r.title}／売上 ${yenFmt(r.revenue)}／${r.date}`)))));
+    list.forEach((r, i) => body.append(h('div', { class: 'card row' }, h('div', { class: `rank r${r.rank}` }, r.rank), h('div', { class: 'grow' }, h('div', { class: 'name' }, `${i + 1}位 ${yenFmt(r.netWorth)}`), h('small', {}, `${r.daily ? `チャレンジ ${dailyLabel(r.daily)}／` : ''}${r.weekly ? `週替わり ${r.weekly}／` : ''}${r.style ? `${r.style}／` : ''}${r.difficulty ? `${r.difficulty}／` : ''}${r.ending}／${r.stage || ''}／${r.title}／売上 ${yenFmt(r.revenue)}／${r.date}`)))));
   });
 }
 
@@ -843,14 +857,15 @@ function aboutModal() {
 function showEnding() {
   const r = finalResult(state);
   const entry = {
-    netWorth: r.netWorth, rank: r.rank, title: r.title, ending: r.ending.title, stage: r.stage, revenue: r.revenue, difficulty: difficultyOf(state).name, style: styleOf(state) === 'normal' ? null : styleLabel(state), daily: state.daily || null, date: new Date().toLocaleDateString('ja-JP'),
+    netWorth: r.netWorth, rank: r.rank, title: r.title, ending: r.ending.title, stage: r.stage, revenue: r.revenue, difficulty: difficultyOf(state).name, style: styleOf(state) === 'normal' ? null : styleLabel(state), daily: state.daily || null, weekly: state.weekly || null, date: new Date().toLocaleDateString('ja-JP'),
   };
   const ranking = pushRanking(entry);
   if (state.daily) pushDaily(state.daily, entry);
   const before = new Set(loadLegacy());
   const caps = SKILLS.filter((x) => x.kind === 'capstone' && state.skills.includes(x.id)).map((x) => x.id);
-  const newCaps = state.daily ? [] : caps.filter((id) => !before.has(id));
-  if (!state.daily) {
+  const challenge = !!(state.daily || state.weekly);
+  const newCaps = challenge ? [] : caps.filter((id) => !before.has(id));
+  if (!challenge) {
     pushLegacy(caps);
     pushMentor(mentorRecord(state, r));
   }
@@ -885,6 +900,7 @@ function showEnding() {
       newAch.length ? h('div', { class: 'ach-new' }, h('b', {}, '実績を解除'), ...newAch.map((id) => { const a = ACHIEVEMENTS.find((x) => x.id === id); return h('div', {}, `${a.name}（${a.desc}）`); })) : null,
       newCaps.length ? h('p', { class: 'note' }, `次の周に引き継げる到達点が増えた：${newCaps.map((id) => SKILL_MAP[id].name).join('、')}`) : null,
       h('p', { class: 'note' }, r.scarceBought ? `あなたが確保した${r.scarceBought}個の品薄商品。その向こうには、定価で買えなかった誰かがいたかもしれないし、近くの店で買えずにあなたから買えて喜んだ誰かもいたかもしれない。` : '品薄の限定品には手を出さず、価格差で稼ぎきった10年だった。'),
+      state.weekly ? submitBox({ week: state.weekly, netWorth: Math.round(r.netWorth), revenue: Math.round(r.revenue), endingId: r.ending.id, title: r.title, stage: r.stage }) : null,
       h('div', { class: 'sub' }, 'この端末のランキング'),
       ...ranking.slice(0, 5).map((x, i) => h('div', { class: 'ledger-row' }, h('small', {}, `${i + 1}位`), h('span', {}, `${x.ending}／${x.title}`), h('b', {}, yenFmt(x.netWorth)))),
       h('div', { class: 'title-buttons' },

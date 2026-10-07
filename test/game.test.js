@@ -1630,3 +1630,82 @@ test('コード・CSS・HTMLに書いたアセットのパスがすべて存在�
     for (const m of text.matchAll(/assets\/[\w/.-]+\.(?:webp|png|jpg|mp3|wav)/g)) assert.ok(exists(m[0]), `${f}: ${m[0]}`);
   }
 });
+
+import { createHandler, memoryStore, upstashStore } from '../api/_ranking.js';
+import { cleanName, openWeeks, validateEntry, weekKey, weeklySeed } from '../src/engine/weekly.js';
+
+// 素の Node の req/res に似せた最小のもの
+function call(handler, { method = 'GET', url = '/api/ranking', body, ip = '1.2.3.4' } = {}) {
+  return new Promise((resolve) => {
+    const headers = {};
+    const res = {
+      statusCode: 200,
+      setHeader: (k, v) => { headers[k.toLowerCase()] = v; },
+      end: (s) => resolve({ status: res.statusCode, headers, body: JSON.parse(s) }),
+    };
+    handler({ method, url, headers: { 'x-forwarded-for': ip }, body }, res);
+  });
+}
+
+test('週替わりチャレンジ：週の区切り（日本時間の月曜0時）とシード', () => {
+  assert.equal(weekKey(Date.parse('2026-10-05T00:00:00+09:00')), '2026-W41');
+  assert.equal(weekKey(Date.parse('2026-10-04T23:59:59+09:00')), '2026-W40');
+  assert.equal(weekKey(Date.parse('2027-01-03T12:00:00+09:00')), '2026-W53');
+  assert.equal(weekKey(Date.parse('2021-01-04T00:00:00+09:00')), '2021-W01');
+  assert.notEqual(weeklySeed('2026-W41'), weeklySeed('2026-W42'));
+  assert.deepEqual(openWeeks(Date.parse('2026-10-07T12:00:00+09:00')), ['2026-W41', '2026-W40']);
+});
+
+test('オンラインランキング：ありえない登録をはじき、ランクはサーバーで決める', () => {
+  const now = Date.parse('2026-10-07T12:00:00+09:00');
+  const ok = { week: '2026-W41', player: 'abcdef12', name: 'クリス', netWorth: 25000000, revenue: 90000000, endingId: 'pro', rank: 'S' };
+  const v = validateEntry(ok, now);
+  assert.ok(v.ok);
+  assert.equal(v.entry.rank, 'A', '送られてきたランクSは使わない');
+  assert.equal(v.entry.ending, '専業せどらーEND');
+  assert.equal(validateEntry({ ...ok, week: '2026-W30' }, now).error, 'week', '受付が終わった週');
+  assert.equal(validateEntry({ ...ok, name: '   ' }, now).error, 'name');
+  assert.equal(validateEntry({ ...ok, netWorth: 1e12 }, now).error, 'netWorth');
+  assert.equal(validateEntry({ ...ok, netWorth: 50000000, revenue: 1000000 }, now).error, 'netWorth', '売上に見合わない純資産');
+  assert.equal(validateEntry({ ...ok, endingId: 'hacked' }, now).error, 'ending');
+  assert.equal(validateEntry({ ...ok, player: 'x' }, now).error, 'player');
+  assert.equal(validateEntry({ ...ok, endingId: 'bankrupt', netWorth: -100000 }, now).entry.rank, 'G');
+  assert.equal(cleanName('<script>あいうえおかきくけこさしすせそ'), 'scriptあいうえおか');
+});
+
+test('オンラインランキング：登録・自己ベストだけ残る・上位の取得・回数制限', async () => {
+  const now = Date.parse('2026-10-07T12:00:00+09:00');
+  const store = memoryStore();
+  const handler = createHandler(() => store, { now: () => now });
+  const post = (body, ip) => call(handler, { method: 'POST', body: JSON.stringify(body), ip });
+  const base = { week: '2026-W41', revenue: 90000000, endingId: 'pro' };
+  assert.equal((await post({ ...base, player: 'aaaaaaaa', name: 'A', netWorth: 10000000 })).body.position, 1);
+  assert.equal((await post({ ...base, player: 'bbbbbbbb', name: 'B', netWorth: 20000000 })).body.position, 1);
+  const worse = await post({ ...base, player: 'aaaaaaaa', name: 'A2', netWorth: 5000000 });
+  assert.equal(worse.body.improved, false);
+  assert.equal(worse.body.best, 10000000);
+  const got = await call(handler, { url: '/api/ranking?week=2026-W41&player=aaaaaaaa' });
+  assert.equal(got.status, 200);
+  assert.deepEqual(got.body.entries.map((e) => e.name), ['B', 'A']);
+  assert.ok(!('player' in got.body.entries[0]), 'プレイヤーIDは表に出さない');
+  assert.equal(got.body.me.position, 2);
+  assert.equal((await post({ ...base, player: 'cccccccc', name: 'C', netWorth: 1e12 })).status, 400);
+  for (let i = 0; i < 25; i++) await post({ ...base, player: 'dddddddd', name: 'D', netWorth: 1000 + i }, '9.9.9.9');
+  assert.equal((await post({ ...base, player: 'dddddddd', name: 'D', netWorth: 1 }, '9.9.9.9')).status, 429);
+  assert.equal((await call(createHandler(() => null))).status, 503, '保存先がつながっていなければ 503');
+});
+
+test('オンラインランキング：Upstash の REST API に送るコマンド', async () => {
+  const sent = [];
+  const fake = async (url, opt) => {
+    const cmds = JSON.parse(opt.body);
+    sent.push({ url, cmds });
+    return { ok: true, json: async () => cmds.map((c) => ({ result: c[0] === 'ZADD' ? 1 : c[0] === 'ZRANGE' ? ['p1', '300', 'p2', '100'] : c[0] === 'HMGET' ? [JSON.stringify({ name: 'X' }), null] : 0 })) };
+  };
+  const st = upstashStore('https://example.upstash.io/', 'tok', fake);
+  assert.equal(await st.submit({ week: '2026-W41', player: 'p1', netWorth: 300 }), true);
+  assert.deepEqual(sent[0].cmds[0], ['ZADD', '10buy:rank:2026-W41', 'GT', 'CH', '300', 'p1']);
+  assert.equal(sent[0].url, 'https://example.upstash.io/pipeline');
+  const top = await st.top('2026-W41', 50);
+  assert.deepEqual(top.map((e) => [e.name, e.netWorth]), [['X', 300], [undefined, 100]]);
+});

@@ -12,7 +12,7 @@ My Crypto Heroes（マイクリ）のヒーロー・エクステンション・�
 ビルドは不要です。静的ファイルをそのままサーバーで配信してください（ES Modules を使うため `file://` では動きません）。
 
 ```bash
-npm run dev          # = python3 -m http.server 8000
+npm run dev          # = node tools/dev-server.mjs（python3 -m http.server でも遊べる。オンラインランキングだけ使えない）
 # → http://localhost:8000 を開く
 ```
 

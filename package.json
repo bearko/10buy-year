@@ -5,7 +5,7 @@
   "description": "10 buy year！ 転売を題材にした10年間の育成シミュレーション（My Crypto Heroes 二次創作）",
   "type": "module",
   "scripts": {
-    "dev": "python3 -m http.server 8000",
+    "dev": "node tools/dev-server.mjs",
     "test": "node --test test/game.test.js",
     "balance": "node test/balance.mjs 20",
     "assets": "python3 tools/import_assets.py ../mycryptoheroes"
