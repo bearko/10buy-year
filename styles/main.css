@@ -1313,3 +1313,10 @@ body.partner-on #side { display: none !important; }
 .sns-h b { color: #8ec5ff; }
 .sns-h small { color: var(--muted); }
 .sns-post p { margin: 4px 0 0; font-size: 13px; line-height: 1.5; }
+
+/* 取引メッセージ（メールの中のチャット） */
+.mb-chat { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; padding: 8px; border-radius: 10px; background: #eef1f6; }
+.mb-chat-h { font-size: 10px; color: #777; }
+.mb-msg { align-self: flex-start; max-width: 85%; display: flex; flex-direction: column; gap: 1px; padding: 6px 10px; border-radius: 12px 12px 12px 4px; background: #fff; font-size: 12px; line-height: 1.45; color: #222; box-shadow: 0 1px 1px #0001; }
+.mb-msg b { font-size: 10px; color: #2d4fa8; }
+.mb-msg.me { align-self: flex-end; border-radius: 12px 12px 4px 12px; background: #d8f3dc; }
