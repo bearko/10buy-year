@@ -4,6 +4,7 @@ import { ensureMarket } from './market.js';
 
 const SAVE_KEY = '10buy-year:save';
 const RANK_KEY = '10buy-year:ranking';
+const DAILY_KEY = '10buy-year:daily';
 
 function storage() {
   try {
@@ -63,4 +64,30 @@ export function pushRanking(entry) {
     /* noop */
   }
   return top;
+}
+
+// デイリーチャレンジの記録（日付ごとに上位5件、直近7日分）
+export function loadDaily(key) {
+  try {
+    return JSON.parse(storage()?.getItem(DAILY_KEY) || '{}')[key] || [];
+  } catch {
+    return [];
+  }
+}
+
+export function pushDaily(key, entry) {
+  let all = {};
+  try {
+    all = JSON.parse(storage()?.getItem(DAILY_KEY) || '{}');
+  } catch {
+    /* noop */
+  }
+  all[key] = [...(all[key] || []), entry].sort((a, b) => b.netWorth - a.netWorth).slice(0, 5);
+  const keep = Object.keys(all).sort().slice(-7);
+  try {
+    storage()?.setItem(DAILY_KEY, JSON.stringify(Object.fromEntries(keep.map((k) => [k, all[k]]))));
+  } catch {
+    /* noop */
+  }
+  return all[key];
 }
