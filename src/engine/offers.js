@@ -18,7 +18,7 @@ import { JUNK_PIDS, rollJunk, UNCHECKED_MULT } from './junk.js';
 
 let oidSeq = 1;
 // 新ジャンル（know）はここでは除き、genreOffer で知っているものだけ出す。開拓先のシリーズ（spot）も除く
-const byKind = (kind) => PRODUCTS.filter((p) => p.kind === kind && !p.know && !p.spot && !p.niche && !p.imported);
+const byKind = (kind) => PRODUCTS.filter((p) => p.kind === kind && !p.know && !p.spot && !p.niche && !p.imported && !['med', 'device'].includes(p.reg));
 // 定価10万円以上の高額品は、ステージ2になるまで仕入れ候補に出てこない（序盤の一攫千金を防ぐ）
 const affordableTier = (s, p) => p.retail < 100000 || s.stage >= 2;
 const round10 = (v) => Math.max(10, Math.round(v / 10) * 10);
@@ -146,6 +146,14 @@ export function storeOffers(s, n = storeOfferCount(s), { trip = false } = {}) {
       make: () => makeOffer(s, 'jewel', { source: 'luxury', label: 'ショーウィンドウの憧れの品', price: productOf('jewel').retail, maxQty: 1, scarce: true, brandNew: true }),
     },
   ];
+  // ドラッグストアの見切り品：医薬品・カラコンは安いが、個人は転売できない（engine/regulated.js）
+  gens.push({
+    weight: 1,
+    make: () => {
+      const p = productOf(pick(s, ['kanpo', 'colorcon']));
+      return makeOffer(s, p.id, { source: 'store', label: pick(s, ['使用期限が近い品の見切り', '箱つぶれ品の処分']), price: round10(p.retail * randRange(s, 0.35, 0.5)), maxQty: randInt(s, 3, 8) });
+    },
+  });
   // ジャンクかご：動作未確認の電子機器（買って動作確認・修理するまで中身はわからない。engine/junk.js）
   gens.push({
     weight: canUsed(s) ? 1.5 : 0,

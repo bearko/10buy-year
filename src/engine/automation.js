@@ -1,5 +1,6 @@
 // 仕組み化（外注・ツール）による自動処理。ここで作った仕組みが、後半の「手を動かさなくても回る」状態を支える。
 import { suspicion } from './listing.js';
+import { unsellable } from './regulated.js';
 import { productOf, shippingCost } from '../data/products.js';
 import { hasSkill } from './effects.js';
 import { abroadMult, activeUnits, buy, capacity, cardAvailable, feeRate, listUnits, platformMult, platformsFor, spaceUsed } from './inventory.js';
@@ -67,7 +68,7 @@ export function autoBuy(s, offers) {
     if (o.maxQty <= 0 || suspicion(s, o) >= 2) continue; // 怪しい手がかりが2つ以上ある出品は避ける
     const p = productOf(o.pid);
     if (p.used && !s.flags.license) continue;
-    if (p.alcohol && s.flags.noAlcohol) continue;
+    if ((p.alcohol && s.flags.noAlcohol) || unsellable(p.id)) continue; // 酒の免許なし・薬機法で売れない品は買わない
     const net = o.est * (1 - feeRate(s, 'merc')) - shippingCost(p) + o.price * (o.points || 0);
     const margin = (net - o.price) / o.price;
     if (margin < 0.15) continue;

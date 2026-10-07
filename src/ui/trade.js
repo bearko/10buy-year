@@ -7,6 +7,7 @@ import {
   abroadMult, activeUnits, buybackQuote, capacity, feeRate, groupInventory, platformMult, platformOpen, hardCapacity, listedUnits, listingCap, listUnits, platformFee, platformsFor, PLATFORMS, sellToBuyer, spaceUsed, unlistUnits,
 } from '../engine/inventory.js';
 import { sizeLabel, sizeMult } from '../engine/shoes.js';
+import { CLAIM_BUYERS, claimable, regOf, TAKEDOWN_RATE, unsellable } from '../engine/regulated.js';
 import { CHECK_STAMINA, junkLabel, repairCost, repairRate, workOnJunk } from '../engine/junk.js';
 import { confidenceLabel, estimateAt, estimateUnit, isReleased, isRetired, roundPrice, visibleProducts } from '../engine/market.js';
 import { openLotteries } from '../engine/offers.js';
@@ -63,6 +64,9 @@ export function salesModal(s, step) {
           ),
         ),
       );
+    }
+    for (const x of step.takedowns || []) {
+      body.append(h('div', { class: 'card row muted' }, itemIcon(x.pid), h('div', { class: 'grow' }, `${productOf(x.pid).name}（プンシー）…効能をうたった説明文が薬機法に触れるとして、出品が削除された`)));
     }
     for (const x of step.authFailed || []) {
       body.append(h('div', { class: 'card row muted' }, itemIcon(x.pid), h('div', { class: 'grow' }, `${productOf(x.pid).name}（ホンモノ堂）…鑑定で偽物と判定され、送り返されてきた`)));
@@ -135,7 +139,7 @@ export function inventoryModal(s, onChange) {
         quote: buybackQuote(s, u0),
         uids: g.units.slice(0, cur.qty).map((u) => u.uid),
         waiting: g.arrive > s.week,
-        blocked: p.alcohol && flag(s, 'noAlcohol'),
+        blocked: (p.alcohol && flag(s, 'noAlcohol')) || (unsellable(g.pid) && !s.underworld),
         authFail: g.authFail,
         canHere: platformsFor(s, u0).some((m) => m.id === platform) && !banned(s, platform),
       };
@@ -293,6 +297,7 @@ export function inventoryModal(s, onChange) {
           g.damaged ? h('span', { class: 'tag bad' }, '傷あり') : null,
           g.authFail ? h('span', { class: 'tag bad' }, '鑑定NG（偽物）') : null,
           g.rep ? h('span', { class: 'tag' }, '再販版') : null,
+          g.listing?.claim ? h('span', { class: 'tag bad' }, '効能をうたって出品中') : null,
           g.junk ? h('span', { class: `tag ${g.junk.checked && g.junk.state === 'works' ? 'good' : 'bad'}` }, junkLabel(g.units[0])) : null,
           g.shoe ? h('span', { class: `tag ${sizeMult(g.shoe) > 1 ? 'good' : sizeMult(g.shoe) < 0.9 ? 'bad' : ''}` }, sizeLabel(g.shoe)) : null,
           market === 'exp' && !g.listing && abroadMult(s, g.units[0]) >= 1.1 ? h('span', { class: 'tag good' }, `海外なら相場×${abroadMult(s, g.units[0]).toFixed(1)}`) : null,
@@ -340,8 +345,9 @@ export function inventoryModal(s, onChange) {
         }, label)));
       }
       if (x.blocked) {
-        head.append(h('div', { class: 'warn' }, '酒類は出品できない（免許なし）'));
-        if (!selecting) head.append(h('div', { class: 'buy-row' }, h('button', { class: 'btn danger inv-buy', onclick: () => sellBack([{ uids: g.units.map((u) => u.uid), quote: x.quote }]) }, `即決買取（${yenFmt(x.quote * g.units.length)}）`)));
+        const reg = regOf(g.pid);
+        head.append(h('div', { class: 'warn' }, reg ? `${reg.name}は出品できない（${reg.law}）：${reg.rule}` : '酒類は出品できない（免許なし）'));
+        if (!selecting) head.append(h('div', { class: 'buy-row' }, h('button', { class: 'btn danger inv-buy', onclick: () => sellBack([{ uids: g.units.map((u) => u.uid), quote: x.quote }]) }, x.quote ? `即決買取（${yenFmt(x.quote * g.units.length)}）` : '処分する（買取 0円）')));
         return card;
       }
 
@@ -373,7 +379,7 @@ export function inventoryModal(s, onChange) {
       const slider = (min, max, step, value, onInput) => h('input', { type: 'range', class: 'inv-range', min, max, step, value: String(value), oninput: (e) => { onInput(Number(e.target.value)); update(); } });
       listBtn.onclick = () => {
         const y = plan(g);
-        const n = listUnits(s, y.uids, platform, y.price);
+        const n = listUnits(s, y.uids, platform, y.price, { claim: !!cur.claim });
         pick.delete(g.key);
         done(n ? `${n}個を${PLATFORMS[platform].name}に${g.listing ? '出し直した' : '出品した'}` : '出品枠がいっぱいだ', n ? 'good' : 'bad');
       };
@@ -388,6 +394,11 @@ export function inventoryModal(s, onChange) {
           h('div', { class: 'inv-sub' }, feelLbl, profitLbl),
           g.units.length > 1 ? h('div', { class: 'inv-line' }, h('span', {}, '個数'), slider(1, g.units.length, 1, cur.qty, (v) => { cur.qty = v; }), qtyLbl) : null,
           x.cap < Infinity ? h('div', { class: 'warn' }, `規制により、この販路では${yenFmt(x.cap)}までしか出品できない`) : null,
+          // 化粧品・サプリ：説明文で効能をうたうか（薬機法。engine/regulated.js）
+          claimable(g.pid) && platform === 'merc'
+            ? h('label', { class: 'inv-claim' }, h('input', { type: 'checkbox', checked: !!cur.claim, onchange: (e) => { cur.claim = e.target.checked; } }),
+              h('span', {}, '説明文で効能をうたう', h('small', {}, `買い手×${CLAIM_BUYERS}。ただし薬機法違反で、毎週${Math.round(TAKEDOWN_RATE * 100)}%で削除と警告`)))
+            : null,
           !x.canHere ? h('div', { class: 'warn' }, banned(s, platform) ? `${PLATFORMS[platform].name}は停止中` : `${PLATFORMS[platform].name}には出品できない（${PLATFORMS[platform].cats ? (x.authFail ? '鑑定NGの品' : 'スニーカー・トレカだけ') : platform === 'exp' ? '輸出規制' : '新品だけ'}）`) : null,
         ),
         selecting

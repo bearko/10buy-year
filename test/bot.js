@@ -1,5 +1,6 @@
 // テスト・バランス調整用のヘッドレス自動プレイ。UI なしで10年（480週）を通しで遊ぶ。
 import { suspicion } from '../src/engine/listing.js';
+import { unsellable } from '../src/engine/regulated.js';
 import { createGame } from '../src/engine/state.js';
 import { startWeek, endWeek } from '../src/engine/turn.js';
 import { performCommand, availableCommands, availableNightCommands, nextCardTier } from '../src/engine/commands.js';
@@ -75,7 +76,7 @@ export const smartPolicy = {
       const margin = net - o.price;
       if (suspicion(s, o) >= 4) continue; // ふつうのプレイヤー並み：手がかりがそろったときだけ避ける
       if (p.used && !s.flags.license) continue;
-      if (p.alcohol && s.flags.noAlcohol) continue;
+      if ((p.alcohol && s.flags.noAlcohol) || unsellable(p.id)) continue; // 酒の免許なし・薬機法で売れない品は買わない
       if (margin < Math.max(300, o.price * 0.1)) continue;
       const reserve = reserveNeeded(s) * (o.minQty ? 4 : 1) + s.card.current * 0.5;
       const cap = o.minQty ? s.cash * 0.4 : Infinity;
@@ -114,7 +115,7 @@ export function manageListings(s) {
   if (dump.length) sellToBuyer(s, dump.map((u) => u.uid));
   for (const u of activeUnits(s)) {
     const p = productOf(u.pid);
-    if (p.alcohol && s.flags.noAlcohol) continue;
+    if ((p.alcohol && s.flags.noAlcohol) || unsellable(p.id)) continue; // 酒の免許なし・薬機法で売れない品は買わない
     if (!u.listing && forShelf(s, u)) continue;
     const pf = bestPlatform(s, u);
     if (!pf) continue;

@@ -12,6 +12,7 @@ import { addExpense, addHours, recordSale } from './kpi.js';
 import { perk } from './perks.js';
 import { listBoostOf } from './worklife.js';
 import { sizeReturnWeight } from './shoes.js';
+import { CLAIM_BUYERS, claimTakedowns } from './regulated.js';
 
 export const OUTSOURCE_SHIP_FEE = 400;
 
@@ -47,7 +48,7 @@ function fixedPriceMarket(s, units, buyers, platform, out, allowNego, mult = 1) 
 }
 
 export function resolveSales(s) {
-  const out = { sold: [], negotiations: [], troubles: [], delayed: 0, damaged: [], auctionsUnsold: [], authFailed: [] };
+  const out = { sold: [], negotiations: [], troubles: [], delayed: 0, damaged: [], auctionsUnsold: [], authFailed: [], takedowns: claimTakedowns(s) };
   const boost = listBoostOf(s);
   const rf = ratingFactor(s);
 
@@ -58,8 +59,11 @@ export function resolveSales(s) {
 
     // プンシー（フリマ）
     const shops = hasSkill(s, 'ch_shops') ? 1.3 : 1;
-    const merc = units.filter((u) => u.listing.platform === 'merc');
+    // 効能をうたった出品は、買い手が増える（そのぶん削除のおそれ。engine/regulated.js）
+    const merc = units.filter((u) => u.listing.platform === 'merc' && !u.listing.claim);
+    const mercClaim = units.filter((u) => u.listing.platform === 'merc' && u.listing.claim);
     if (merc.length) fixedPriceMarket(s, merc, poisson(s, d * rf * boost * shops * (s.banWeeks > 0 ? 0 : 1)), 'merc', out, true);
+    if (mercClaim.length) fixedPriceMarket(s, mercClaim, poisson(s, d * CLAIM_BUYERS * rf * boost * shops * (s.banWeeks > 0 ? 0 : 1)), 'merc', out, true);
 
     // アマクリ（大手EC）：新品の買い手が多い。値下げ交渉はない
     const ama = units.filter((u) => u.listing.platform === 'ama');
