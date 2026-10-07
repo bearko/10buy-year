@@ -1,6 +1,7 @@
 // 在庫・購入・出品の管理
 import { productOf, SIZE_INFO } from '../data/products.js';
 import { catOf } from './listing.js';
+import { registerImport } from './importer.js';
 import { chance } from './rng.js';
 import { addCash, hasSkill, record, yen } from './effects.js';
 import { yearOf } from './calendar.js';
@@ -139,6 +140,7 @@ export function buy(s, offer, qty, method = 'cash') {
   s.points += earned;
   s.stats.pointsEarned = (s.stats.pointsEarned || 0) + earned;
 
+  const first = s.inventory.length;
   for (let i = 0; i < qty; i++) {
     s.inventory.push(newUnit(s, offer.pid, offer.price, {
       arrive: offer.arriveWeek ?? s.week,
@@ -149,6 +151,7 @@ export function buy(s, offer, qty, method = 'cash') {
       ...(offer.gaisho ? { gaisho: true } : {}), // 外商の優先案内（転売するとバレることがある）
     }));
   }
+  if (offer.import) registerImport(s, offer, s.inventory.slice(first), { inspect: !!s.flags?.importInspect }); // 中国輸入：届くまでに何が起きるか
   s.stats.boughtUnits += qty;
   s.stats.purchases += qty;
   s.stats.spent += total;

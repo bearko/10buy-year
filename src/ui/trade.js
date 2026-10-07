@@ -290,7 +290,7 @@ export function inventoryModal(s, onChange) {
           g.authFail ? h('span', { class: 'tag bad' }, '鑑定NG（偽物）') : null,
           market === 'exp' && !g.listing && abroadMult(s, g.units[0]) >= 1.1 ? h('span', { class: 'tag good' }, `海外なら相場×${abroadMult(s, g.units[0]).toFixed(1)}`) : null,
           g.expire !== null && g.expire !== undefined ? h('span', { class: 'tag bad' }, `賞味期限 ${weekLabel(g.expire)}まで`) : null,
-          x.waiting ? h('span', { class: 'tag' }, `${weekLabel(g.arrive)}に届く`) : null,
+          x.waiting ? h('span', { class: 'tag' }, `${u0.imported ? '国際便・' : ''}${weekLabel(g.arrive)}に届く`) : null,
           !x.waiting && kpiLevel(s) >= 2 ? h('span', { class: `tag ${days >= 90 ? 'bad' : ''}` }, `在庫${days}日`) : null,
           listedOn ? h('span', { class: 'tag good' }, `${listedOn.name}に出品中 ${yenFmt(g.listing.price)}`) : null,
         ),

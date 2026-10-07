@@ -129,6 +129,7 @@ export const SITES = {
   dept: { name: '百貨店', kind: 'store', color: '#7c2d12' },
   gaisho: { name: '外商', kind: 'store', color: '#9d174d' },
   buying: { name: '海外の展示会', kind: 'pro', color: '#1e3a8a' },
+  import: { name: 'ロンロン卸', kind: 'pro', color: '#e4393c' },
 };
 // 開拓した仕入れ先（engine/pioneer.js）も販売元として並べる
 const ROUTE_SITE_KIND = { store: 'store', online: 'mall', auction: 'pro', wholesale: 'pro' };
@@ -219,7 +220,9 @@ export function buildListing(s, o) {
   L.description = makeDescription(s, o, site, p, cat, L.accessories);
 
   // 商品の情報
-  const cond = (p.used && !o.brandNew) || site.kind === 'pro' || o.source === 'used'
+  const cond = o.import
+    ? '新品（簡易包装・検品前）'
+    : (p.used && !o.brandNew) || site.kind === 'pro' || o.source === 'used'
     ? pick(s, ['目立った傷や汚れなし', 'やや傷や汚れあり', '未使用に近い'])
     : '新品、未使用';
   L.info = [

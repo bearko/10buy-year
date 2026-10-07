@@ -294,4 +294,4 @@ export function confidenceLabel(s) {
 
 // 相場画面に並べる商品（発表済み・流通中のもの）
 // 知らないジャンルと、まだ開拓していない仕入れ先のシリーズは相場画面に出さない
-export const visibleProducts = (s) => PRODUCTS.filter((p) => isAnnounced(s, p) && (!p.know || (s.certs || []).includes(`know_${p.know}`)) && (!p.spot || (s.spots || []).includes(p.spot)));
+export const visibleProducts = (s) => PRODUCTS.filter((p) => isAnnounced(s, p) && (!p.imported || s.flags?.importIntro) && (!p.know || (s.certs || []).includes(`know_${p.know}`)) && (!p.spot || (s.spots || []).includes(p.spot)));
