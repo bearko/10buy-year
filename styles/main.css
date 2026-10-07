@@ -1268,3 +1268,25 @@ body.partner-on #side { display: none !important; }
 /* 在庫：ワンタップの一括操作 */
 .inv-quick { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
 .inv-quick .btn { flex: 1 1 auto; font-size: 12px; padding: 6px 8px; }
+
+/* 経営画面のグラフ（ui/charts.js）。青＝黒字、赤＝赤字（暗い面で検証済みの組み合わせ） */
+.ch { --gain: #3987e5; --loss: #e66767; margin: 6px 0 10px; padding: 10px 10px 8px; border-radius: 10px; background: #0d1224; border: 1px solid #ffffff14; }
+.ch figcaption { font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+.ch figcaption small { font-weight: normal; color: var(--muted); font-size: 11px; margin-left: 4px; }
+.ch-plot { display: flex; gap: 2px; height: 120px; }
+.ch-col { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 0; border: none; background: none; cursor: pointer; font: inherit; color: var(--muted); border-radius: 4px; }
+.ch-col.on { background: #ffffff0d; }
+.ch-up, .ch-down { display: flex; justify-content: center; min-height: 0; }
+.ch-up { align-items: flex-end; border-bottom: 1px solid #ffffff40; }
+.ch-down { align-items: flex-start; }
+.ch-bar { display: block; width: 70%; max-width: 18px; min-height: 2px; }
+.ch-bar.gain { background: var(--gain); border-radius: 4px 4px 0 0; }
+.ch-bar.loss { background: var(--loss); border-radius: 0 0 4px 4px; }
+.ch-col small { flex: none; font-size: 9px; line-height: 14px; text-align: center; }
+.ch-cap { margin-top: 6px; font-size: 12px; color: var(--text); min-height: 1.4em; }
+.ch-rows { display: flex; flex-direction: column; gap: 6px; }
+.ch-row { display: grid; grid-template-columns: 7.8em 1fr 5.5em; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.ch-track { height: 12px; border-radius: 0 4px 4px 0; }
+.ch-track i { display: block; height: 100%; min-width: 2px; background: var(--gain); border-radius: 0 4px 4px 0; }
+.ch-row b { color: var(--text); text-align: right; font-size: 12px; display: flex; flex-direction: column; line-height: 1.2; }
+.ch-row b small { color: var(--muted); font-weight: normal; font-size: 10px; }

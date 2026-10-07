@@ -2,6 +2,7 @@
 import { productOf } from '../data/products.js';
 import { weekLabel } from '../engine/calendar.js';
 import { debtFreeSteps, difficultyOf, minPayment, repay } from '../engine/finance.js';
+import { agingChart, profitChart } from './charts.js';
 import { computeKpis, formatKpi, KPI_DEFS, kpiLevel } from '../engine/kpi.js';
 import { STAGES, stageOf, stageProgress } from '../engine/career.js';
 import { grossProfit } from '../engine/state.js';
@@ -57,9 +58,12 @@ export function bizModal(s, onChange, playSteps) {
     if (s.monthly.length) {
       body.append(
         h('div', { class: 'sub' }, '月ごとの推移（直近12か月）'),
+        profitChart(s.monthly.slice(-12)),
         h('div', { class: 'ledger' }, ...s.monthly.slice(-12).reverse().map((m) => h('div', { class: 'ledger-row' }, h('small', {}, `${m.year}年目${m.month}月`), h('span', {}, `売上 ${yenFmt(m.revenue)}・${m.sold}個`), h('b', { class: m.net >= 0 ? 'pos' : 'neg' }, signYen(m.net))))),
       );
     }
+
+    if (lv >= 2 && s.inventory.length) body.append(h('div', { class: 'sub' }, '在庫の滞留'), agingChart(s));
 
     const pending = s.pending.reduce((a, p) => a + p.amount, 0);
     body.append(
@@ -79,7 +83,7 @@ export function bizModal(s, onChange, playSteps) {
     if (s.debt > 0) {
       body.append(
         h('div', { class: 'sub' }, '繰上げ返済'),
-        h('p', { class: 'note' }, '早く返すほど利息（年15%）が減る。ただし手元資金が減ると仕入れができなくなる。'),
+        h('p', { class: 'note' }, `早く返すほど利息（年${Math.round(difficultyOf(s).rate * 100)}%）が減る。ただし手元資金が減ると仕入れができなくなる。`),
         h('div', { class: 'price-row' },
           h('input', { type: 'number', min: '0', step: '10000', value: String(amount), onchange: (e) => { amount = Math.max(0, Number(e.target.value) || 0); } }),
           h('span', {}, '円'),
