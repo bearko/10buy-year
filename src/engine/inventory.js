@@ -18,24 +18,41 @@ export const PLATFORMS = {
   merc: { id: 'merc', node: 'ch_punsea', name: 'プンシー', fee: 0.1, desc: 'フリマ。手数料10%。値付け次第ですぐ売れるが、値下げ交渉とトラブルが多い' },
   auc: { id: 'auc', node: 'ch_miime', name: 'ミィーム', fee: 0.1, desc: 'オークション。手数料10%。1週間で落札。コレクター品は競り上がりやすいが、入札ゼロもある' },
   ama: { id: 'ama', node: 'ch_amacri', name: 'アマクリ', fee: 0.15, perUnit: 300, desc: '大手EC・倉庫委託。手数料15%＋納品料300円/個。新品だけ出品でき、買い手が多く発送の手間がない' },
-  exp: { id: 'exp', cert: 'export', name: '海外EC', fee: 0.13, desc: '海外のECサイト。手数料13%、送料3倍。為替で売値が変わり、円安の週は高く売れる' },
+  exp: { id: 'exp', cert: 'export', name: '海外EC', fee: 0.13, desc: '海外のECサイト。手数料13%、送料3倍。為替で売値が変わり、円安の週は高く売れる。国内で値崩れした品（型落ち・シーズン後・ブームの後）も、海の向こうでは定価近くで売れる' },
   spec: { id: 'spec', stage: 2, cats: ['sneaker', 'tcg'], name: 'ホンモノ堂', fee: 0.2, desc: 'スニーカー・トレカの専門マーケット。手数料20%。品物はいったん鑑定センターを通るので、すり替えや偽物騒ぎが起きず、買い手は安心料として相場の1割増しで買う。偽物は鑑定ではじかれて戻ってくる' },
   black: { id: 'black', underworld: true, name: '裏市場', fee: 0.2, desc: '裏のサービス。仲介料20%。表の数倍の値で売れるが、表の人間には使えない' },
 };
+
+// 海外での人気（定価に対する倍率）。和の品・日本のトレカやフィギュアは海外で高く、輸入ブランドは安い
+export const ABROAD = {
+  scroll: 1.15, heiho: 1.15, taito: 1.15, sylph: 1.15, old_figure: 1.15, kaeru: 1.1, retro_pc: 1.1,
+  sake: 1.2, nectar: 1.2, gamaguchi: 1.2,
+  kokeshi: 1.3, lacquer: 1.3, haori: 1.3, ichimatsu: 1.3, bangasa: 1.3, maiogi: 1.3, sakazuki: 1.3,
+  scarf: 0.85, gentle_umbrella: 0.85, leather_wallet: 0.85,
+};
+
+// 海外の相場の倍率（為替を除く）：国内の相場が海外の相場（定価×海外での人気）を下回っていれば、その差だけ高く売れる
+export function abroadMult(s, u) {
+  if (!u) return 1;
+  const p = productOf(u.pid);
+  const ref = p.retail * (ABROAD[u.pid] ?? 1) * (u.damaged ? 0.5 : 1);
+  return Math.min(2, Math.max(1, ref / Math.max(1, unitPrice(s, u))));
+}
 
 // その販路が使えるか（表の販路はスキル・資格、裏市場は裏の人間だけ）
 export function platformOpen(s, pf) {
   if (s.underworld) return !!pf.underworld;
   if (pf.underworld) return false;
+  if (pf.id === 'exp' && s.flags?.abroad) return true; // マルコ・ポーロの紹介
   if (pf.cert) return !!s.certs?.includes(pf.cert);
   // 専門マーケット：ステージ2から（その商材の専門家なら最初から）
   if (pf.stage) return s.stage >= pf.stage || (s.style?.type === 'spec' && pf.cats.includes(s.style.cat));
   return hasSkill(s, pf.node);
 }
 
-// 販路ごとの売値の倍率（海外ECは為替、裏市場は表の数倍）
-export function platformMult(s, platform) {
-  if (platform === 'exp') return s.fx || 1;
+// 販路ごとの売値の倍率（海外ECは為替と海外の相場、裏市場は表の数倍）。u を渡すと品ごとの差も入る
+export function platformMult(s, platform, u) {
+  if (platform === 'exp') return (s.fx || 1) * abroadMult(s, u);
   if (platform === 'spec') return 1.1;
   if (platform === 'black') return 2.5 * (hasSkill(s, 'cap_dark') ? 1.2 : 1);
   return 1;

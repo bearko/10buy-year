@@ -63,7 +63,7 @@ export function routineList(s, cfg = routineCfg(s)) {
     const pf = cfg.market !== 'auto' && ok.includes(cfg.market) ? cfg.market : bestPlatform(s, u);
     if (!pf) continue;
     const est = estimateUnit(s, u);
-    n += listUnits(s, [u.uid], pf, Math.max(100, est * platformMult(s, pf) * cfg.mult * (pf === 'auc' ? 0.75 : 1)));
+    n += listUnits(s, [u.uid], pf, Math.max(100, est * platformMult(s, pf, u) * cfg.mult * (pf === 'auc' ? 0.75 : 1)));
   }
   return n;
 }

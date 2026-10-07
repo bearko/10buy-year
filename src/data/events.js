@@ -14,7 +14,7 @@ import {
   addAffinity, addCash, addExp, addHate, addToku, fallUnderworld, addMood, addRating, addStamina, affinity, flag, giveHint, giveSkill, hasSkill, setFlag, yen,
 } from '../engine/effects.js';
 import { applyShock, inBoom, isReleased, priceOf } from '../engine/market.js';
-import { addUnits, overCapacity } from '../engine/inventory.js';
+import { abroadMult, addUnits, overCapacity } from '../engine/inventory.js';
 import { addFamily } from '../engine/family.js';
 import { fiscalIncome, minPayment, taxFor } from '../engine/finance.js';
 import { bgm, choice, gain, info, items, narr, sfx, talk } from '../engine/steps.js';
@@ -922,6 +922,40 @@ export const EVENTS = [
       ...hint(s, 'lottery_nose', 1, 'マルコ・ポーロ'),
       expStep(s, { info: 15 }),
     ],
+  },
+  {
+    // 輸出の解禁：国内で値崩れした品を、海の向こうで売る
+    id: 'marco_2',
+    trigger: 'command',
+    cmd: 'listing',
+    chance: 0.35,
+    cond: (s) => s.stage >= 2 && !s.flags.abroad && !s.certs?.includes('export') && !s.underworld,
+    play: (s) => {
+      const cheap = s.inventory.filter((u) => !u.listing && abroadMult(s, u) >= 1.1).sort((a, b) => abroadMult(s, b) - abroadMult(s, a))[0];
+      const name = cheap ? productOf(cheap.pid).name : null;
+      return [
+        talk('marco', s.eventsSeen.marco_1 ? 'また会ったな。' + (name ? `その「${name}」、この国では値崩れしておるな。` : '売れ残りの山か。') : (name ? `その「${name}」、この国では値崩れしておるようじゃな。` : '売れ残りの山か。') + 'わしはマルコ・ポーロ。東方の市場を歩いた男じゃ。'),
+        talk('marco', '海の向こうでは、同じ品をまだ欲しがっておる者がいる。型落ちも、季節外れも、関係ない。わしの知る商人たちを紹介してやろう。'),
+        talk('chris', '海外に売る…送料も高いし、為替もあるし…。', 'arms'),
+        talk('marco', '円が安い週に売ればよい。場所と時間の差じゃ。'),
+        choice([
+          {
+            label: '紹介してもらう（仲介料3万円）',
+            run: () => {
+              if (s.cash < 30000) return [talk('chris', 'お金が足りない…。また今度お願いします。', 'sad'), talk('marco', 'うむ。旅はいつでも始められる。')];
+              addCash(s, -30000, 'マルコ・ポーロへの仲介料');
+              s.flags.abroad = true;
+              return [
+                sfx('stageup'),
+                talk('marco', 'よき旅を。品は船に乗せれば、ちゃんと届く。'),
+                info('販路「海外EC」が使えるようになった', ['手数料13%・送料3倍。売値は為替（円安で高く）で変わる', '国内で値崩れした品も、海外では定価近くで売れる（在庫画面に「海外なら相場×」と出る）', '和の品・日本のトレカやフィギュアは海外で人気'], 'good'),
+              ];
+            },
+          },
+          { label: '今はやめておく', run: () => [talk('chris', 'まずは国内で手いっぱいです。', 'arms'), talk('marco', 'そうか。気が変わったら、資格講座「輸出入の基礎」でも道は開ける。')] },
+        ]),
+      ];
+    },
   },
   {
     id: 'gennai_1',

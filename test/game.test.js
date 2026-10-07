@@ -1225,3 +1225,27 @@ test('専門マーケット：スニーカー・トレカだけ、ステージ2�
   assert.ok(boots.authFail && !boots.listing);
   assert.ok(!platformsFor(s, boots).some((x) => x.id === 'spec'), '鑑定NGの品は出し直せない');
 });
+
+test('輸出：マルコ・ポーロの紹介で海外ECが開き、国内で値崩れした品は海外で高く売れる', async () => {
+  const { abroadMult, platformMult, platformsFor, addUnits } = await import('../src/engine/inventory.js');
+  const { EVENTS } = await import('../src/data/events.js');
+  const s = createGame(12);
+  s.stage = 2;
+  s.cash = 100000;
+  addUnits(s, 'boots', 1, 5000);
+  const u = s.inventory.at(-1);
+  assert.ok(!platformsFor(s, u).some((x) => x.id === 'exp'));
+  const ev = EVENTS.find((e) => e.id === 'marco_2');
+  assert.ok(ev.cond(s));
+  const steps = ev.play(s);
+  steps.find((x) => x.t === 'choice').options[0].run();
+  assert.equal(s.cash, 70000);
+  assert.ok(platformsFor(s, u).some((x) => x.id === 'exp'));
+  // 型落ちで国内の相場が定価の65%まで下がっても、海外では定価で見てもらえる
+  s.market.boots.p = 0.65;
+  assert.ok(Math.abs(abroadMult(s, u) - 1 / 0.65) < 0.01);
+  s.fx = 1.2;
+  assert.ok(Math.abs(platformMult(s, 'exp', u) - 1.2 / 0.65) < 0.01);
+  s.market.boots.p = 1.3;
+  assert.equal(abroadMult(s, u), 1, '国内のほうが高ければ、倍率は為替だけ');
+});
