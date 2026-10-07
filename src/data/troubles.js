@@ -234,6 +234,16 @@ export function troubleSteps(s, trouble) {
       s.warnings++;
       const banned = s.warnings >= 2;
       if (banned) s.banWeeks = 4;
+      if (productOf(sale.pid).searchable) {
+        // サーチ済みパック：当たりを抜かれたパックを、知らずに売った
+        return [
+          sfx('trouble'),
+          talk('claimer', `「${name}」、10パック全部開けたのに当たりが1枚もありません。重さで当たりを抜いた「サーチ済み」ですよね？ 通報しました。`),
+          talk('chris', 'えっ…まとめ売りで安く買ったパック、サーチ済みだったの…！？', 'wail'),
+          talk('mine', 'バラパックの激安まとめ売りは、当たりを抜いた残りのことが多いの。未開封でも中身は保証されないのよ。', 'arms'),
+          info(banned ? 'プンシー利用制限' : '事務局から警告', banned ? ['問題のある出品が重なり、プンシーが4週間利用できなくなった'] : ['返金し、評価が大きく下がった', '次に同じことがあると利用制限になる'], 'bad'),
+        ];
+      }
       return [
         sfx('trouble'),
         talk('claimer', `鑑定に出したら「${name}」は偽物でした。通報しました。返金してください。`),

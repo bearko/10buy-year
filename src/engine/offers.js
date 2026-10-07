@@ -14,6 +14,7 @@ import { lotteryRegimeMult, madeToOrder, queueLimited } from './regimes.js';
 import { investPrice, investQty, investWeight } from './lifestyle.js';
 import { IMPORT_WEEKS } from './importer.js';
 import { isSneaker, pickSize, rollLeftover, sizeMult } from './shoes.js';
+import { JUNK_PIDS, rollJunk, UNCHECKED_MULT } from './junk.js';
 
 let oidSeq = 1;
 // 新ジャンル（know）はここでは除き、genreOffer で知っているものだけ出す。開拓先のシリーズ（spot）も除く
@@ -32,7 +33,7 @@ function makeOffer(s, pid, fields) {
     offer.shoe = pickSize(s, { leftover });
     if (leftover && !offer.scarce && sizeMult(offer.shoe) < 1) offer.price = Math.max(10, Math.round((offer.price * sizeMult(offer.shoe)) / 10) * 10);
   }
-  offer.est = Math.round((offer.upcoming ? estimateUpcoming(s, pid) : estimate(s, pid) * (offer.rep ? REP_MULT : 1)) * sizeMult(offer.shoe));
+  offer.est = Math.round((offer.junk ? UNCHECKED_MULT : 1) * (offer.upcoming ? estimateUpcoming(s, pid) : estimate(s, pid) * (offer.rep ? REP_MULT : 1)) * sizeMult(offer.shoe));
   // まとめ買い：数を選べる候補だけ（限定品・一点物・ロット仕入れは除く）
   if (!offer.scarce && !offer.minQty && offer.maxQty >= 2) offer.maxQty += perk(s, 'offerQty');
   // 偽物かどうかは出品の時点で決まっている。高額品ほど「巧妙な偽物」が多い
@@ -145,6 +146,16 @@ export function storeOffers(s, n = storeOfferCount(s), { trip = false } = {}) {
       make: () => makeOffer(s, 'jewel', { source: 'luxury', label: 'ショーウィンドウの憧れの品', price: productOf('jewel').retail, maxQty: 1, scarce: true, brandNew: true }),
     },
   ];
+  // ジャンクかご：動作未確認の電子機器（買って動作確認・修理するまで中身はわからない。engine/junk.js）
+  gens.push({
+    weight: canUsed(s) ? 1.5 : 0,
+    make: () => {
+      const cands = JUNK_PIDS.map(productOf).filter((p) => isReleased(s, p) && affordableTier(s, p) && knowsGenre(s, p));
+      if (!cands.length) return null;
+      const p = pick(s, cands);
+      return makeOffer(s, p.id, { source: 'used', label: 'ジャンクかご（動作未確認）', price: round10(priceOf(s, p.id) * randRange(s, 0.1, 0.2)), maxQty: 1, junk: rollJunk(s) });
+    },
+  });
   gens.push(genreGen(s, 'used', 0.6, 0.85), ...(trip ? [] : spotGens(s, 'store')), nicheGen(s, 'store', ['pretty_set', 'bonsai', 'haori']));
   const offers = trip ? generate(s, gens, n) : applySaturation(s, generate(s, gens, n), 'store');
   if (!s.stats.purchases) offers.unshift(firstWagon(s));
@@ -216,6 +227,11 @@ export function onlineOffers(s) {
       },
     },
   ];
+  // バラパックのまとめ売り：安いものは、たいてい当たりを抜いた「サーチ済み」
+  gens.push({
+    weight: hasLicense(s) && hasSkill(s, 'src_flea') ? 1.2 : 0,
+    make: () => makeOffer(s, 'packs', { source: 'flea', label: 'バラパックまとめ売り（未開封）', price: roundPrice(priceOf(s, 'packs') * randRange(s, 0.5, 0.75)), maxQty: randInt(s, 1, 3), fakeRate: 0.6 }),
+  });
   gens.push(genreGen(s, 'flea', 0.65, 0.9), ...spotGens(s, 'online'), nicheGen(s, 'online', ['dream_set', 'cyber_staff', 'star_globe']));
   const offers = applySaturation(s, generate(s, gens, n), 'online');
   for (const o of offers) if (o.price === 0) o.price = productOf(o.pid).retail;

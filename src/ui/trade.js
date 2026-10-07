@@ -7,6 +7,7 @@ import {
   abroadMult, activeUnits, buybackQuote, capacity, feeRate, groupInventory, platformMult, platformOpen, hardCapacity, listedUnits, listingCap, listUnits, platformFee, platformsFor, PLATFORMS, sellToBuyer, spaceUsed, unlistUnits,
 } from '../engine/inventory.js';
 import { sizeLabel, sizeMult } from '../engine/shoes.js';
+import { CHECK_STAMINA, junkLabel, repairCost, repairRate, workOnJunk } from '../engine/junk.js';
 import { confidenceLabel, estimateAt, estimateUnit, isReleased, isRetired, roundPrice, visibleProducts } from '../engine/market.js';
 import { openLotteries } from '../engine/offers.js';
 import { currentMission } from '../engine/tutorial.js';
@@ -292,6 +293,7 @@ export function inventoryModal(s, onChange) {
           g.damaged ? h('span', { class: 'tag bad' }, '傷あり') : null,
           g.authFail ? h('span', { class: 'tag bad' }, '鑑定NG（偽物）') : null,
           g.rep ? h('span', { class: 'tag' }, '再販版') : null,
+          g.junk ? h('span', { class: `tag ${g.junk.checked && g.junk.state === 'works' ? 'good' : 'bad'}` }, junkLabel(g.units[0])) : null,
           g.shoe ? h('span', { class: `tag ${sizeMult(g.shoe) > 1 ? 'good' : sizeMult(g.shoe) < 0.9 ? 'bad' : ''}` }, sizeLabel(g.shoe)) : null,
           market === 'exp' && !g.listing && abroadMult(s, g.units[0]) >= 1.1 ? h('span', { class: 'tag good' }, `海外なら相場×${abroadMult(s, g.units[0]).toFixed(1)}`) : null,
           g.expire !== null && g.expire !== undefined ? h('span', { class: 'tag bad' }, `賞味期限 ${weekLabel(g.expire)}まで`) : null,
@@ -326,6 +328,17 @@ export function inventoryModal(s, onChange) {
         if (selecting && !e.target.closest('button, input')) toggle(g.key);
       });
 
+      // ジャンク品：出品していないものは、動作確認・修理ができる（engine/junk.js）
+      if (g.junk && !g.listing && !selecting && (!g.junk.checked || g.junk.state === 'fix')) {
+        const label = g.junk.checked ? `修理する（部品代 ${yenFmt(repairCost(g.pid))}・成功率 約${Math.round(repairRate(s) * 100)}%）` : `動作確認する（体力-${CHECK_STAMINA}）`;
+        head.append(h('div', { class: 'buy-row' }, h('button', {
+          class: 'btn small',
+          onclick: () => {
+            const r = workOnJunk(s, g.units[0]);
+            done(r.msg, r.ok && r.state === 'works' ? 'good' : r.ok && r.state === 'fix' ? '' : 'bad');
+          },
+        }, label)));
+      }
       if (x.blocked) {
         head.append(h('div', { class: 'warn' }, '酒類は出品できない（免許なし）'));
         if (!selecting) head.append(h('div', { class: 'buy-row' }, h('button', { class: 'btn danger inv-buy', onclick: () => sellBack([{ uids: g.units.map((u) => u.uid), quote: x.quote }]) }, `即決買取（${yenFmt(x.quote * g.units.length)}）`)));
