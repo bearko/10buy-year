@@ -1,7 +1,7 @@
 // 店舗巡り：閉店までの時間で店を回り、棚ごとに品定めして、カゴに入れた品をレジで買う。
 // 一覧ですべてを見比べるのではなく、その店・その棚の前で「買うか、買わないか」を決める。
 // 移動と棚を見る時間はスキル・目利き・車で短くなり、回れる店が増えていく（engine/sourcing.js）
-import { hhmm, soldHistory } from '../engine/sourcing.js';
+import { hhmm, soldHistory, storeTypesOf } from '../engine/sourcing.js';
 import { PRODUCTS, productImage, productOf } from '../data/products.js';
 import { CAST } from '../data/cast.js';
 import { folkEvent, storeFolk } from '../engine/storefolk.js';
@@ -140,7 +140,9 @@ export function storeMode(ctx) {
   }
   // 棚に並んでいる品（飾り）。店と売り場で決まった品を並べる
   const deco = (st, i, n) => {
-    const pool = PRODUCTS.filter((p) => !p.spot && !p.know);
+    const all = PRODUCTS.filter((p) => !p.spot && !p.know);
+    const fit = all.filter((p) => storeTypesOf(p).includes(st.type));
+    const pool = fit.length ? fit : all;
     return Array.from({ length: n }, (_, k) => pool[(st.id * 7 + i * 13 + k * 5 + st.name.length) % pool.length]);
   };
   // 人が立つ通路（売り場と重ならない場所。avoid の売り場がある店では使わない）

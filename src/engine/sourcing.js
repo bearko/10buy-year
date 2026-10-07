@@ -64,6 +64,41 @@ export const STORE_TYPES = {
 };
 const COMMON = ['kaden', 'drug', 'zakka', 'hobby'];
 const TAG_TYPES = { staple: ['kaden', 'drug', 'hobby'], hype: ['hobby', 'kaden'], boom: ['zakka'], seasonal: ['zakka', 'drug'], niche: ['drug', 'zakka'], used: ['used'], book: ['book'], luxury: ['luxury'] };
+// 品のジャンルごとに、置いていそうな店（腕時計やイヤホンは家電量販店、コスメとお酒はドラッグストア…）
+const GENRE_TYPES = {
+  定番ウォッチ: ['kaden'], ワイヤレスイヤホン: ['kaden'], スマートプロジェクター: ['kaden'], 新型VRゲーム機: ['kaden', 'hobby'],
+  プチプラコスメのセット: ['drug'], デパコスの限定コフレ: ['drug'], 地酒: ['drug'], プレミアウイスキー: ['drug'],
+  'トレカBOX（定番）': ['hobby'], 人気トレカ新弾BOX: ['hobby'], 限定フィギュア: ['hobby'],
+  定番スニーカー: ['zakka'], コラボスニーカー: ['zakka'], 超限定スニーカー: ['zakka'], ブランドスカーフ: ['zakka'], 苔玉の盆栽: ['zakka'],
+  クリスマス限定ぬいぐるみ: ['zakka', 'hobby'], 雛人形: ['zakka'], ブラインドボックスぬいぐるみ: ['zakka', 'hobby'],
+};
+const BOOKS = ['novice_book', 'tsumi'];
+// その品が並んでいそうな店の種類
+export function storeTypesOf(p) {
+  if (BOOKS.includes(p.id)) return ['book'];
+  if (p.kind === 'luxury' || p.genre.includes('ブランドジュエリー')) return ['luxury'];
+  if (p.kind === 'collect') return p.genre.includes('本') ? ['book'] : ['used'];
+  if (p.kind === 'home' || p.used) return ['used'];
+  if (p.kind === 'perishable') return ['zakka'];
+  return GENRE_TYPES[p.genre] || TAG_TYPES[p.niche ? 'niche' : p.kind] || COMMON;
+}
+// 店で見つかる品の種類。ジャンルで店が決まる品は、その店にだけ置く
+const typesFor = (o, tag) => {
+  if (tag === 'any' || SPOT_MAP[tag]) return null;
+  if (['used', 'book', 'luxury'].includes(tag)) return TAG_TYPES[tag];
+  return GENRE_TYPES[productOf(o.pid).genre] || TAG_TYPES[tag];
+};
+
+// 値札の文句に合う売り場（ワゴンセールはワゴンに、季節ものは季節コーナーに）
+const SECTION_HINTS = [['ワゴン', ['ワゴン']], ['見切り', ['ワゴン']], ['処分', ['ワゴン']], ['季節', ['季節']], ['シーズン', ['季節', 'ワゴン']], ['値札ミス', ['棚']], ['型落ち', ['展示品', 'ワゴン']], ['入荷', ['新入荷', '新作', '季節']], ['店頭在庫', ['新作', '棚', 'ショーケース']], ['閉店', ['ワゴン']]];
+const fitsSection = (o, name) => {
+  const hint = SECTION_HINTS.find(([k]) => o.label?.includes(k));
+  return !hint || hint[1].some((w) => name.includes(w));
+};
+function pickSection(s, st, o) {
+  const m = st.sections.filter((sec) => fitsSection(o, sec.name));
+  return pick(s, m.length ? m : st.sections);
+}
 
 // オファーがどんな店にありそうか
 export function storeTag(o) {
@@ -80,12 +115,10 @@ export function storeTag(o) {
 export function buildStoreRun(s, list, clock, n = 0) {
   const firstOid = list.find((o) => o.first)?.oid;
   const tags = list.map(storeTag);
+  const types = list.map((o, i) => typesFor(o, tags[i]));
   const need = [];
-  for (const t of new Set(tags)) {
-    if (t === 'any') continue;
-    if (SPOT_MAP[t]) need.push({ spot: t });
-    else need.push({ type: pick(s, TAG_TYPES[t]) });
-  }
+  for (const t of new Set(tags)) if (SPOT_MAP[t]) need.push({ spot: t });
+  for (const ts of new Set(types.filter(Boolean).map((x) => x.join()))) need.push({ type: pick(s, ts.split(',')) });
   const route = [];
   const usedTypes = new Set();
   for (const x of need) if (x.spot || !usedTypes.has(x.type)) { route.push(x); if (x.type) usedTypes.add(x.type); }
@@ -125,32 +158,33 @@ export function buildStoreRun(s, list, clock, n = 0) {
     if (o.oid === firstOid) cands = [stores[0]];
     else if (tags[i] === 'any') cands = stores.filter((x) => x.type !== 'spot' && x.type !== 'luxury');
     else if (SPOT_MAP[tags[i]]) cands = stores.filter((x) => x.spot === tags[i]);
-    else cands = stores.filter((x) => STORE_TYPES[x.type]?.tags.includes(tags[i]));
+    else cands = stores.filter((x) => types[i].includes(x.type));
     if (!cands.length) cands = stores.filter((x) => x.type !== 'spot');
     const st = pick(s, cands);
-    const sec = o.oid === firstOid ? st.sections[0] : pick(s, st.sections);
+    const sec = o.oid === firstOid ? st.sections[0] : pickSection(s, st, o);
     sec.oids.push(o.oid);
   });
   const run = { kind: 'store', clock, stores, n };
-  if (n) balanceRoute(s, run, list, tags, n);
+  if (n) balanceRoute(s, run, list, tags, types, n);
   return run;
 }
 
 // ふつうに回って見つかる数が、これまでの仕入れ候補の数（n）を下回らないようにする。
 // 届かない店にある品を、届く店のうち同じ種類の店の棚へ移す（種類の合う店がなければ動かさない）
-function balanceRoute(s, run, list, tags, n) {
+function balanceRoute(s, run, list, tags, types, n) {
   const reach = reachable(run);
   const seen = new Set(reach.flatMap((x) => x.sec.oids));
   // 値打ちのある品（開拓先・品薄品）から先に、届く棚へ移す
   const rank = ([o, tag]) => (SPOT_MAP[tag] ? 0 : o.scarce ? 1 : 2);
-  const away = list.map((o, i) => [o, tags[i]]).filter(([o]) => !seen.has(o.oid)).sort((a, b) => rank(a) - rank(b));
+  const away = list.map((o, i) => [o, tags[i], types[i]]).filter(([o]) => !seen.has(o.oid)).sort((a, b) => rank(a) - rank(b));
   let have = seen.size;
-  for (const [o, tag] of away) {
+  for (const [o, tag, ty] of away) {
     if (have >= n) break;
-    const fits = reach.filter((x) => (tag === 'any' ? x.st.type !== 'spot' && x.st.type !== 'luxury' : SPOT_MAP[tag] ? x.st.spot === tag : STORE_TYPES[x.st.type]?.tags.includes(tag)));
+    const fits = reach.filter((x) => (tag === 'any' ? x.st.type !== 'spot' && x.st.type !== 'luxury' : SPOT_MAP[tag] ? x.st.spot === tag : ty.includes(x.st.type)));
     if (!fits.length) continue;
     for (const st of run.stores) for (const sec of st.sections) sec.oids = sec.oids.filter((id) => id !== o.oid);
-    pick(s, fits).sec.oids.push(o.oid);
+    const good = fits.filter((x) => fitsSection(o, x.sec.name));
+    pick(s, good.length ? good : fits).sec.oids.push(o.oid);
     have++;
   }
 }
