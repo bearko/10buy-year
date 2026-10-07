@@ -171,7 +171,8 @@ export function finalizeSale(s, sale, out) {
     return;
   }
   const kind = rollTrouble(s, sale);
-  if (kind) out?.troubles.push({ kind, sale });
+  // チュートリアル中は、取引トラブルを週に1件まで
+  if (kind && !(!s.flags.tutorialDone && out?.troubles.length)) out?.troubles.push({ kind, sale });
 }
 
 function rollTrouble(s, sale) {
@@ -186,6 +187,7 @@ function rollTrouble(s, sale) {
   if (sale.platform === 'black') return null; // 裏の取引に「評価」はない
   rate *= perk(s, 'trouble');
   if (sale.delayed) rate += 0.15;
+  if (!s.flags.tutorialDone) rate *= 0.4; // 序盤は売る流れを覚えるのが先
   if (!chance(s, rate)) return null;
   const expensive = sale.price >= 30000;
   return weightedPick(s, [
