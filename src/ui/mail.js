@@ -13,18 +13,37 @@ const SPAM = [
 ];
 
 // 今週の取引からメールを組み立てる
+// 取引メッセージ（購入者とのやりとり）。文面は取引ごとに決まる（ゲームの乱数は使わない）
+const BUYERS = ['みかん', 'ねこまる', 'たろう', 'ゆうき', 'ぽんず', 'さくら', 'ハル', 'K.T', 'こむぎ', 'まめ'];
+const HELLO = ['購入しました。よろしくお願いします！', 'はじめまして、購入させていただきました。', '即購入失礼します！ よろしくお願いします', 'ずっと探していました。よろしくお願いします'];
+const THANKS = ['届きました！ きれいな状態でうれしいです。ありがとうございました', '無事に受け取りました。また機会があればよろしくお願いします', '受け取り評価しました。丁寧な梱包ありがとうございました', '届きました。説明どおりの状態でした'];
+function tradeChat(x, i) {
+  if (['ama', 'black'].includes(x.platform)) return null; // 倉庫からの出荷・裏の取引にはメッセージがない
+  const k = (x.uid || 0) * 7 + i * 13 + x.price;
+  const at = (arr, n = 0) => arr[(k + n) % arr.length];
+  const buyer = at(BUYERS);
+  const chat = [
+    { who: buyer, text: x.platform === 'auc' ? '落札しました！ よろしくお願いします' : at(HELLO, 1) },
+    { me: true, text: x.delayed ? 'ご購入ありがとうございます。発送まで少しお時間をいただきます。' : 'ご購入ありがとうございます。明日、発送いたします。' },
+  ];
+  if (x.delayed) chat.push({ who: buyer, text: 'まだ発送されていないようですが、大丈夫でしょうか…？' }, { me: true, text: '大変お待たせして申し訳ありません。本日発送いたしました。' });
+  chat.push({ who: buyer, text: at(THANKS, 2) });
+  return chat;
+}
+
 export function salesMails(st) {
   const mails = [];
-  for (const x of st.sold) {
+  st.sold.forEach((x, i) => {
     const pf = PLATFORMS[x.platform]?.name || '販売サイト';
     const p = productOf(x.pid);
     mails.push({
       from: pf,
       subject: x.platform === 'auc' ? `【${pf}】落札されました：${p.name}` : `【${pf}】商品が購入されました：${p.name}`,
       body: `「${p.name}」が ${yenFmt(x.price)} で${x.platform === 'auc' ? '落札' : '購入'}されました。発送をお願いします。（入金予定 ${yenFmt(x.net)}）`,
+      chat: tradeChat(x, i),
       tone: 'good',
     });
-  }
+  });
   for (const x of st.auctionsUnsold) {
     const p = productOf(x.pid);
     mails.push({ from: 'ミィーム', subject: `【ミィーム】オークションが終了しました：${p.name}`, body: x.bidders ? '最低落札価格に届かず、落札者はいませんでした。' : '入札はありませんでした。再出品できます。', tone: 'bad' });
@@ -60,6 +79,11 @@ export function mailbox(mails, { title = '受信トレイ', button = 'まとめ�
         read.add(i);
         row.classList.add('read');
         row.append(h('div', { class: 'mb-body' }, m.body));
+        if (m.chat) {
+          row.append(h('div', { class: 'mb-chat' },
+            h('small', { class: 'mb-chat-h' }, '取引メッセージ'),
+            ...m.chat.map((c) => h('div', { class: `mb-msg ${c.me ? 'me' : ''}` }, c.me ? null : h('b', {}, c.who), h('span', {}, c.text)))));
+        }
         count.textContent = `未読 ${mails.length - read.size}件`;
       };
       return row;
