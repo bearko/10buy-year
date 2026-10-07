@@ -47,6 +47,7 @@ export const priceOf = (s, pid) => Math.round(productOf(pid).retail * s.market[p
 
 // 一度でも発売されていれば true（2年目以降は前年モデルが流通している）
 export function isReleased(s, product, week = s.week) {
+  if (product.launch !== undefined && week < product.launch) return false; // シリーズの次の世代はまだ出ていない
   if (product.kind === 'hype' || product.kind === 'seasonal') return yearOf(week) > 1 || woy(week) >= product.release;
   return true;
 }
@@ -60,6 +61,7 @@ export function inPreSale(s, product, week = s.week) {
 export const beforeRelease = (s, product, week = s.week) => product.kind === 'hype' && woy(week) >= product.release - 4 && woy(week) < product.release;
 
 export function isAnnounced(s, product, week = s.week) {
+  if (product.launch !== undefined && week < product.launch) return week >= product.launch - 4; // 新世代は発売4週前に発表
   if (product.kind === 'hype') return isReleased(s, product, week) || woy(week) >= product.release - 4;
   if (product.kind === 'seasonal') return isReleased(s, product, week) || woy(week) >= product.release - 2;
   if (product.kind === 'perishable') return product.eventWeeks.some((w) => w - 2 <= woy(week) && woy(week) <= w + 1);
@@ -76,6 +78,9 @@ export function unitPrice(s, u) {
   mult *= annalMult(s, u.pid);
   return Math.round(p.retail * mult * (u.damaged ? 0.5 : 1));
 }
+
+// シリーズの前の世代（次の世代が出て型落ちになった）
+export const isRetired = (s, p, week = s.week) => p.retire != null && week >= p.retire;
 
 export const isRestockWeek = (s, pid) => s.market[pid].restockWeek === s.week;
 export const inBoom = (s, pid) => s.market[pid]?.phase === 'boom';
@@ -109,6 +114,10 @@ export function updateMarket(s) {
     }
     switch (p.kind) {
       case 'staple': {
+        if (p.series) {
+          updateSeries(s, p, m, news);
+          break;
+        }
         // 新モデル発表：旧型の相場が2割下がり、しばらく（12週）戻らない。1つの商品で2年に1回くらい
         if (m.oldModel > 0) m.oldModel--;
         else if (s.week > 24 && chance(s, 1 / 96)) {
@@ -153,6 +162,22 @@ export function updateMarket(s) {
     if (m.hist.length > 12) m.hist.shift();
   }
   return news;
+}
+
+// シリーズの世代交代：発売直後は定価より少し高く、次の世代が出ると型落ちで相場が6割まで下がっていく
+function updateSeries(s, p, m, news) {
+  if (s.week < p.launch) {
+    m.p = 1.15; // 発売前の予想相場
+    if (s.week === p.launch - 4) news.push({ pid: p.id, text: `【新世代発表】${p.genre}「${p.name}」が4週後に発売。前の世代は型落ちになりそうだ`, kind: 'info' });
+    return;
+  }
+  if (s.week === p.launch && p.gen > 1) {
+    m.p = 1.15;
+    news.push({ pid: p.id, text: `【発売】「${p.name}」発売。前の世代の相場が下がり始めた`, kind: 'event' });
+    return;
+  }
+  const target = isRetired(s, p) ? 0.6 : p.base;
+  m.p = clamp(m.p + (target - m.p) * (isRetired(s, p) ? 0.08 : 0.15) + gauss(s) * 0.02, isRetired(s, p) ? 0.5 : 0.85, 1.25);
 }
 
 function updateHype(s, p, m, news) {
@@ -249,6 +274,7 @@ export function demandOf(s, product) {
     if (w < product.release) d *= m.seasonDone ? 0.25 : 0;
     else if (w > product.peakWeek) d *= 0.4;
   }
+  if (isRetired(s, product)) d *= 0.5; // 型落ちは買い手が半分
   if (product.kind === 'boom' && m.phase === 'boom') d *= 1.8;
   if (product.kind === 'boom' && m.phase === 'crash') d *= 0.6;
   if (product.kind === 'hype' && m.p > 2) d *= 1.2;

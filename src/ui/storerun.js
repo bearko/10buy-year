@@ -4,6 +4,7 @@
 import { hhmm, soldHistory, soldMedian, storeTypesOf } from '../engine/sourcing.js';
 import { PRODUCTS, productImage, productOf } from '../data/products.js';
 import { CAST } from '../data/cast.js';
+import { isReleased } from '../engine/market.js';
 import { folkEvent, storeFolk } from '../engine/storefolk.js';
 import { portraitOf } from '../data/cast.js';
 import { cardAvailable } from '../engine/inventory.js';
@@ -154,7 +155,7 @@ export function storeMode(ctx) {
   }
   // 棚に並んでいる品（飾り）。店と売り場で決まった品を並べる
   const deco = (st, i, n) => {
-    const all = PRODUCTS.filter((p) => !p.spot && !p.know);
+    const all = PRODUCTS.filter((p) => !p.spot && !p.know && isReleased(s, p));
     const fit = all.filter((p) => storeTypesOf(p).includes(st.type));
     const pool = fit.length ? fit : all;
     return Array.from({ length: n }, (_, k) => pool[(st.id * 7 + i * 13 + k * 5 + st.name.length) % pool.length]);

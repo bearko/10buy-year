@@ -6,7 +6,7 @@ import { flag, hasSkill } from '../engine/effects.js';
 import {
   abroadMult, activeUnits, buybackQuote, capacity, feeRate, groupInventory, platformMult, platformOpen, hardCapacity, listedUnits, listingCap, listUnits, platformFee, platformsFor, PLATFORMS, sellToBuyer, spaceUsed, unlistUnits,
 } from '../engine/inventory.js';
-import { confidenceLabel, estimateAt, estimateUnit, isReleased, roundPrice, visibleProducts } from '../engine/market.js';
+import { confidenceLabel, estimateAt, estimateUnit, isReleased, isRetired, roundPrice, visibleProducts } from '../engine/market.js';
 import { openLotteries } from '../engine/offers.js';
 import { currentMission } from '../engine/tutorial.js';
 import { heldDays, kpiLevel } from '../engine/kpi.js';
@@ -31,7 +31,9 @@ export function expectedProfit(s, pid, sellPrice, cost, platform = 'merc') {
 const profitText = (s, v) => (canCalc(s) ? h('span', { class: v >= 0 ? 'pos' : 'neg' }, `見込み ${signYen(v)}/個`) : h('span', { class: 'muted' }, '見込み利益 ？'));
 
 function editionTag(s, u) {
-  if (productOf(u.pid).kind !== 'hype' || !u.edition) return null;
+  const p = productOf(u.pid);
+  if (p.series) return isRetired(s, p) ? h('span', { class: 'tag bad' }, `第${p.gen}世代（型落ち）`) : h('span', { class: 'tag' }, `第${p.gen}世代`);
+  if (p.kind !== 'hype' || !u.edition) return null;
   const cur = s.market[u.pid].edition;
   if (cur && u.edition < cur) return h('span', { class: 'tag bad' }, `${u.edition}年目モデル（旧型）`);
   return yearOf(s.week) > 1 ? h('span', { class: 'tag' }, `${u.edition}年目モデル`) : null;
