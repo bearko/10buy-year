@@ -1264,3 +1264,7 @@ body.partner-on #side { display: none !important; }
 .diff-btn { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; margin-bottom: 8px; padding: 10px 14px; text-align: left; }
 .diff-btn b { font-size: 16px; }
 .diff-btn small { font-size: 12px; opacity: 0.85; font-weight: normal; }
+
+/* 在庫：ワンタップの一括操作 */
+.inv-quick { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+.inv-quick .btn { flex: 1 1 auto; font-size: 12px; padding: 6px 8px; }

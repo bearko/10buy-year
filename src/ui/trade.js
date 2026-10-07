@@ -200,6 +200,32 @@ export function inventoryModal(s, onChange) {
       ),
     ].filter(Boolean));
 
+    // ワンタップの一括操作：未出品を相場で出品／出品中を5%値下げ／90日以上の在庫を買取
+    if (!selecting && groups.length) {
+      const ready = (g) => { const x = plan(g); return !x.waiting && !x.blocked && x.canHere; };
+      const unlisted = groups.filter((g) => !g.listing && ready(g));
+      const listed = groups.filter((g) => g.listing);
+      const stale = groups.filter((g) => g.arrive <= s.week && heldDays(s, g.units[0]) >= 90);
+      const quick = (label, n, onclick, cls = '') => (n ? h('button', { class: `btn small ${cls}`, onclick }, `${label}（${n}）`) : null);
+      const row = [
+        quick('未出品を相場で出品', unlisted.length, () => {
+          let n = 0;
+          for (const g of unlisted) {
+            const x = plan(g);
+            n += listUnits(s, g.units.map((u) => u.uid), x.platform, Math.min(x.cap, Math.max(100, roundPrice(x.est))));
+          }
+          done(n ? `${n}個を相場で出品した` : '出品枠がいっぱいだ', n ? 'good' : 'bad');
+        }, 'primary'),
+        quick('出品中を5%値下げ', listed.length, () => {
+          let n = 0;
+          for (const g of listed) n += listUnits(s, g.units.map((u) => u.uid), g.listing.platform, Math.max(100, roundPrice(g.listing.price * 0.95)));
+          done(`${n}個を5%値下げした`);
+        }),
+        quick('90日以上の在庫を買取', stale.length, () => sellBack(stale.map((g) => ({ uids: g.units.map((u) => u.uid), quote: buybackQuote(s, g.units[0]) }))), 'danger'),
+      ].filter(Boolean);
+      if (row.length) body.append(h('div', { class: 'inv-quick' }, ...row));
+    }
+
     if (!groups.length) body.append(h('p', { class: 'empty' }, s.stats.purchases ? '在庫はない。仕入れに行こう。' : '在庫はない。「家の中を探す」で不用品を探そう。'));
     const bulk = { listLbl: null, buyLbl: null };
     const updateBulk = () => {
