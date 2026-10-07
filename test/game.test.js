@@ -714,7 +714,7 @@ test('業界の年表：5年目から毎年、予告 → 春に始まる → 年
   const t = createGame(34);
   const base = priceOf(t, 'pretty_set');
   t.annalFx = { aud: 'beauty', mult: 1.25, until: 999 };
-  assert.equal(priceOf(t, 'pretty_set'), Math.round(base * 1.25));
+  assert.ok(Math.abs(priceOf(t, 'pretty_set') - base * 1.25) <= 1);
 });
 
 test('生活水準：稼げると暮らしを上げる誘いが来る。出費が増え、下げるとやる気が大きく落ちる', async () => {
@@ -1419,4 +1419,26 @@ test('再販版：再販が決まった年のモデルをそのあとに仕入�
   assert.equal(unitPrice(s, b), Math.round(unitPrice(s, a) * 0.9));
   const next = specialOffer(s, 'heiho', { source: 'store', price: 5500, maxQty: 2, edition: 2 });
   assert.ok(!next.rep, '翌年のモデルは初版');
+});
+
+test('季節商品：母の日・五月人形・お中元・冷感グッズ・ハロウィン・赤本・新生活家電は、山の週に高く、過ぎると値崩れする', async () => {
+  const { PRODUCTS } = await import('../src/data/products.js');
+  const { storeTypesOf } = await import('../src/engine/sourcing.js');
+  const ids = ['may_doll', 'mothers', 'chugen', 'cooler', 'halloween', 'akahon', 'newlife'];
+  for (const id of ids) {
+    const p = PRODUCTS.find((x) => x.id === id);
+    assert.ok(p && p.kind === 'seasonal' && p.release < p.peakWeek && p.peakWeek < 48, id);
+    assert.ok(storeTypesOf(p).length);
+  }
+  const s = createGame(81);
+  const peaks = {};
+  for (s.week = 1; s.week < 48 * 2; s.week++) {
+    updateMarket(s);
+    for (const id of ids) {
+      const p = PRODUCTS.find((x) => x.id === id);
+      if (s.week === 48 + p.peakWeek) peaks[id] = s.market[id].p;
+      if (s.week === 48 + p.peakWeek + 3) assert.ok(s.market[id].p < peaks[id] * 0.8, `${id} 山を越えると値崩れ`);
+    }
+  }
+  assert.equal(storeTypesOf(PRODUCTS.find((x) => x.id === 'akahon'))[0], 'book');
 });

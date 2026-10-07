@@ -73,6 +73,8 @@ const GENRE_TYPES = {
   'トレカBOX（定番）': ['hobby'], 人気トレカ新弾BOX: ['hobby'], 限定フィギュア: ['hobby'],
   定番スニーカー: ['zakka'], コラボスニーカー: ['zakka'], 超限定スニーカー: ['zakka'], ブランドスカーフ: ['zakka'], 苔玉の盆栽: ['zakka'],
   家庭用ロボット: ['kaden', 'hobby'], 電子キーボード: ['kaden'],
+  '五月人形（兜飾り）': ['zakka'], 母の日の限定ネックレス: ['zakka'], お中元のゼリー詰め合わせ: ['drug', 'zakka'], 'ネッククーラー（冷感グッズ）': ['zakka', 'drug'],
+  ハロウィンのコスプレ衣装: ['zakka', 'hobby'], '大学入試の過去問（赤本）': ['book'], 新生活の小型家電: ['kaden'],
   クリスマス限定ぬいぐるみ: ['zakka', 'hobby'], 雛人形: ['zakka'], ブラインドボックスぬいぐるみ: ['zakka', 'hobby'],
 };
 const BOOKS = ['novice_book', 'tsumi'];

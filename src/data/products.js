@@ -75,6 +75,14 @@ export const PRODUCTS = [
 
   { id: 'winter', name: '冬の甘えんぼ王子ウィンター', genre: 'クリスマス限定ぬいぐるみ', ext: 1126, kind: 'seasonal', retail: 4400, size: 'M', demand: 2.4, release: weekAt(11, 1), peakWeek: weekAt(12, 3), peak: 2.6, base: 1.0, after: 0.45, fakeRisk: 0.2 },
   { id: 'hina', name: '雛人形', genre: '雛人形', ext: 5127, kind: 'seasonal', retail: 48000, size: 'L', demand: 1.2, release: weekAt(1, 2), peakWeek: weekAt(2, 4), peak: 1.35, base: 0.95, after: 0.4, fakeRisk: 0 },
+  // 季節の商戦（発売から山の週まで上がり、山を越えると一気に値崩れする）
+  { id: 'may_doll', name: '諏訪法性兜', genre: '五月人形（兜飾り）', ext: 4018, kind: 'seasonal', retail: 39800, size: 'L', demand: 1.1, release: weekAt(4, 1), peakWeek: weekAt(4, 4), peak: 1.3, base: 0.95, after: 0.45, fakeRisk: 0 },
+  { id: 'mothers', name: 'ウィズダムネックレス', genre: '母の日の限定ネックレス', ext: 3017, kind: 'seasonal', retail: 8800, size: 'S', demand: 2.0, release: weekAt(4, 2), peakWeek: weekAt(5, 2), peak: 1.6, base: 1.0, after: 0.5, fakeRisk: 0.1 },
+  { id: 'chugen', name: 'エリートギョク', genre: 'お中元のゼリー詰め合わせ', ext: 2098, kind: 'seasonal', retail: 5400, size: 'M', demand: 1.8, release: weekAt(6, 3), peakWeek: weekAt(7, 2), peak: 1.4, base: 1.0, after: 0.4, fakeRisk: 0 },
+  { id: 'cooler', name: 'エリートリング', genre: 'ネッククーラー（冷感グッズ）', ext: 2009, kind: 'seasonal', retail: 2980, size: 'S', demand: 3.0, release: weekAt(5, 4), peakWeek: weekAt(7, 4), peak: 1.7, base: 1.0, after: 0.5, fakeRisk: 0.15 },
+  { id: 'halloween', name: 'ブレイブヨロイ', genre: 'ハロウィンのコスプレ衣装', ext: 3081, kind: 'seasonal', retail: 5980, size: 'M', demand: 2.2, release: weekAt(9, 2), peakWeek: weekAt(10, 4), peak: 1.5, base: 1.0, after: 0.3, fakeRisk: 0.1 },
+  { id: 'akahon', name: 'ウィズダムリソグラフィー', genre: '大学入試の過去問（赤本）', ext: 3050, kind: 'seasonal', retail: 2600, size: 'S', demand: 2.2, release: weekAt(7, 1), peakWeek: weekAt(12, 2), peak: 1.4, base: 1.0, after: 0.2, fakeRisk: 0 },
+  { id: 'newlife', name: 'エリートリソグラフィー', genre: '新生活の小型家電', ext: 2050, kind: 'seasonal', retail: 19800, size: 'L', demand: 1.6, release: weekAt(2, 1), peakWeek: weekAt(3, 4), peak: 1.25, base: 0.95, after: 0.75, fakeRisk: 0 },
 
   { id: 'choux', name: 'とっておきのシュークリーム', genre: '催事限定スイーツ', ext: 3055, kind: 'perishable', retail: 2800, size: 'S', demand: 2.8, eventWeeks: [weekAt(6, 2), weekAt(10, 3), weekAt(2, 2)], premium: 1.9, shelf: 1, fakeRisk: 0 },
 
