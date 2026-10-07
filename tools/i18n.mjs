@@ -110,7 +110,7 @@ async function addPart(part, keysFile, enFile) {
   const keys = JSON.parse(readFileSync(keysFile, 'utf8'));
   const en = JSON.parse(readFileSync(enFile, 'utf8'));
   if (keys.length !== en.length) throw new Error(`数が合わない: keys ${keys.length} / en ${en.length}`);
-  const ph = (s) => [...s.matchAll(/\{(\d+)\}/g)].map((m) => m[1]).sort().join(',');
+  const ph = (s) => [...s.matchAll(/\{(\d+)(?::\w+)?\}/g)].map((m) => m[1]).sort().join(',');
   const bad = keys.filter((k, i) => en[i] !== null && ph(k) !== ph(en[i]));
   if (bad.length) throw new Error(`埋めこみ {n} が合わない:\n${bad.map((k) => `${k}\n  → ${en[keys.indexOf(k)]}`).join('\n')}`);
   const jp = en.filter((x) => x !== null && JP.test(x));

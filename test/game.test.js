@@ -1740,3 +1740,38 @@ test('期間限定フェア：現実の日付で決まり、フェア中だけ�
   assert.deepEqual(syncLive(c, 'halloween'), []);
   assert.equal(c.live, undefined);
 });
+
+import { JP as JP_RE, tr as trEn, useDict } from '../src/i18n/index.js';
+import { EN } from '../src/i18n/en/index.js';
+test('英語版：抽出したすべての文に訳がある（tools/i18n.mjs extract で更新）', () => {
+  const keys = JSON.parse(readFileSync(join(ROOT, 'src/i18n/strings.json'), 'utf8')).map((x) => x.key);
+  const missing = keys.filter((k) => EN[k] === undefined);
+  assert.deepEqual(missing.slice(0, 10), [], `訳がない文 ${missing.length}件`);
+  // 埋めこみ {n} の数が合っている
+  const ph = (s) => [...s.matchAll(/\{(\d+)(?::\w+)?\}/g)].map((m) => m[1]).sort().join(',');
+  const bad = Object.entries(EN).filter(([k, v]) => v !== null && ph(k) !== ph(v));
+  assert.deepEqual(bad.slice(0, 5), []);
+});
+
+test('英語版：自動プレイで流れた文がすべて英語になる', () => {
+  useDict(EN);
+  const seen = new Set();
+  const walk = (v, d = 0) => {
+    if (d > 4 || v == null) return;
+    if (typeof v === 'string') return void (JP_RE.test(v) && seen.add(v));
+    if (Array.isArray(v)) return v.forEach((x) => walk(x, d + 1));
+    if (typeof v === 'object') for (const [k, x] of Object.entries(v)) if (typeof x !== 'function' && k !== 'run') walk(x, d + 1);
+  };
+  globalThis.__onStep = walk;
+  try {
+    for (const route of ['light', 'dark']) runGame(31, undefined, { route });
+  } finally {
+    globalThis.__onStep = undefined;
+  }
+  const left = [...seen].filter((s) => JP_RE.test(trEn(s)));
+  assert.ok(seen.size > 1000);
+  assert.deepEqual(left.slice(0, 5), [], `日本語が残った文 ${left.length}件`);
+  assert.equal(trEn('4年目 5月 第3週'), 'Yr 4 · Mo 5 · Wk 3');
+  assert.equal(trEn('150万円'), '¥1.5M');
+  assert.equal(trEn('−6,300円'), '−¥6,300');
+});

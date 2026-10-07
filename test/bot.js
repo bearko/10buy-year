@@ -25,6 +25,7 @@ export function play(s, steps, policy) {
   const queue = [...steps];
   while (queue.length) {
     const st = queue.shift();
+    globalThis.__onStep?.(st); // 英語版のテストで、流れた文を集める
     if (st.t === 'choice') {
       const idx = policy.choose(s, st);
       queue.unshift(...(st.options[idx].run() || []));

@@ -7,6 +7,10 @@ import {
 import { mainRoutes, routeCounts, routeLevel, routePerkText } from '../engine/perks.js';
 import { abilityEffects } from '../engine/abilityfx.js';
 import { currentBgm, playBgm, playSe } from './audio.js';
+import { isEn, tr } from '../i18n/index.js';
+
+// 英語版のルートの小札（日本語は名前の頭2文字）
+const SHORT_EN = { store: 'Store', online: 'Web', vintage: 'Used', sales: 'Sell', system: 'Sys', network: 'Net', manage: 'Biz', trade: 'Trade', dark: 'Dark' };
 import { $, clear, h } from './dom.js';
 import { toast } from './modal.js';
 
@@ -137,7 +141,7 @@ export function openTree(s, onChange, { focus = null } = {}) {
               const first = TREE_NODES.find((x) => x.route === r.id && x.depth === 1);
               centerOn(first.id, true);
             },
-          }, h('span', {}, r.name.slice(0, 2)), h('em', {}, lv ? `Lv${lv}` : `${n}`));
+          }, h('span', {}, isEn() ? SHORT_EN[r.id] || tr(r.name).split(' ')[0] : r.name.slice(0, 2)), h('em', {}, lv ? `Lv${lv}` : `${n}`));
         })),
       );
     }
