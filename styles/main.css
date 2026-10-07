@@ -1469,3 +1469,12 @@ body.partner-on #side { display: none !important; }
 
 /* キーボードで操作したときに、どこにいるかが見えるように */
 :focus-visible { outline: 2px solid #ffd76a; outline-offset: 2px; }
+
+/* オンラインランキング（週替わりチャレンジ） */
+.online-box { margin: 14px 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: #ffffff08; text-align: left; }
+.online-form { display: flex; gap: 8px; margin: 8px 0; }
+.online-name { flex: 1; min-width: 0; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: #0b1020; color: var(--text); font: inherit; font-size: calc(15px * var(--fs, 1)); }
+.online-out .good { color: #9dffb0; }
+.online-out .bad { color: #ff9a9a; }
+.online-me { color: #ffd76a; }
+.btn .btn-sub { display: block; font-size: calc(11px * var(--fs, 1)); opacity: 0.8; margin-top: 2px; }
