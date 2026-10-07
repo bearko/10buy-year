@@ -8,6 +8,7 @@ import {
 } from '../engine/inventory.js';
 import { confidenceLabel, estimateAt, estimateUnit, isReleased, roundPrice, visibleProducts } from '../engine/market.js';
 import { openLotteries } from '../engine/offers.js';
+import { currentMission } from '../engine/tutorial.js';
 import { heldDays, kpiLevel } from '../engine/kpi.js';
 import { playSe } from './audio.js';
 import { h, signYen, yenFmt } from './dom.js';
@@ -97,6 +98,9 @@ export function inventoryModal(s, onChange) {
     if (!markets.some((pf) => pf.id === market)) market = markets[0]?.id || 'merc';
     const pf = PLATFORMS[market];
     const cap = listingCap(s);
+    // チュートリアルの「出品しよう」の間は、最初に押す出品ボタンを指し示す
+    const tut = currentMission(s)?.id;
+    let pointed = false;
     const done = (msg, tone = 'good') => {
       toast(msg, tone);
       api.refresh();
@@ -297,6 +301,10 @@ export function inventoryModal(s, onChange) {
       const profitLbl = h('span', {});
       const qtyLbl = h('b', {});
       const listBtn = h('button', { class: 'btn primary inv-list', disabled: !x.canHere });
+      if (!pointed && !g.listing && x.canHere && ((tut === 'list_home' && g.home) || (tut === 'list_bought' && !g.home))) {
+        listBtn.classList.add('tut-point');
+        pointed = true;
+      }
       const buyBtn = h('button', { class: 'btn danger inv-buy' });
       const update = () => {
         const y = plan(g);

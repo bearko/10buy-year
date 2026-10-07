@@ -1214,6 +1214,14 @@ body.partner-on #side { display: none !important; }
 .side-btn.quest { grid-column: 1 / -1; font-size: 13px; font-weight: bold; padding: 8px 4px; color: #002a24; border: 1px solid #fff6; background: linear-gradient(135deg, #7ff0d0, #22b8a0); box-shadow: 0 0 10px #22b8a066; }
 .side-btn.quest:hover { background: linear-gradient(135deg, #9ff7de, #2ccbb2); }
 .side-btn.quest .badge { background: #ff8a00; }
+.side-btn.quest.locked, .side-btn.quest.locked:hover { background: #3a3a48; color: #aaa; box-shadow: none; border-color: var(--line); }
+
+/* チュートリアル：次に押すボタンを指し示す */
+.tut-point { position: relative; z-index: 2; border-color: var(--gold) !important; animation: tut-ring 1.2s ease-in-out infinite !important; }
+.tut-point::after { content: '▼'; position: absolute; left: 50%; top: -20px; transform: translateX(-50%); color: var(--gold); font-size: 16px; line-height: 1; text-shadow: 0 0 6px #000, 0 0 2px #000; pointer-events: none; animation: tut-bob 0.8s ease-in-out infinite; }
+.card.inv .buy-row .btn.tut-point { overflow: visible; }
+@keyframes tut-ring { 0%, 100% { box-shadow: 0 0 0 0 #ffd54a00, 0 0 0 2px #ffd54aaa; } 50% { box-shadow: 0 0 0 6px #ffd54a33, 0 0 0 2px #ffd54a; } }
+@keyframes tut-bob { 0%, 100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, 5px); } }
 .quest-card { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel-2); }
 .quest-top { display: flex; gap: 8px; align-items: center; }
 .quest-top img { width: 44px; height: 44px; object-fit: contain; image-rendering: pixelated; background: #0006; border-radius: 8px; flex: none; }
