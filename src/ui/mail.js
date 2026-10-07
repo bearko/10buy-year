@@ -41,6 +41,7 @@ export function mailbox(mails, { title = '受信トレイ', button = 'まとめ�
       m += 2 + Math.floor(Math.random() * 25);
       return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
     });
+    const read = new Set();
     const root = h('div', { class: `mailbox ${quick ? 'quick' : ''}` });
     const done = () => {
       root.remove();

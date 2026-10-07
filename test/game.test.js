@@ -1116,3 +1116,59 @@ test('夜のスマホ：相場どおりの出品はオートに見せない・�
   for (let i = 0; i < 40; i++) { const x = { ...it }; if (negotiate(s, x, 0.05).ok) { ok++; assert.ok(x.price < 10000); } }
   assert.ok(ok > 15 && ok < 40);
 });
+
+// ---------------- ミッションと店の人たち ----------------
+import { acceptQuest, checkQuests, dropQuest, QUESTS, questRows } from '../src/engine/quests.js';
+import { folkEvent, storeFolk } from '../src/engine/storefolk.js';
+import { repay } from '../src/engine/finance.js';
+
+test('ミッション：繰上げ返済で達成し、報酬は経験点（お金ではない）', () => {
+  const s = createGame(4);
+  s.debt = 500000;
+  s.cash = 400000;
+  assert.ok(acceptQuest(s, 'q_repay'));
+  assert.equal(checkQuests(s).length, 0);
+  const cash = s.cash;
+  repay(s, 100000);
+  const before = s.exp.mind;
+  const steps = checkQuests(s);
+  assert.ok(steps.some((x) => x.title === 'ミッション達成！'));
+  assert.equal(s.cash, cash - 100000);
+  assert.ok(s.exp.mind > before);
+  assert.ok(s.quests.done.includes('q_repay'));
+  assert.ok(!acceptQuest(s, 'q_repay'), '達成したミッションは二度と受けない');
+});
+
+test('ミッション：新しい仕入れ先がもらえる・あきらめられる・登場人物は実在する', () => {
+  const s = createGame(6);
+  s.stage = 3;
+  acceptQuest(s, 'h_ino');
+  s.stats.maxStores = 6;
+  checkQuests(s);
+  assert.ok((s.spots || []).length === 1);
+  acceptQuest(s, 'h_edison');
+  dropQuest(s, 'h_edison');
+  assert.equal(questRows(s).length, 0);
+  for (const [id, d] of Object.entries(QUESTS)) {
+    assert.ok(CAST[d.from], `${id} の依頼主`);
+    assert.ok(d.reward.exp || d.reward.spot, `${id} の報酬`);
+  }
+});
+
+test('店の人たち：独り言は10文字以内、「！」で出会いのイベントが起きる', () => {
+  const s = createGame(8);
+  s.stage = 2;
+  const kinds = new Set();
+  for (let i = 0; i < 200; i++) {
+    const store = { type: ['kaden', 'drug', 'zakka', 'hobby', 'used', 'book', 'luxury', 'spot'][i % 8] };
+    const folk = storeFolk(s, store);
+    for (const f of folk) {
+      assert.ok([...f.line].length <= 10, `「${f.line}」が長い`);
+      assert.ok(CAST[f.who], f.who);
+      const r = folkEvent(s, f, store);
+      assert.ok(r.lines.length && r.result.length);
+      kinds.add(r.offer ? 'offer' : r.quest ? 'quest' : f.role === 'rival' ? 'route' : 'exp');
+    }
+  }
+  assert.deepEqual([...kinds].sort(), ['exp', 'offer', 'quest', 'route']);
+});

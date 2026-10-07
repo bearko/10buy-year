@@ -7,6 +7,7 @@ import { updateMarket } from './market.js';
 import { drawEvents } from './events.js';
 import { monthEnd } from './finance.js';
 import { resolveLotteries } from './commands.js';
+import { checkQuests, questWeek } from './quests.js';
 import { lotteryOffer } from './offers.js';
 import { resolveSales } from './sales.js';
 import { negotiationSteps, troubleSteps } from '../data/troubles.js';
@@ -84,6 +85,8 @@ export function startWeek(s) {
   steps.push(...cryptoWeek(s));
   steps.push(...rivalWeek(s));
   if (flag(s, 'arrest')) s.over = 'arrested';
+  // ミッション：達成の報酬と、マインからの新しいミッション（engine/quests.js）
+  steps.push(...checkQuests(s), ...questWeek(s));
   s.phase = 'command';
   return steps;
 }

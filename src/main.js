@@ -25,6 +25,8 @@ import { logModal, pushLog } from './ui/log.js';
 import { offersModal } from './ui/shop.js';
 import { autoVisible } from './engine/sourcing.js';
 import { mailbox, salesMails } from './ui/mail.js';
+import { checkQuests } from './engine/quests.js';
+import { questsModal } from './ui/quests.js';
 import { queueScene } from './ui/queue.js';
 import { myStoreModal } from './ui/mystore.js';
 import { routineModal } from './ui/routine.js';
@@ -102,7 +104,7 @@ async function playSteps(steps) {
         if (hasSkill(state, 'out_buy') && state.settings.autoBuy) st.autoBought = autoBuy(state, autoVisible(st));
         if (isAuto()) {
           if (st.autoBought?.length) toast(`外注が${st.autoBought.length}件を仕入れた`, 'good');
-          if (routineRun) routineRun.week.bought.push(...routineBuy(state, autoVisible(st), routineRun.cfg));
+          if (routineRun) routineRun.week.bought.push(...routineBuy(state, autoVisible(st, state), routineRun.cfg));
         } else {
           const got = await offersModal(state, st, refresh);
           refresh();
@@ -161,7 +163,8 @@ async function playSteps(steps) {
   setBusy(false);
 }
 
-const tutorialStep = () => playSteps(checkTutorial(state));
+// 行動・画面を閉じたあと：チュートリアルの進み具合と、ミッションの達成を確かめる
+const tutorialStep = () => playSteps([...checkTutorial(state), ...checkQuests(state)]);
 
 // 経験点の獲得は、ステージ右の経験点パネルを光らせて見せる
 async function flashGain(exp) {
@@ -444,7 +447,18 @@ function renderTabs() {
     refresh();
   };
   const marketLock = !hasSkill(state, 'eye_market') && 'スキルツリー「相場チェック」で解放';
+  const questN = state.quests?.active?.length || 0;
+  const questNew = state.quests?.active?.some((q) => q.fresh);
+  // ミッションの「やってみる」で開く画面
+  const guides = {
+    biz: () => bizModal(state, refresh, playSteps),
+    rivals: () => rivalsModal(state, refresh),
+    deal: () => dealPolicyModal(state),
+    collection: () => collectionModal(state, refresh),
+    inv: () => inventoryModal(state, refresh),
+  };
   const tabs = [
+    { id: 'quest', label: 'ミッション', open: async () => { const g = await questsModal(state); if (g && guides[g]) await guides[g](); }, badge: questNew ? '!' : questN ? `${questN}` : '' },
     { id: 'tree', label: 'スキルツリー', open: () => openTree(state, refresh, { focus: currentMission(state)?.node }), lock: !treeOpen(state) && '最初の売上のあとに開ける', badge: treeBadge() },
     { id: 'inv', label: '在庫', open: () => inventoryModal(state, refresh), badge: unlisted ? `${unlisted}` : '' },
     {

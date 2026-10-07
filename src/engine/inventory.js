@@ -158,6 +158,7 @@ export function listUnits(s, uids, platform, price) {
     u.listing = { platform, price: Math.round(Math.min(price, priceCap(s, u.pid, platform))), week: s.week };
     n++;
   }
+  s.stats.listed = (s.stats.listed || 0) + n;
   return n;
 }
 
