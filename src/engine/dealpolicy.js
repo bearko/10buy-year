@@ -17,9 +17,13 @@ export const DEAL_POLICIES = {
     name: 'すり替え返品',
     options: [['fight', '事務局に相談して争う'], ['refund', '返金に応じる'], ['ask', '毎回決める']],
   },
+  crew: {
+    name: '行列：並び屋を雇うか',
+    options: [['self', '自分で並ぶ'], ['hire', '並び屋を雇う'], ['ask', '毎回決める']],
+  },
 };
 
-export const DEFAULT_DEAL = { scope: 'routine', nego: 'rule', negoMin: 0.85, claimer: 'explain', return: 'accept', swap: 'fight' };
+export const DEFAULT_DEAL = { scope: 'routine', nego: 'rule', negoMin: 0.85, claimer: 'explain', return: 'accept', swap: 'fight', crew: 'self' };
 
 export const dealCfg = (s) => ({ ...DEFAULT_DEAL, ...(s.settings?.deal || {}) });
 

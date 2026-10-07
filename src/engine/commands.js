@@ -268,24 +268,15 @@ const HANDLERS = {
       addHate(s, 1, false);
       return [narr('早朝から家電量販店の開店待ちに並んでみた…が、今日は目玉商品がなかった。'), talk('chris', '情報収集不足だった…。「相場」画面のニュースを見てから並ぶべきだった。', 'sad')];
     }
-    const t = targets[0];
-    const p = productOf(t.pid);
-    const crowd = p.kind === 'perishable' ? 0.9 : inBoom(s, p.id) ? 1.3 : 1.1;
-    const rate = queueSuccessRate(s, crowd);
-    addHate(s, 3, false);
-    const steps = [narr(`${t.reason}の「${p.name}」を狙って、始発で店へ向かった。すでに長い列ができている…。`)];
-    // 整理券と入荷数（UI は始発→整理券→開店→販売の順に見せる。ui/queue.js）
-    const won = chance(s, rate);
-    const stock = randInt(s, 15, 60);
-    const ticket = won ? randInt(s, Math.max(1, Math.round(stock * 0.4)), stock) : stock + randInt(s, 1, 40);
-    steps.push({ t: 'queue', pid: p.id, stock, ticket, ok: won, limited: queueLimited(s) });
-    if (won) {
-      const qty = hasSkill(s, 'early_bird') && chance(s, 0.5) && !queueLimited(s) ? 2 : 1; // 購入制限ならお一人様1点
-      steps.push(talk('chris', '買えた…！ 整理券、ギリギリだった！', 'cheer'), offers([queueOffer(s, p.id, qty)], '行列の戦利品', `相場は約${Math.round(priceOf(s, p.id) / 1000)}千円（推定は購入画面で）`));
-    } else {
-      steps.push(talk('chris', '目の前で「本日分は完売です」の札が…。', 'wail'), info('完売', [`成功率は約${Math.round(rate * 100)}%だった`], 'bad'));
-    }
-    return steps;
+    // 並び屋はもう手配してある（魔道）／手間賃が払えない
+    if (hasSkill(s, 'dk_crew') || s.cash < CREW_FEE) return queueAttempt(s, targets[0], false);
+    return [{
+      ...choice([
+        { key: 'self', label: '自分で並ぶ', run: () => queueAttempt(s, targets[0], false) },
+        { key: 'hire', label: `並び屋を雇う（${yen(CREW_FEE)}）`, sub: '成功しやすく体力も残るが、徳が下がり、バレると炎上', run: () => queueAttempt(s, targets[0], true) },
+      ], `始発で自分で並ぶか、お金を払って並び屋に頼むか…`),
+      policy: 'crew',
+    }];
   },
   auction(s, cmd, { night } = {}) {
     const found = pioneerTick(s, 'auction');
@@ -449,4 +440,38 @@ export function resolveLotteries(s) {
     else losses.push(l.pid);
   }
   return { steps, wins, losses };
+}
+
+// 並び屋の手間賃。お金で体力と成功率を買う（徳が下がり、2割ほどの確率でバレて炎上）
+export const CREW_FEE = 15000;
+function queueAttempt(s, t, hired) {
+  const p = productOf(t.pid);
+  const crowd = p.kind === 'perishable' ? 0.9 : inBoom(s, p.id) ? 1.3 : 1.1;
+  const rate = Math.min(0.95, queueSuccessRate(s, crowd) + (hired ? 0.25 : 0));
+  addHate(s, 3, false);
+  const steps = [];
+  if (hired) {
+    addCash(s, -CREW_FEE, '並び屋の手間賃');
+    addStamina(s, 20); // 始発で並ぶのは並び屋
+    addToku(s, -3);
+    steps.push(narr(`${t.reason}の「${p.name}」。始発の列には、雇った並び屋が代わりに並んでいる…。`));
+    if (chance(s, 0.2)) {
+      addHate(s, 8, false);
+      steps.push(talk('narr', '列の写真がSNSに出回った。「転売屋が並び屋を使ってる」と名指しで晒されている…。'), info('炎上', ['並び屋を使ったのがバレた', '炎上度が大きく上がった'], 'bad'));
+    }
+  } else {
+    steps.push(narr(`${t.reason}の「${p.name}」を狙って、始発で店へ向かった。すでに長い列ができている…。`));
+  }
+  // 整理券と入荷数（UI は始発→整理券→開店→販売の順に見せる。ui/queue.js）
+  const won = chance(s, rate);
+  const stock = randInt(s, 15, 60);
+  const ticket = won ? randInt(s, Math.max(1, Math.round(stock * 0.4)), stock) : stock + randInt(s, 1, 40);
+  steps.push({ t: 'queue', pid: p.id, stock, ticket, ok: won, limited: queueLimited(s) });
+  if (won) {
+    const qty = hasSkill(s, 'early_bird') && chance(s, 0.5) && !queueLimited(s) ? 2 : 1; // 購入制限ならお一人様1点
+    steps.push(talk('chris', hired ? '並び屋から連絡が来た。「買えました」…。' : '買えた…！ 整理券、ギリギリだった！', hired ? 'arms' : 'cheer'), offers([queueOffer(s, p.id, qty)], '行列の戦利品', `相場は約${Math.round(priceOf(s, p.id) / 1000)}千円（推定は購入画面で）`));
+  } else {
+    steps.push(talk('chris', hired ? '並び屋から「完売でした。手間賃はいただきます」と…。' : '目の前で「本日分は完売です」の札が…。', 'wail'), info('完売', [`成功率は約${Math.round(rate * 100)}%だった`], 'bad'));
+  }
+  return steps;
 }
