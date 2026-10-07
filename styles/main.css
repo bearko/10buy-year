@@ -1436,7 +1436,10 @@ body.partner-on #side { display: none !important; }
 .mch-cutin-shine { position: absolute; inset: 0; mix-blend-mode: color-dodge; animation: mch-cutin-shine 0.6s linear infinite alternate; }
 .mch-cutin.ally .mch-cutin-shine { background: linear-gradient(180deg, #024, #059 20%, #059 80%, #024); }
 .mch-cutin.foe .mch-cutin-shine { background: linear-gradient(180deg, #402, #903 20%, #903 80%, #402); }
-.mch-cutin img { position: relative; width: 64px; height: 64px; image-rendering: pixelated; transform: skewY(10deg); }
+.mch-cutin img { position: relative; flex: none; width: auto; height: auto; image-rendering: pixelated; transform: skewY(10deg); }
+/* クリス（72×140）は縮めず、等倍のまま胸から上を切り出す */
+.mch-cutin.foe img { width: 64px; height: 64px; object-fit: contain; }
+.mch-cutin.ally img { width: 72px; height: 92px; object-fit: cover; object-position: 50% 0; }
 .mch-cutin div { position: relative; display: flex; flex-direction: column; transform: skewY(10deg); text-shadow: 0 2px 0 #0008; }
 .mch-cutin small { font-size: 11px; opacity: 0.85; }
 .mch-cutin b { font-size: 18px; max-width: 230px; }
@@ -1448,3 +1451,9 @@ body.partner-on #side { display: none !important; }
 .mch-result.win p { color: #ffd76a; }
 .mch-result.lose p { color: #9aa3b5; }
 @keyframes mch-result-in { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.1) rotate(30deg); } 50% { transform: translate(-50%, -50%) rotate(-10deg); } 100% { opacity: 0.9; transform: translate(-50%, -50%) rotate(-10deg); } }
+/* セリフの色分け（ui/markup.js）。色だけに頼らないよう、金額は太字・用語は下線もつける */
+.hl-money { color: #ffd76a; font-weight: 700; }
+.hl-game { color: #7fd8ff; }
+.hl-term { color: #9dffb0; text-decoration: underline dotted #9dffb088; text-underline-offset: 3px; }
+.log-gloss { margin: 2px 0 0 1em; padding: 3px 8px; border-left: 3px solid #9dffb0; background: #9dffb012; color: #c6f3cf; font-size: 12px; line-height: 1.5; }
+.log-gloss b { margin-right: 6px; color: #9dffb0; }

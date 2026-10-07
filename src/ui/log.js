@@ -3,6 +3,7 @@ import { CAST } from '../data/cast.js';
 import { weekLabel } from '../engine/calendar.js';
 import { h } from './dom.js';
 import { openModal } from './modal.js';
+import { marked, termsIn } from './markup.js';
 
 export const LOG_MAX = 300;
 
@@ -44,7 +45,9 @@ export function logModal(s) {
         h('div', { class: 'log-week' }, weekLabel(week), entries.some((e) => e.auto) ? h('span', { class: 'log-auto' }, 'AUTO') : null),
         ...entries.map((e) => h('div', { class: `log-row k-${e.kind} ${e.tone || ''}` },
           e.kind === 'info' ? h('b', {}, `【${e.who}】`) : speaker(e.who) ? h('b', {}, speaker(e.who)) : null,
-          h('span', {}, e.text))),
+          h('span', {}, ...marked(e.text)),
+          // 専門用語が出てきたら、そのセリフの下に解説（data/glossary.js）
+          ...termsIn(e.text).map((t) => h('div', { class: 'log-gloss' }, h('b', {}, t.word), t.desc)))),
       );
     }
     requestAnimationFrame(() => { body.scrollTop = 0; });

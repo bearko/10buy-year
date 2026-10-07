@@ -1,6 +1,7 @@
 // ステージ（背景・立ち絵）とメッセージウィンドウ
 import { CAST, portraitOf } from '../data/cast.js';
 import { productImage, productOf } from '../data/products.js';
+import { marked, typeTarget } from './markup.js';
 import { $, clear, h } from './dom.js';
 
 const BG = (name) => `assets/backgrounds/${name}.jpg`;
@@ -250,9 +251,10 @@ export async function say(who, text, pose) {
 
 async function typewrite(text) {
   const el = $('#text');
-  el.textContent = '';
+  // 金額・ゲームの言葉・専門用語に色をつけて、1文字ずつ出す（ui/markup.js）
+  const target = typeTarget(el, text);
   if (textSpeed <= 0 || autoMode) {
-    el.textContent = text;
+    target.finish();
     return;
   }
   let skip = false;
@@ -261,13 +263,9 @@ async function typewrite(text) {
     if (isAdvanceTap(e) && e.timeStamp >= since) skip = true;
   };
   document.addEventListener('click', onSkip);
-  for (let i = 0; i < text.length; i++) {
-    if (skip) break;
-    el.textContent = text.slice(0, i + 1);
-    await new Promise((r) => setTimeout(r, textSpeed));
-  }
+  while (!skip && target.step()) await new Promise((r) => setTimeout(r, textSpeed));
   document.removeEventListener('click', onSkip);
-  el.textContent = text;
+  target.finish();
   await new Promise((r) => setTimeout(r, 60));
 }
 
@@ -280,7 +278,7 @@ export async function showInfo(title, lines, tone = 'normal') {
   box.classList.toggle('bad', tone === 'bad');
   $('#speaker').textContent = `【${title}】`;
   const el = clear($('#text'));
-  lines.filter(Boolean).forEach((l) => el.append(h('div', {}, l)));
+  lines.filter(Boolean).forEach((l) => el.append(h('div', {}, ...marked(l))));
   box.classList.add('waiting');
   await waitAdvance();
   box.classList.remove('waiting', 'info', 'good', 'bad');
