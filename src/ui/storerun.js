@@ -7,6 +7,7 @@ import { CAST } from '../data/cast.js';
 import { folkEvent, storeFolk } from '../engine/storefolk.js';
 import { portraitOf } from '../data/cast.js';
 import { cardAvailable } from '../engine/inventory.js';
+import { knownHabit, LEARN_VISITS, visitStore, visitsOf } from '../engine/storemap.js';
 import { playSe } from './audio.js';
 import { h, yenFmt } from './dom.js';
 import { toast } from './modal.js';
@@ -83,11 +84,21 @@ export function storeMode(ctx) {
             h('span', {}, `売り場 ${st.sections.length}か所`),
             ok ? h('span', {}, `着くのは ${hhmm(now + travelOf(st))}`) : h('span', { class: 'bad' }, '閉店に間に合わない')),
           st.flyer ? h('div', { class: 'sr-flyer' }, h('small', {}, 'チラシ'), st.flyer) : null,
+          habitLine(st),
         );
       })));
     }
     return [head('店舗巡り', step.title === '店舗巡り' ? '' : step.title), body,
       h('div', { class: 'shop-footer' }, h('button', { class: 'btn shop-done', onclick: () => finish() }, visited.length ? '今日はここまでにして帰る' : 'やっぱりやめて帰る'))];
+  }
+
+  // 店のクセ（覚えていれば中身、通ったことがあれば「あと何回」）
+  function habitLine(st) {
+    if (st.spot) return null;
+    const hb = knownHabit(s, st.name);
+    if (hb) return h('div', { class: 'sr-habit' }, h('small', {}, 'クセ'), `${hb.name}（${hb.desc}）`);
+    const v = visitsOf(s, st.name);
+    return h('div', { class: 'sr-habit unknown' }, h('small', {}, 'クセ'), v ? `？（あと${LEARN_VISITS - v}回通うとわかる）` : '？（はじめての店）');
   }
 
   async function go(st) {
@@ -98,6 +109,8 @@ export function storeMode(ctx) {
     now += t;
     at = st;
     at.folk ||= storeFolk(s, at);
+    const learned = visitStore(s, st); // 店のクセを覚える（3回目）
+    if (learned) toast(`「${st.name}」のクセを覚えた：${learned.name}（${learned.desc}）`, 'good');
     me = null;
     visited.push(st);
     s.stats.maxStores = Math.max(s.stats.maxStores || 0, visited.length);

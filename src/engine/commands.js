@@ -4,6 +4,10 @@ import { chance, pick, randInt } from './rng.js';
 import { addCash, addExp, addHate, addMood, addStamina, addToku, clamp, flag, hasSkill, removeSkill, setFlag, yen } from './effects.js';
 import { auctionOffers, lotteryEntries, lotteryWinRate, onlineOffers, openLotteries, queueOffer, queueSuccessRate, queueTargets, storeOfferCount, storeOffers, wholesaleOffers, importOffers } from './offers.js';
 import { importOpen, INSPECT_FEE } from './importer.js';
+import { pickRegion } from './storemap.js';
+import { hasCar } from './lifestyle.js';
+
+export const EXPEDITION_AFTER = 10; // 店舗せどりを何回したら遠征できるか
 import { buildPhoneRun, buildStoreRun, phoneFillers, storeClock, totalOffersFor } from './sourcing.js';
 import { addExpense, addHours } from './kpi.js';
 import { perk } from './perks.js';
@@ -37,6 +41,7 @@ export const GROUPS = [
 export const COMMANDS = [
   { id: 'home_search', group: 'buy', icon: E(1059), name: '家の中を探す', desc: '押し入れから売れそうな物を探す', stamina: 5, exp: { info: 4, tech: 3 }, hours: 3, bg: 'home' },
   { id: 'store', group: 'buy', icon: E(2125), node: 'src_store', name: '店舗せどり', desc: 'ワゴンや値札ミスの掘り出し物を探す', stamina: 15, exp: { act: 12, info: 5, social: 2 }, hours: 10, bg: 'store' },
+  { id: 'expedition', group: 'buy', icon: E(1031), node: 'src_store', name: '遠征', desc: '隣の県まで足をのばす店舗せどり。交通費と体力はかかるが、朝から回れて、荒らされていない店で掘り出し物が多い（店舗せどり10回から）', stamina: 30, cost: 6000, exp: { act: 18, info: 6, social: 3 }, hours: 12, bg: 'store' },
   { id: 'online', group: 'buy', icon: E(5075), node: 'src_online', name: '電脳せどり', desc: 'ポイント還元・予約・フリマの安値', stamina: 8, exp: { info: 13, tech: 4, mind: 2 }, hours: 5, bg: 'online' },
   { id: 'lottery', group: 'buy', icon: E(1016), node: 'src_lottery', name: '抽選に応募', desc: '限定品の抽選。結果は翌週', stamina: 5, exp: { info: 6, mind: 6 }, hours: 2, bg: 'online' },
   { id: 'queue', group: 'buy', icon: E(5531), node: 'src_queue', name: '行列に並ぶ', desc: '発売日に始発で並ぶ', stamina: 28, exp: { act: 15, mind: 10 }, hours: 8, bg: 'queue' },
@@ -91,6 +96,7 @@ export function availableCommands(s) {
     if (c.id === 'dept') return s.stage >= DEPT_STAGE && !s.underworld;
     if (c.id === 'mentor') return canAskMentor(s);
     if (c.id === 'import') return importOpen(s);
+    if (c.id === 'expedition') return (s.stats.storeTrips || 0) >= EXPEDITION_AFTER;
     if (c.id === 'card_up') return nextCardTier(s) !== null && s.week >= (flag(s, 'cardApplied') ?? -99) + 8;
     return true;
   });
@@ -127,7 +133,7 @@ export function staminaCost(s, cmd) {
   if (cmd.id === 'store' && hasSkill(s, 'ino_map')) cost = Math.round(cost * 0.7);
   if (cmd.id === 'store' && hasSkill(s, 'backpain')) cost = Math.round(cost * 1.3);
   if (cmd.id === 'store') cost = Math.round(cost * perk(s, 'storeStamina'));
-  if (['store', 'auction', 'wholesale'].includes(cmd.id) && (s.lifestyle || 0) >= 2) cost = Math.round(cost * 0.85); // 車がある
+  if (['store', 'expedition', 'auction', 'wholesale'].includes(cmd.id) && (s.lifestyle || 0) >= 2) cost = Math.round(cost * 0.85); // 車がある
   if (cmd.group === 'buy' && s.style?.type === 'org') cost = Math.round(cost * 0.7); // 組織型：足を使うのはスタッフ
   return cost;
 }
@@ -218,6 +224,19 @@ const HANDLERS = {
       ...found,
       talk('chris', pick(s, ['よし、今日は駅前から郊外まで回れるだけ回るぞ！', 'ワゴンの奥に宝が眠ってる…はず！', '値札の貼り替え日を狙って来たんだ。']), 'guts'),
       { ...offers(list, '店舗巡り'), run: buildStoreRun(s, list, clock, n) },
+    ];
+  },
+  expedition(s) {
+    s.stats.storeTrips = (s.stats.storeTrips || 0) + 1;
+    s.stats.expeditions = (s.stats.expeditions || 0) + 1;
+    const region = pickRegion(s);
+    const clock = storeClock(s, false, { trip: true });
+    const n = Math.round(storeOfferCount(s) * 1.5);
+    const list = storeOffers(s, totalOffersFor(n, clock), { trip: true });
+    return [
+      narr(`朝8時。${hasCar(s) ? '車' : '始発の電車'}で${region}へ。`),
+      talk('chris', pick(s, [`${region}の店は、地元の同業者もまだ少ないはず。閉店まで回るぞ！`, `知らない町の店は、どこに何があるかわからない。それも楽しみだ。`]), 'guts'),
+      { ...offers(list, `遠征：${region}`), run: buildStoreRun(s, list, clock, n, { region }) },
     ];
   },
   online(s, cmd, { night } = {}) {
