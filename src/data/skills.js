@@ -68,7 +68,7 @@ export const SKILLS = [
   { id: 'cap_online', route: 'online', parent: 'lottery_nose', depth: 4, lane: 0, kind: 'capstone', name: '電脳の覇者', desc: '電脳の仕入れ候補+2、ポイント還元+30%、抽選の当選率1.2倍', cost: { info: 150, tech: 80 }, need: { buy: 60 }, icon: E(5016) },
 
   // ---- 古物・目利き ----
-  { id: 'eye_market', route: 'vintage', parent: 'src_home', depth: 1, lane: 0, kind: 'unlock', name: '相場チェック', desc: '「相場」画面が解放。売り切れ価格を調べる習慣で、推定相場の誤差が25%減る', cost: { info: 15 }, gate: [{ flag: 'tutorialDone', label: 'チュートリアルを終える' }, { key: 'soldUnits', target: 8, label: '累計の販売数' }], icon: I('int.png') },
+  { id: 'eye_market', route: 'vintage', parent: 'src_home', depth: 1, lane: 0, kind: 'unlock', name: '相場チェック', desc: '「相場」画面が解放。フリマで実際に売れた値段を調べる習慣で、推定相場の誤差が25%減る', cost: { info: 15 }, gate: [{ flag: 'tutorialDone', label: 'チュートリアルを終える' }, { key: 'soldUnits', target: 8, label: '累計の販売数' }], icon: I('int.png') },
   { id: 'license', route: 'vintage', parent: 'eye_market', depth: 2, lane: 0, kind: 'unlock', name: '古物商許可の取り方', desc: '「古物商許可を申請」が解放。中古を仕入れて売るなら必須', cost: { info: 40, mind: 20 }, icon: E(1016) },
   { id: 'eye_fake', route: 'vintage', parent: 'eye_market', depth: 2, lane: 1, kind: 'perk', name: '真贋の知識', desc: '刻印・縫製・シュリンクなどの細部をもう1か所見られて、見誤りにくくなる', cost: { info: 40, mind: 20 }, need: { eye: 30 }, icon: I('confused.png') },
   { id: 'crowd_madness', route: 'vintage', parent: 'eye_market', depth: 2, lane: -1, kind: 'gold', hero: 'newton', name: '群衆の狂気', desc: '相場推定の誤差が半分に。ブームの天井を察知できる', cost: { info: 80, mind: 50 }, icon: H(3043) },

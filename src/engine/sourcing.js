@@ -65,7 +65,7 @@ export const STORE_TYPES = {
     sections: ['ショーケース'], tags: ['luxury'], enter: 'ドアマンに会釈される。場違いな気がして背筋が伸びる…。' },
 };
 const COMMON = ['kaden', 'drug', 'zakka', 'hobby'];
-const TAG_TYPES = { staple: ['kaden', 'drug', 'hobby'], hype: ['hobby', 'kaden'], boom: ['zakka'], seasonal: ['zakka', 'drug'], niche: ['drug', 'zakka'], used: ['used'], book: ['book'], luxury: ['luxury'] };
+const TAG_TYPES = { kuji: ['hobby'], staple: ['kaden', 'drug', 'hobby'], hype: ['hobby', 'kaden'], boom: ['zakka'], seasonal: ['zakka', 'drug'], niche: ['drug', 'zakka'], used: ['used'], book: ['book'], luxury: ['luxury'] };
 // 品のジャンルごとに、置いていそうな店（腕時計やイヤホンは家電量販店、コスメとお酒はドラッグストア…）
 const GENRE_TYPES = {
   定番ウォッチ: ['kaden'], ワイヤレスイヤホン: ['kaden'], スマートプロジェクター: ['kaden'], 新型VRゲーム機: ['kaden', 'hobby'],

@@ -27,6 +27,7 @@ import { info, offers, sfx, talk } from './steps.js';
 import { familyWeek } from './family.js';
 import { snsWeek } from './sns.js';
 import { importWeek } from './importer.js';
+import { kujiWeek } from './kuji.js';
 
 export function startWeek(s) {
   const steps = [];
@@ -35,6 +36,7 @@ export function startWeek(s) {
   s.actionsLeft = s.actionsPerWeek;
   s.nightLeft = s.stage >= 2 ? 1 : 0;
   if (s.week > 0) s.news = updateMarket(s);
+  (s.news ||= []).push(...kujiWeek(s)); // くじの開始・箱の残り
   // 毎月の第1・第3週は、通販モールのポイントアップ週
   if ([1, 3].includes(weekOfMonth(s.week))) {
     s.mods.onlinePoints *= 1.3;
@@ -120,7 +122,7 @@ export function endWeek(s) {
   steps.push({
     t: 'sales',
     week: weekLabel(s.week),
-    sold: sales.sold.map((x) => ({ pid: x.pid, price: x.price, platform: x.platform, net: x.net, profit: x.profit, delayed: !!x.delayed })),
+    sold: sales.sold.map((x) => ({ uid: x.uid, pid: x.pid, price: x.price, platform: x.platform, net: x.net, profit: x.profit, delayed: !!x.delayed })),
     auctionsUnsold: sales.auctionsUnsold.map((x) => ({ pid: x.pid, bidders: x.bidders })),
     authFailed: sales.authFailed,
     staminaUsed: sales.staminaUsed || 0,

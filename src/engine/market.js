@@ -141,6 +141,10 @@ export function updateMarket(s) {
       case 'collect':
         m.p = clamp(m.p * (1 + p.drift + gauss(s) * 0.02), 0.6, 3);
         break;
+      case 'kuji':
+        // くじの賞品：ダブついて下がった相場は、ゆっくり戻る
+        m.p = clamp(m.p + (p.base - m.p) * 0.05 + gauss(s) * 0.02, 0.3, 1.3);
+        break;
       case 'home':
         m.p = clamp(m.p + (p.base - m.p) * 0.3 + gauss(s) * 0.03, 0.8, 1.2);
         break;
@@ -330,4 +334,4 @@ export function confidenceLabel(s) {
 
 // 相場画面に並べる商品（発表済み・流通中のもの）
 // 知らないジャンルと、まだ開拓していない仕入れ先のシリーズは相場画面に出さない
-export const visibleProducts = (s) => PRODUCTS.filter((p) => isAnnounced(s, p) && (!p.imported || s.flags?.importIntro) && (!p.know || (s.certs || []).includes(`know_${p.know}`)) && (!p.spot || (s.spots || []).includes(p.spot)));
+export const visibleProducts = (s) => PRODUCTS.filter((p) => isAnnounced(s, p) && (!p.imported || s.flags?.importIntro) && (p.kind !== 'kuji' || !!s.kuji) && (!p.know || (s.certs || []).includes(`know_${p.know}`)) && (!p.spot || (s.spots || []).includes(p.spot)));

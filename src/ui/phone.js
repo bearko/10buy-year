@@ -367,9 +367,9 @@ export function phoneMode(ctx) {
 
   // ---- 商品ページの追加の欄 ----
   function researchSec(o) {
-    return ctx.section('売り切れを検索して相場を調べる', o.soldHist
+    return ctx.section('フリマで実際に売れた値段を調べる', o.soldHist
       ? soldList(o)
-      : h('button', { class: 'qa-ask', disabled: !canAct(), onclick: () => { o.soldHist = soldHistory(s, o.pid); s.stats.soldChecks = (s.stats.soldChecks || 0) + 1; spend(PHONE_COST.research); ctx.render(); } }, `「${productOf(o.pid).name}」の売り切れを見る（${PHONE_COST.research}分）`));
+      : h('button', { class: 'qa-ask', disabled: !canAct(), onclick: () => { o.soldHist = soldHistory(s, o.pid); s.stats.soldChecks = (s.stats.soldChecks || 0) + 1; spend(PHONE_COST.research); ctx.render(); } }, `フリマで売れた値段を調べる（${PHONE_COST.research}分）`));
   }
 
   function negoSec(o) {
@@ -472,7 +472,7 @@ export function phoneMode(ctx) {
       return false;
     },
     itemPrice: (o) => (o.auction ? h('div', { class: 'it-price' }, h('small', {}, '現在 '), yen(o.auction.cur), h('small', {}, `（入札${o.auction.bids}件・送料込み）`)) : null),
-    extrasLabel: (o) => (o.auction ? 'オークション' : o.source === 'flea' ? '交渉・相場' : '相場を調べる'),
+    extrasLabel: (o) => (o.auction ? 'オークション' : o.source === 'flea' ? '交渉・売れた値段' : '売れた値段を調べる'),
     itemTitle: (o) => APPS[o.unknown ? 'flea' : appOf(o)].name,
     itemColor: (o) => APPS[o.unknown ? 'flea' : appOf(o)].color,
     itemExtras(o) {

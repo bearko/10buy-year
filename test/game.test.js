@@ -1335,8 +1335,8 @@ test('店のクセ：3回通うと覚える。クセは周ごとに決まって�
   assert.equal(s.cash, 94000, '交通費');
 });
 
-test('撮影の出来で売れ行きが変わり、箱が大きすぎると送料が上がる。カードの利用代金は確定メールが届く', async () => {
-  const { applyPhoto, listBoostOf, boxFit, oversizeCost, packTargets } = await import('../src/engine/worklife.js');
+test('撮影の出来で売れ行きが変わり、発送の演出は部屋にある品だけ。カードの利用代金は確定メールが届く', async () => {
+  const { applyPhoto, listBoostOf, shipTargets } = await import('../src/engine/worklife.js');
   const s = createGame(41);
   s.listBoost = true;
   assert.equal(listBoostOf(s), 1.25, 'オートは標準の出来');
@@ -1344,11 +1344,7 @@ test('撮影の出来で売れ行きが変わり、箱が大きすぎると送�
   const st = s.stamina;
   assert.equal(applyPhoto(s, { bg: 'white', light: 'ring', shots: 10 }).boost, 1.34);
   assert.equal(s.stamina, st - 4, '10枚撮ると疲れる');
-  assert.equal(boxFit('scroll', 60), 'ok');
-  assert.equal(boxFit('boots', 60), 'small');
-  assert.equal(boxFit('scroll', 100), 'big');
-  assert.equal(oversizeCost('scroll', 100), 360);
-  assert.deepEqual(packTargets(s, [{ pid: 'boots', platform: 'ama' }, { pid: 'boots', platform: 'merc' }]).length, 1);
+  assert.equal(shipTargets([{ pid: 'boots', platform: 'ama' }, { pid: 'boots', platform: 'merc' }]).length, 1, 'アマクリは倉庫から出荷');
   s.card.current = 30000;
   s.cash = 1000000;
   const steps = monthEnd(s);
@@ -1493,4 +1489,24 @@ test('ジャンク品は動作確認・修理で価値が変わる。安すぎ�
   assert.equal(f.junk.state, 'works', '直せそうな品は修理で動くようになる');
   const steps = troubleSteps(s, { kind: 'fake', sale: { pid: 'packs', unit: { fake: true }, id: 'z', ship: 200, price: 1500, net: 1200, platform: 'merc' } });
   assert.ok(steps.some((x) => x.t === 'talk' && /サーチ済み/.test(x.text)));
+});
+
+test('くじ：年に4回始まり、引いた賞品が在庫に入る。最後の1枚でラストワン賞', async () => {
+  const { kujiWeek, drawKuji, kujiLeft, kujiOpen } = await import('../src/engine/kuji.js');
+  const s = createGame(111);
+  s.cash = 1000000;
+  s.week = 2;
+  assert.ok(kujiWeek(s).length && kujiOpen(s));
+  assert.equal(kujiLeft(s), 80);
+  const r = drawKuji(s, 10);
+  assert.equal(r.got.length, 10);
+  assert.equal(s.cash, 1000000 - 7500);
+  assert.equal(s.inventory.filter((u) => u.pid.startsWith('kuji_')).length, 10);
+  s.week = 3;
+  kujiWeek(s);
+  assert.ok(kujiLeft(s) < 70, 'ほかの客も引く');
+  const all = drawKuji(s, kujiLeft(s));
+  assert.ok(all.last);
+  assert.ok(s.inventory.some((u) => u.pid === 'kuji_last'));
+  assert.ok(!kujiOpen(s));
 });

@@ -147,7 +147,7 @@ export function storeMode(ctx) {
     const used = new Set();
     st.layout = st.sections.map((sec) => {
       const want = kindOf(sec.name);
-      const slot = [want, 'back', 'backR', 'mid', 'center', 'front'].find((k) => !used.has(k));
+      const slot = [want, 'back', 'backR', 'mid', 'center', 'front'].find((k) => !used.has(k)) || want;
       used.add(slot);
       return slot;
     });
@@ -169,7 +169,7 @@ export function storeMode(ctx) {
       const key = `${st.id}:${i}`;
       const done = searched.has(key);
       const ok = now + clock.search <= clock.close;
-      const pos = SLOTS[slots[i]];
+      const pos = SLOTS[slots[i]] || SLOTS.center;
       const items = sec.oids.map((id) => byId.get(id)).filter(Boolean);
       return h('button', {
         class: `sr-zone ${slots[i]} ${done ? 'done' : ok ? 'open' : 'late'}`,
@@ -238,6 +238,7 @@ export function storeMode(ctx) {
       byId.set(r.offer.oid, r.offer);
       ctx.qty.set(r.offer.oid, 1);
       at.sections.push({ name: '店員さんのおすすめ', oids: [r.offer.oid] });
+      at.layout = null; // 売り場が増えたので、見取り図を作り直す
       searched.add(`${at.id}:${at.sections.length - 1}`);
     }
     talk = r;
@@ -373,15 +374,15 @@ export function storeMode(ctx) {
       leave();
       return true;
     },
-    extrasLabel: () => 'スマホで相場',
+    extrasLabel: () => '売れた値段を調べる',
     itemTitle: () => at?.name,
     itemColor: () => at?.color,
     // 店では、スマホで売り切れ相場を調べられる（少し時間を使う）
     itemExtras(o) {
       if (o.unknown) return [];
-      return [ctx.section('スマホで相場を調べる', o.soldHist
+      return [ctx.section('スマホで、フリマで実際に売れた値段を調べる', o.soldHist
         ? soldList(o)
-        : h('button', { class: 'qa-ask', onclick: () => { o.soldHist = soldHistory(s, o.pid); s.stats.soldChecks = (s.stats.soldChecks || 0) + 1; now += clock.research; ctx.render(); } }, `フリマの売り切れ価格を検索する（${clock.research}分）`))];
+        : h('button', { class: 'qa-ask', onclick: () => { o.soldHist = soldHistory(s, o.pid); s.stats.soldChecks = (s.stats.soldChecks || 0) + 1; now += clock.research; ctx.render(); } }, `フリマで売れた値段を調べる（${clock.research}分）`))];
     },
     itemBar(o) {
       const minQ = o.minQty || 1;

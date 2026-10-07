@@ -1,7 +1,6 @@
-// 作業の手ざわり：撮影（背景・光・枚数で売れ行きが変わる）と、梱包（品に合う箱を選ぶ）。
-// どちらも画面で選ぶ演出で、オート（ルーティン・ボット）のときは標準の値を使う
-import { productOf } from '../data/products.js';
-import { addStamina, hasSkill } from './effects.js';
+// 作業の手ざわり：撮影（背景・光・枚数で売れ行きが変わる）と、発送（部屋の品を箱に詰めて送り出す演出）。
+// 撮影は画面で選び、オート（ルーティン・ボット）のときは標準の値を使う
+import { addStamina } from './effects.js';
 import { addExpense } from './kpi.js';
 
 // ---- 撮影 ----
@@ -52,31 +51,6 @@ export function buyRingLight(s) {
 export const listBoostOf = (s) => (s.listBoost === true ? DEFAULT_BOOST : s.listBoost || 1);
 
 // ---- 梱包 ----
-export const BOXES = [
-  { id: 60, name: '60サイズ', fits: 'S' },
-  { id: 80, name: '80サイズ', fits: 'M' },
-  { id: 100, name: '100サイズ', fits: 'L' },
-];
-const ORDER = { S: 0, M: 1, L: 2 };
-// 箱が大きすぎると、1段階ごとに送料が上がる
-export const OVERSIZE_FEE = 180;
-
-// 'ok'：ぴったり / 'big'：入るが送料が上がる / 'small'：入らない
-export function boxFit(pid, boxId) {
-  const need = ORDER[productOf(pid).size];
-  const have = BOXES.findIndex((b) => b.id === boxId);
-  return have < need ? 'small' : have === need ? 'ok' : 'big';
-}
-export const oversizeCost = (pid, boxId) => Math.max(0, BOXES.findIndex((b) => b.id === boxId) - ORDER[productOf(pid).size]) * OVERSIZE_FEE;
-
-// 自分で発送する品（倉庫・外注・手渡しは除く）。梱包の達人なら箱選びはいらない
-export function packTargets(s, sold) {
-  if (hasSkill(s, 'pack_master') || hasSkill(s, 'out_ship')) return [];
-  return sold.filter((x) => !['ama', 'black'].includes(x.platform));
-}
-
-export function chargeOversize(s, picks) {
-  const total = picks.reduce((a, x) => a + oversizeCost(x.pid, x.box), 0);
-  if (total) addExpense(s, total, `送料の追加（箱が大きすぎた ${picks.filter((x) => oversizeCost(x.pid, x.box)).length}件）`);
-  return total;
-}
+// 部屋から箱に詰めて送り出す品（アマクリは倉庫から出荷されるので、部屋にはない）。
+// 梱包は判断のいらない作業なので、操作はさせず演出だけにする（ui/room.js）
+export const shipTargets = (sold) => sold.filter((x) => x.platform !== 'ama');
