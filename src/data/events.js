@@ -15,6 +15,7 @@ import {
 } from '../engine/effects.js';
 import { applyShock, inBoom, isReleased, priceOf } from '../engine/market.js';
 import { addUnits, overCapacity } from '../engine/inventory.js';
+import { addFamily } from '../engine/family.js';
 import { fiscalIncome, minPayment, taxFor } from '../engine/finance.js';
 import { bgm, choice, gain, info, items, narr, sfx, talk } from '../engine/steps.js';
 import { washHands } from '../engine/underworld.js';
@@ -1192,6 +1193,7 @@ export const EVENTS = [
           run: () => {
             addMood(s, 1);
             addStamina(s, 15);
+            addFamily(s, 8);
             return [narr('週末は仕入れに行かず、家族とご飯を食べた。売れ筋はきっとライバルに取られた。でも、それでいい。'), info('リフレッシュ', ['やる気が上がり、体力が回復した'], 'good')];
           },
         },
