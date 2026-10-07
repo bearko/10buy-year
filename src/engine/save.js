@@ -5,6 +5,7 @@ import { ensureMarket } from './market.js';
 const SAVE_KEY = '10buy-year:save';
 const RANK_KEY = '10buy-year:ranking';
 const DAILY_KEY = '10buy-year:daily';
+const LEGACY_KEY = '10buy-year:legacy';
 
 function storage() {
   try {
@@ -90,4 +91,23 @@ export function pushDaily(key, entry) {
     /* noop */
   }
   return all[key];
+}
+
+// 前の周までにたどり着いたルートの到達点（次の周に1つ引き継げる）
+export function loadLegacy() {
+  try {
+    return JSON.parse(storage()?.getItem(LEGACY_KEY) || '[]');
+  } catch {
+    return [];
+  }
+}
+
+export function pushLegacy(ids) {
+  const all = [...new Set([...loadLegacy(), ...ids])];
+  try {
+    storage()?.setItem(LEGACY_KEY, JSON.stringify(all));
+  } catch {
+    /* noop */
+  }
+  return all;
 }
