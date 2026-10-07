@@ -11,7 +11,7 @@ import { autoBuy } from './engine/automation.js';
 import { clearSave, loadGame, loadRanking, pushRanking, saveGame } from './engine/save.js';
 import { createGame } from './engine/state.js';
 import { endWeek, startWeek } from './engine/turn.js';
-import { checkTutorial, currentMission, treeOpen } from './engine/tutorial.js';
+import { checkTutorial, currentMission, treeOpen, tutorialDone } from './engine/tutorial.js';
 import { playBgm, playSe, setSound, soundOn } from './ui/audio.js';
 import { $, clear, h, wait, yenFmt } from './ui/dom.js';
 import { renderHud, renderParams, renderTicker, setPreview } from './ui/hud.js';
