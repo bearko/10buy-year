@@ -106,7 +106,7 @@ export function updateMarket(s) {
         m.p = clamp(m.p + (p.base - m.p) * 0.3 + gauss(s) * 0.03, 0.8, 1.2);
         break;
       case 'luxury':
-        m.p = clamp(m.p + (p.base - m.p) * 0.2 + gauss(s) * 0.02, 1.2, 1.9);
+        m.p = clamp(m.p + (p.base - m.p) * 0.2 + gauss(s) * 0.02, 1.15, 1.6);
         break;
       case 'perishable':
         m.p = clamp(p.premium + gauss(s) * 0.08, 1.4, 2.4);

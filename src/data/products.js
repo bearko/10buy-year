@@ -76,7 +76,7 @@ export const PRODUCTS = [
   { id: 'sakazuki', name: '幸若舞の盃', genre: '蒔絵の盃', ext: 4030, kind: 'collect', retail: 130000, size: 'S', demand: 0.45, base: 1.0, drift: 0.006, used: true, fakeRisk: 0.2, spot: 'estate' },
   { id: 'gentle_umbrella', name: '紳士用傘', genre: '英国製の紳士傘', ext: 2190, kind: 'staple', retail: 9800, size: 'M', demand: 1.6, base: 1.0, fakeRisk: 0, spot: 'outlet_warehouse' },
   { id: 'leather_wallet', name: '合皮財布', genre: '輸入ブランドの財布', ext: 3172, kind: 'staple', retail: 15000, size: 'S', demand: 1.5, base: 1.02, fakeRisk: 0.15, spot: 'importer' },
-  { id: 'queen_watch', name: '王妃の黄金時計', genre: '高級腕時計', ext: 5111, kind: 'luxury', retail: 1280000, size: 'S', demand: 0.45, base: 1.55, fakeRisk: 0.5 },
+  { id: 'queen_watch', name: '王妃の黄金時計', genre: '高級腕時計', ext: 5111, kind: 'luxury', retail: 1280000, size: 'S', demand: 0.45, base: 1.35, fakeRisk: 0.5 },
 ];
 
 // 獲得したときに見せるひとこと説明
