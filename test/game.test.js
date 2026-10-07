@@ -1376,3 +1376,24 @@ test('業者オークションの競りのロットと、問屋の見積書の�
     assert.equal(o.minQty, 10);
   });
 });
+
+test('シリーズの世代交代：次の世代は発売まで出回らず、出ると前の世代は型落ちで相場と買い手が下がる', async () => {
+  const { PRODUCTS } = await import('../src/data/products.js');
+  const { isRetired, demandOf, visibleProducts } = await import('../src/engine/market.js');
+  const { storeOffers } = await import('../src/engine/offers.js');
+  assert.ok(PRODUCTS.length >= 40);
+  const g1 = PRODUCTS.find((p) => p.id === 'organ1');
+  const g2 = PRODUCTS.find((p) => p.id === 'organ2');
+  const s = createGame(61);
+  assert.ok(!visibleProducts(s).some((p) => p.id === 'organ2'));
+  for (let i = 0; i < 20; i++) assert.ok(!storeOffers(s, 30).some((o) => o.pid === 'organ2'));
+  const d0 = demandOf(s, g1);
+  while (s.week < g2.launch + 30) {
+    s.week++;
+    updateMarket(s);
+  }
+  assert.ok(isRetired(s, g1) && !isRetired(s, g2));
+  assert.ok(s.market.organ1.p < 0.75, `型落ちの相場 ${s.market.organ1.p}`);
+  assert.ok(demandOf(s, g1) < d0 * 0.6);
+  assert.ok(visibleProducts(s).some((p) => p.id === 'organ2'));
+});

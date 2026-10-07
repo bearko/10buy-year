@@ -1,4 +1,4 @@
-import { weekAt } from '../engine/calendar.js';
+import { weekAt, YEAR_WEEKS } from '../engine/calendar.js';
 
 // 商品マスタ。画像はマイクリのエクステンション（ext = エクステンションID）。
 // 名前はエクステンション名そのままに、「現実の転売ジャンル」を genre として割り当てている。
@@ -15,6 +15,38 @@ import { weekAt } from '../engine/calendar.js';
 // size: S/M/L（送料・梱包の手間・部屋の占有スペースに影響）
 // used: true の商品は中古でしか流通しない（仕入れには古物商許可が必要）
 // fakeRisk: 怪しいルートで仕入れたときに偽物をつかむ基本確率
+
+// ---- シリーズの世代交代 ----
+// 同じ系統のエクステンション（レアリティ違い）を世代に見立てる。2年ごとに新世代が出て、前の世代は型落ち（相場が下がり、買い手が減る）
+const W = (year, month, nth) => (year - 1) * YEAR_WEEKS + weekAt(month, nth);
+export const SERIES = [
+  {
+    id: 'golem', genre: '家庭用ロボット', type: 107, size: 'M', demand: 2.2,
+    gens: [
+      { name: 'ゴーレムくん', retail: 19800, launch: 0 },
+      { name: 'ゴーレムくん2', retail: 24800, launch: W(3, 10, 1) },
+      { name: 'ゴーレムくん3', retail: 29800, launch: W(5, 10, 1) },
+      { name: 'ゴーレムくん4', retail: 39800, launch: W(7, 10, 1) },
+      { name: 'ゴーレムくん5 ゴールド', retail: 49800, launch: W(9, 10, 1) },
+    ],
+  },
+  {
+    id: 'organ', genre: '電子キーボード', type: 68, size: 'L', demand: 1.6,
+    gens: [
+      { name: 'オルガネット', retail: 15800, launch: 0 },
+      { name: 'オルガネット II', retail: 19800, launch: W(2, 4, 2) },
+      { name: 'オルガネット III', retail: 24800, launch: W(4, 4, 2) },
+      { name: 'オルガネット IV', retail: 29800, launch: W(6, 4, 2) },
+      { name: 'オルガネット V', retail: 36800, launch: W(8, 4, 2) },
+    ],
+  },
+];
+function seriesProducts(sr) {
+  return sr.gens.map((g, i) => ({
+    id: `${sr.id}${i + 1}`, name: g.name, genre: sr.genre, ext: (i + 1) * 1000 + sr.type, kind: 'staple', retail: g.retail, size: sr.size, demand: sr.demand, base: 1.03, fakeRisk: 0.05,
+    series: sr.id, gen: i + 1, launch: g.launch, retire: sr.gens[i + 1]?.launch ?? null,
+  }));
+}
 
 export const PRODUCTS = [
   { id: 'old_hat', name: 'ハット', genre: '着なくなった帽子', ext: 1059, kind: 'home', retail: 2400, size: 'M', demand: 1.3, base: 1.0, used: true, fakeRisk: 0 },
@@ -76,6 +108,9 @@ export const PRODUCTS = [
   { id: 'sakazuki', name: '幸若舞の盃', genre: '蒔絵の盃', ext: 4030, kind: 'collect', retail: 130000, size: 'S', demand: 0.45, base: 1.0, drift: 0.006, used: true, fakeRisk: 0.2, spot: 'estate' },
   { id: 'gentle_umbrella', name: '紳士用傘', genre: '英国製の紳士傘', ext: 2190, kind: 'staple', retail: 9800, size: 'M', demand: 1.6, base: 1.0, fakeRisk: 0, spot: 'outlet_warehouse' },
   { id: 'leather_wallet', name: '合皮財布', genre: '輸入ブランドの財布', ext: 3172, kind: 'staple', retail: 15000, size: 'S', demand: 1.5, base: 1.02, fakeRisk: 0.15, spot: 'importer' },
+  // シリーズ（世代交代）：2年ごとに次の世代が出て、前の世代は型落ちになる（下の SERIES）
+  ...SERIES.flatMap(seriesProducts),
+
   // 中国輸入でしか仕入れられないノーブランド品（engine/importer.js）
   { id: 'imp_band', name: 'ブロンズリング', genre: 'ノーブランドのスマートバンド', ext: 1009, kind: 'staple', retail: 3980, size: 'S', demand: 2.4, base: 1.0, fakeRisk: 0, imported: true },
   { id: 'imp_light', name: '水晶玉', genre: 'LEDのインテリアライト', ext: 1098, kind: 'staple', retail: 2980, size: 'M', demand: 2.0, base: 1.0, fakeRisk: 0, imported: true },

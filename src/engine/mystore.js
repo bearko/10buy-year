@@ -4,7 +4,7 @@ import { chance, pick, poisson, randInt } from './rng.js';
 import { addCash, addExp, yen } from './effects.js';
 import { activeUnits, addUnits, removeUnit } from './inventory.js';
 import { addExpense } from './kpi.js';
-import { roundPrice, unitPrice } from './market.js';
+import { isReleased, roundPrice, unitPrice } from './market.js';
 import { woy } from './calendar.js';
 import { choice, info, sfx, talk } from './steps.js';
 import { knowsGenre } from './courses.js';
@@ -65,7 +65,7 @@ export function shopWeek(s) {
   // 買取カウンター：近所の人が品物を持ち込む（相場の4割で買い取る）
   let bought = 0;
   if (s.shop.counter) {
-    const pool = PRODUCTS.filter((p) => ['collect', 'staple'].includes(p.kind) && knowsGenre(s, p) && !p.alcohol && !p.spot);
+    const pool = PRODUCTS.filter((p) => ['collect', 'staple'].includes(p.kind) && knowsGenre(s, p) && !p.alcohol && !p.spot && isReleased(s, p));
     const n = randInt(s, 0, 3);
     for (let i = 0; i < n; i++) {
       const p = pick(s, pool);

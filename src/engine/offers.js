@@ -2,7 +2,7 @@
 import { PRODUCTS, productOf } from '../data/products.js';
 import { chance, pick, randInt, randRange, weightedPick } from './rng.js';
 import { flag, hasSkill } from './effects.js';
-import { beforeRelease, estimate, estimateUpcoming, inBoom, inPreSale, isReleased, isRestockWeek, priceOf, roundPrice } from './market.js';
+import { beforeRelease, estimate, estimateUpcoming, inBoom, inPreSale, isReleased, isRestockWeek, isRetired, priceOf, roundPrice } from './market.js';
 import { woy, yearOf } from './calendar.js';
 import { perk } from './perks.js';
 import { buildListing, catOf } from './listing.js';
@@ -64,11 +64,11 @@ export function storeOffers(s, n = storeOfferCount(s), { trip = false } = {}) {
     {
       weight: 5,
       make: () => {
-        const p = pick(s, byKind('staple'));
+        const p = pick(s, byKind('staple').filter((x) => isReleased(s, x)));
         const d = Math.min(0.7, randRange(s, 0.18, 0.55) + discountBoost + s.abilities.buy / 1000);
         return makeOffer(s, p.id, {
           source: 'store',
-          label: pick(s, ['ワゴンセール', '閉店セール', '型落ち処分', '店長の気まぐれ値引き', '棚の奥で見つけた値札ミス']),
+          label: isRetired(s, p) ? '旧型の在庫処分' : pick(s, ['ワゴンセール', '閉店セール', '型落ち処分', '店長の気まぐれ値引き', '棚の奥で見つけた値札ミス']),
           price: round10(p.retail * (1 - d)),
           maxQty: randInt(s, 2, 4 + s.stage * 2),
         });
@@ -161,7 +161,7 @@ export function onlineOffers(s) {
     {
       weight: 4,
       make: () => {
-        const p = pick(s, byKind('staple'));
+        const p = pick(s, byKind('staple').filter((x) => isReleased(s, x)));
         const rate = Math.min(0.4, randRange(s, 0.08, 0.22) * pointBoost);
         return makeOffer(s, p.id, { source: 'online', label: `ポイント${Math.round(rate * 100)}%還元セール`, price: p.retail, points: rate, maxQty: randInt(s, 2, 3 + s.stage * 2) });
       },
@@ -303,7 +303,7 @@ export function auctionOffers(s) {
 // ---- 問屋・メーカー直取引（定番品をロットで卸値仕入れ）----
 export function wholesaleOffers(s) {
   const n = 3 + Math.floor(s.abilities.talk / 30);
-  const gens = byKind('staple').filter((p) => !p.alcohol).map((p) => ({
+  const gens = byKind('staple').filter((p) => !p.alcohol && isReleased(s, p) && !isRetired(s, p)).map((p) => ({
     weight: 1,
     make: () => makeOffer(s, p.id, {
       source: 'wholesale',

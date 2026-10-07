@@ -72,6 +72,7 @@ const GENRE_TYPES = {
   プチプラコスメのセット: ['drug'], デパコスの限定コフレ: ['drug'], 地酒: ['drug'], プレミアウイスキー: ['drug'],
   'トレカBOX（定番）': ['hobby'], 人気トレカ新弾BOX: ['hobby'], 限定フィギュア: ['hobby'],
   定番スニーカー: ['zakka'], コラボスニーカー: ['zakka'], 超限定スニーカー: ['zakka'], ブランドスカーフ: ['zakka'], 苔玉の盆栽: ['zakka'],
+  家庭用ロボット: ['kaden', 'hobby'], 電子キーボード: ['kaden'],
   クリスマス限定ぬいぐるみ: ['zakka', 'hobby'], 雛人形: ['zakka'], ブラインドボックスぬいぐるみ: ['zakka', 'hobby'],
 };
 const BOOKS = ['novice_book', 'tsumi'];
