@@ -4,6 +4,7 @@ import { specErr } from './style.js';
 import { madeToOrder, usedRegimeMult } from './regimes.js';
 import { AUD_OF } from '../data/careers.js';
 import { PRODUCTS, productOf } from '../data/products.js';
+import { sizeMult } from './shoes.js';
 import { chance, gauss, hashNoise, randInt, randRange } from './rng.js';
 import { clamp, hasSkill, tired } from './effects.js';
 import { woy, yearOf } from './calendar.js';
@@ -76,6 +77,7 @@ export function unitPrice(s, u) {
   if (p.kind === 'hype' && u.edition && m.edition && u.edition < m.edition) mult = m.oldP;
   if (p.used || u.used) mult *= usedRegimeMult(s); // 認定中古市場
   if (u.rep) mult *= REP_MULT; // 再販版は初版より安い
+  if (u.shoe) mult *= sizeMult(u.shoe); // スニーカーのサイズ
   mult *= annalMult(s, u.pid);
   return Math.round(p.retail * mult * (u.damaged ? 0.5 : 1));
 }

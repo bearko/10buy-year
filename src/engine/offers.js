@@ -13,6 +13,7 @@ import { applySaturation, botActive, saturation } from './rivals.js';
 import { lotteryRegimeMult, madeToOrder, queueLimited } from './regimes.js';
 import { investPrice, investQty, investWeight } from './lifestyle.js';
 import { IMPORT_WEEKS } from './importer.js';
+import { isSneaker, pickSize, rollLeftover, sizeMult } from './shoes.js';
 
 let oidSeq = 1;
 // 新ジャンル（know）はここでは除き、genreOffer で知っているものだけ出す。開拓先のシリーズ（spot）も除く
@@ -25,7 +26,13 @@ function makeOffer(s, pid, fields) {
   const product = productOf(pid);
   const offer = { oid: oidSeq++, pid, maxQty: 1, points: 0, fakeRate: 0, ...fields };
   offer.rep = isRepOffer(s, product, offer); // 再販版
-  offer.est = offer.upcoming ? estimateUpcoming(s, pid) : Math.round(estimate(s, pid) * (offer.rep ? REP_MULT : 1));
+  // スニーカーのサイズ。売れ残りは不人気サイズが多いが、そのぶん値札も下がっている
+  if (isSneaker(pid) && offer.shoe === undefined) {
+    const leftover = rollLeftover(s, offer);
+    offer.shoe = pickSize(s, { leftover });
+    if (leftover && !offer.scarce && sizeMult(offer.shoe) < 1) offer.price = Math.max(10, Math.round((offer.price * sizeMult(offer.shoe)) / 10) * 10);
+  }
+  offer.est = Math.round((offer.upcoming ? estimateUpcoming(s, pid) : estimate(s, pid) * (offer.rep ? REP_MULT : 1)) * sizeMult(offer.shoe));
   // まとめ買い：数を選べる候補だけ（限定品・一点物・ロット仕入れは除く）
   if (!offer.scarce && !offer.minQty && offer.maxQty >= 2) offer.maxQty += perk(s, 'offerQty');
   // 偽物かどうかは出品の時点で決まっている。高額品ほど「巧妙な偽物」が多い

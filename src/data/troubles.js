@@ -146,6 +146,36 @@ export function troubleSteps(s, trouble) {
         ]),
       ];
     }
+    case 'size': {
+      // サイズ違い：買い手が自分のサイズを間違えた
+      const cm = sale.unit?.shoe;
+      return [
+        talk('nego', `「${name}」届きました！ …でも履いてみたら${cm ? `${cm.toFixed(1)}cm` : 'サイズ'}が合わなくて。返品できますか？`),
+        talk('mine', 'スニーカーはサイズ違いの返品が多いのよ。説明に実寸を書いておくと減らせるわ。断ると評価が下がるかも。', 'arms'),
+        tagged('return', [
+          {
+            key: 'accept',
+            label: '返品を受け付ける',
+            sub: '送料は自腹',
+            run: () => {
+              cancelSale(s, sale, { restored: true });
+              s.cash -= sale.ship;
+              restoreUnit(s, sale);
+              addRating(s, 1);
+              return [info('返品受付', [`「${name}」が戻ってきた。往復の送料 ${yen(sale.ship * 2)} は自腹…`], 'bad')];
+            },
+          },
+          {
+            key: 'refuse',
+            label: 'サイズ違いの返品はお受けできません',
+            run: () => {
+              addRating(s, -3);
+              return [talk('nego', 'わかりました…。サイズ表記はちゃんと見たんですけどね'), info('評価ダウン', ['返品は断ったが、評価が少し下がった'], 'bad')];
+            },
+          },
+        ]),
+      ];
+    }
     case 'bad_review': {
       addRating(s, -3);
       const dm = addMood(s, -1);
