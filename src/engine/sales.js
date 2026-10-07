@@ -82,6 +82,14 @@ export function resolveSales(s) {
     }
   }
 
+  // チュートリアルで最初に出品した週：相場の1.2倍までの値付けなら、いちばん安い1つは売れる（最初の手ごたえ）
+  if (!out.sold.length && !s.stats.soldUnits && !s.flags.tutorialDone) {
+    const first = s.inventory
+      .filter((u) => u.listing?.platform === 'merc' && u.listing.price <= unitPrice(s, u) * 1.2)
+      .sort((a, b) => a.listing.price - b.listing.price)[0];
+    if (first) out.sold.push(makeSale(first, first.listing.price, 'merc'));
+  }
+
   shipAll(s, out);
   return out;
 }

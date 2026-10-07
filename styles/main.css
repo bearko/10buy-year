@@ -1150,8 +1150,8 @@ body.partner-on #side { display: none !important; }
 .it-top { flex: none; display: grid; grid-template-columns: minmax(0, 44%) 1fr; gap: 10px; padding: 8px 10px; background: #fff; border-bottom: 1px solid #eee; }
 .it-top .gallery { background: none; }
 .it-top .gallery .ph.big { aspect-ratio: 1; max-height: 30vh; border-radius: 8px; }
-.it-top .thumbs { gap: 4px; padding: 4px 0 0; background: none; }
-.it-top .thumbs button { width: 34px; height: 34px; }
+.it-top .thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(26px, 1fr)); gap: 4px; padding: 4px 0 0; background: none; overflow: visible; }
+.it-top .thumbs button { width: 100%; height: auto; aspect-ratio: 1; }
 .it-head { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .it-head .it-title { font-size: 15px; margin: 0; display: flex; flex-direction: column; }
 .it-head .it-title small { font-size: 11px; font-weight: 400; color: #888; }
