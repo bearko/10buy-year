@@ -1409,7 +1409,7 @@ test('再販版：再販が決まった年のモデルをそのあとに仕入�
   s.market.heiho.repEdition = 1; // 再販決定
   const o = specialOffer(s, 'heiho', { source: 'store', price: 5500, maxQty: 2 });
   assert.ok(o.rep);
-  assert.ok(productImage(productOf('heiho'), true).endsWith('17016.png'));
+  assert.ok(productImage(productOf('heiho'), true).endsWith('17016.webp'));
   buy(s, before, 1);
   buy(s, o, 1);
   const [a, b] = s.inventory.slice(-2);
@@ -1613,4 +1613,20 @@ test('仕入れ後すぐ出品：新しく仕入れた品を相場で出品し�
   assert.ok(listedUnits(s).length <= listingCap(s));
   // 以前から持っていた品は出品されない
   assert.ok(s.inventory.filter((u) => before.has(u.uid)).every((u) => !u.listing));
+});
+
+test('コード・CSS・HTMLに書いたアセットのパスがすべて存在する', () => {
+  const files = ['index.html', 'tools/og.html', 'styles/main.css'];
+  const walk = (dir) => {
+    for (const f of readdirSync(join(ROOT, dir))) {
+      const rel = join(dir, f);
+      if (statSync(join(ROOT, rel)).isDirectory()) walk(rel);
+      else if (f.endsWith('.js')) files.push(rel);
+    }
+  };
+  walk('src');
+  for (const f of files) {
+    const text = readFileSync(join(ROOT, f), 'utf8');
+    for (const m of text.matchAll(/assets\/[\w/.-]+\.(?:webp|png|jpg|mp3|wav)/g)) assert.ok(exists(m[0]), `${f}: ${m[0]}`);
+  }
 });

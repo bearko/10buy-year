@@ -1,11 +1,13 @@
 // BGM・SE。自動再生制限があるので、ユーザーが音をONにするまで鳴らさない。
+// 音声ファイルは、音がONのときに初めて鳴らす分だけ読み込む（OFFのあいだは通信しない）
 // My Crypto Heroes の効果音（tools/assets.json で元ファイルと対応づけている）
 const SE = {
   sale: 'sale.mp3', trouble: 'trouble.mp3', hint: 'hint.mp3', buy: 'buy.mp3', coin: 'coin.mp3', win: 'win.mp3', lose: 'lose.mp3',
-  unlock: 'unlock.mp3', levelup: 'levelup.mp3', heal: 'heal.mp3', damage: 'damage.mp3', debuff: 'debuff.mp3', stageup: 'stageup.mp3', clear: 'clear.wav', hit: 'hit.mp3',
+  unlock: 'unlock.mp3', levelup: 'levelup.mp3', heal: 'heal.mp3', damage: 'damage.mp3', debuff: 'debuff.mp3', stageup: 'stageup.mp3', clear: 'clear.wav', hit: 'damage.mp3',
 };
 const settings = { on: false };
 let bgm = null;
+let bgmName = null; // いま流れているはずの曲（OFFのあいだも覚えておく）
 const cache = {};
 
 try {
@@ -24,14 +26,19 @@ export function setSound(on) {
     /* noop */
   }
   if (!on) bgm?.pause();
-  else playBgm(bgm?.dataset.name || 'pve');
+  else playBgm(bgmName || 'pve');
 }
 
-export const currentBgm = () => bgm?.dataset.name || null;
+export const currentBgm = () => bgmName;
 
 export function playBgm(name) {
+  bgmName = name;
+  if (!settings.on) {
+    bgm?.pause();
+    return;
+  }
   if (bgm && bgm.dataset.name === name) {
-    if (settings.on && bgm.paused) bgm.play().catch(() => {});
+    if (bgm.paused) bgm.play().catch(() => {});
     return;
   }
   bgm?.pause();
@@ -39,7 +46,7 @@ export function playBgm(name) {
   bgm.dataset.name = name;
   bgm.loop = true;
   bgm.volume = 0.35;
-  if (settings.on) bgm.play().catch(() => {});
+  bgm.play().catch(() => {});
 }
 
 export function playSe(name) {

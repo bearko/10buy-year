@@ -29,15 +29,15 @@ import { DEPT_STAGE, deptSteps } from './collection.js';
 import { appraiseSteps, buyingSteps, hasCareer, liveSteps, reviewSteps, tourSteps } from './careers.js';
 import { bg, choice, gain, info, items, narr, offers, sfx, talk } from './steps.js';
 
-const E = (id) => `assets/extensions/${id}.png`;
+const E = (id) => `assets/extensions/${id}.webp`;
 const I = (name) => `assets/icons/${name}`;
 
 // 行動カードの分類。トップ画面には分類だけを並べ、タップで中身を開く
 export const GROUPS = [
-  { id: 'buy', name: '仕入れ', icon: I('gum.png') },
+  { id: 'buy', name: '仕入れ', icon: I('gum.webp') },
   { id: 'sell', name: '出品', icon: E(1003) },
   { id: 'out', name: '外出', icon: E(1031) },
-  { id: 'rest', name: '休む', icon: I('sleep.png') },
+  { id: 'rest', name: '休む', icon: I('sleep.webp') },
 ];
 
 // node: その行動を解放するスキルツリーのノード / hours: 作業時間（時間単価の計算に使う）
@@ -53,16 +53,16 @@ export const COMMANDS = [
   { id: 'import', group: 'buy', icon: E(1009), name: '中国輸入', desc: '海外の卸サイトからノーブランド品をロットで輸入。届くのは3週後（ステージ2から）', stamina: 6, exp: { info: 8, tech: 5, social: 2 }, hours: 4, bg: 'online' },
   { id: 'kuji', group: 'buy', icon: E(5046), node: 'src_store', name: 'くじを引く', desc: '等級つきのキャラクターくじ（1回750円）。A賞とラストワン賞が狙い目、下位賞はダブつきやすい', stamina: 3, exp: { mind: 4, info: 2 }, hours: 1, bg: 'store' },
   { id: 'oem', group: 'buy', icon: E(3098), name: '自社製品をつくる', desc: '工場に自社ブランドの品を発注する（最低30個・4週後に納品）。競合がいない自分だけの品', stamina: 6, exp: { tech: 10, info: 6 }, hours: 4, bg: 'event' },
-  { id: 'listing', group: 'sell', icon: I('buf_agi.png'), name: '撮影・出品作業', desc: '今週の売れ行き1.25倍', stamina: 12, exp: { tech: 14, info: 4 }, hours: 6, bg: 'home' },
+  { id: 'listing', group: 'sell', icon: I('buf_agi.webp'), name: '撮影・出品作業', desc: '今週の売れ行き1.25倍', stamina: 12, exp: { tech: 14, info: 4 }, hours: 6, bg: 'home' },
   { id: 'meetup', group: 'out', icon: E(3112), node: 'net_meetup', name: '物販交流会', desc: 'せどり仲間と情報交換', stamina: 10, exp: { social: 14, info: 6 }, cost: 3000, hours: 4, bg: 'event' },
   { id: 'study', group: 'out', icon: E(4008), name: '図書館で勉強', desc: '相場・法律・税金を学ぶ', stamina: 4, exp: { info: 9, mind: 7, tech: 2 }, hours: 3, bg: 'study' },
-  { id: 'parttime', group: 'out', icon: I('phy.png'), name: '日雇いバイト', desc: '倉庫で働いて確実に稼ぐ', stamina: 25, exp: { act: 4, mind: 5 }, pay: 22000, hours: 0, bg: 'warehouse' },
+  { id: 'parttime', group: 'out', icon: I('phy.webp'), name: '日雇いバイト', desc: '倉庫で働いて確実に稼ぐ', stamina: 25, exp: { act: 4, mind: 5 }, pay: 22000, hours: 0, bg: 'warehouse' },
   { id: 'play', group: 'out', icon: E(3055), name: '気晴らし', desc: 'やる気と体力が回復', stamina: -15, exp: { mind: 3 }, cost: 8000, hours: 0, bg: 'park' },
-  { id: 'rest', group: 'rest', icon: I('sleep.png'), name: '休む', desc: '一日中寝る', stamina: 0, heal: 45, exp: {}, hours: 0, bg: 'home' },
-  { id: 'clinic', group: 'out', icon: I('resurrection.png'), name: '通院・治療', desc: '病院・整骨院でケガや体調不良を治す（治療費あり）', stamina: -10, exp: { mind: 2 }, hours: 3, bg: 'study' },
+  { id: 'rest', group: 'rest', icon: I('sleep.webp'), name: '休む', desc: '一日中寝る', stamina: 0, heal: 45, exp: {}, hours: 0, bg: 'home' },
+  { id: 'clinic', group: 'out', icon: I('resurrection.webp'), name: '通院・治療', desc: '病院・整骨院でケガや体調不良を治す（治療費あり）', stamina: -10, exp: { mind: 2 }, hours: 3, bg: 'study' },
   { id: 'course', group: 'out', icon: E(4016), name: '資格講座に通う', desc: '受講料を払って通い、資格を取る（ステージ2から）', stamina: 12, exp: { act: 8, mind: 10, info: 6 }, hours: 4, bg: 'study' },
   { id: 'open_shop', group: 'out', icon: E(3170), name: '店を開く', desc: '立地を選んで自分の店を開く（店舗経営講座の修了が必要）', stamina: 10, exp: { social: 10, info: 6 }, hours: 6, bg: 'event' },
-  { id: 'donate', group: 'out', icon: I('resurrection.png'), name: '寄付・地域の手伝い', desc: '寄付や地域のイベントの手伝いで徳を積む（TOKUが上がる・ステージ2から）', stamina: 8, exp: { social: 6, mind: 4 }, hours: 4, bg: 'event' },
+  { id: 'donate', group: 'out', icon: I('resurrection.webp'), name: '寄付・地域の手伝い', desc: '寄付や地域のイベントの手伝いで徳を積む（TOKUが上がる・ステージ2から）', stamina: 8, exp: { social: 6, mind: 4 }, hours: 4, bg: 'event' },
   { id: 'dept', group: 'out', icon: E(5009), name: '百貨店で買い物', desc: '自分のための買い物。美術画廊でコレクションを集め、年間の購入額で外商のランクが上がる（ステージ3から）', stamina: 6, exp: { social: 6, mind: 6 }, hours: 3, bg: 'event' },
   // キャリア（顧客層が育つと誘いが来る。engine/careers.js）
   { id: 'live', group: 'sell', icon: E(2174), career: 'kol', name: 'ライブ配信', desc: '出品中の美容品を配信でまとめて売る（対人30）', stamina: 10, exp: { tech: 4 }, hours: 3, bg: 'home' },
@@ -70,8 +70,8 @@ export const COMMANDS = [
   { id: 'buying', group: 'buy', icon: E(2172), career: 'select', name: '海外買い付け', desc: 'ファッションの品を卸値で買い付ける（技術25）', stamina: 16, exp: { act: 6, info: 4 }, hours: 8, bg: 'event' },
   { id: 'appraise_job', group: 'out', icon: E(3102), career: 'appraiser', name: '鑑定の依頼', desc: '持ち込まれた品を鑑定して手数料を稼ぐ（情報20・精神10）', stamina: 8, exp: { mind: 4 }, hours: 4, bg: 'study' },
   { id: 'review', group: 'out', icon: E(1158), career: 'media', name: 'レビュー記事を書く', desc: '読者を増やす。読者が多いほど毎月の紹介料（情報30）', stamina: 8, exp: { tech: 6 }, hours: 4, bg: 'home' },
-  { id: 'mentor', group: 'out', icon: 'assets/characters/chris_01_arms_crossed.png', name: '師匠に相談', desc: '前の周の転売屋に電話で相談する（12週に1回）', stamina: 0, exp: {}, hours: 1, bg: 'home' },
-  { id: 'card_up', group: 'out', icon: I('cp.png'), name: 'カード増枠の申請', desc: 'カード会社に利用枠の引き上げを申し込む。審査あり', stamina: 3, exp: { mind: 2 }, hours: 1, bg: 'study' },
+  { id: 'mentor', group: 'out', icon: 'assets/characters/chris_01_arms_crossed.webp', name: '師匠に相談', desc: '前の周の転売屋に電話で相談する（12週に1回）', stamina: 0, exp: {}, hours: 1, bg: 'home' },
+  { id: 'card_up', group: 'out', icon: I('cp.webp'), name: 'カード増枠の申請', desc: 'カード会社に利用枠の引き上げを申し込む。審査あり', stamina: 3, exp: { mind: 2 }, hours: 1, bg: 'study' },
   { id: 'license', group: 'out', icon: E(4016), node: 'license', name: '古物商許可を申請', desc: '警察署へ。許可まで約6週間', stamina: 8, exp: { info: 5, mind: 3 }, cost: 19000, hours: 3, bg: 'study' },
 ];
 export const COMMAND_MAP = Object.fromEntries(COMMANDS.map((c) => [c.id, c]));
