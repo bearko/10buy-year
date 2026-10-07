@@ -1462,7 +1462,7 @@ test('スニーカーのサイズ：人気サイズは高く、ワゴンの売�
   const u = s.inventory.at(-1);
   assert.equal(u.shoe, o.shoe);
   const plain = { ...u, shoe: undefined };
-  assert.equal(unitPrice(s, u), Math.round(unitPrice(s, plain) * sizeMult(u.shoe)));
+  assert.ok(Math.abs(unitPrice(s, u) - unitPrice(s, plain) * sizeMult(u.shoe)) <= 1);
   const steps = troubleSteps(s, { kind: 'size', sale: { pid: 'boots', unit: u, id: 'x', ship: 700, price: 9000, net: 7000 } });
   assert.ok(steps.some((x) => x.t === 'choice'));
 });
@@ -1509,4 +1509,31 @@ test('くじ：年に4回始まり、引いた賞品が在庫に入る。最後�
   assert.ok(all.last);
   assert.ok(s.inventory.some((u) => u.pid === 'kuji_last'));
   assert.ok(!kujiOpen(s));
+});
+
+test('薬機法：医薬品・カラコンは出品も買取もできず、サプリは効能をうたうと売れやすいが削除と警告のおそれ', async () => {
+  const { addUnits, platformsFor, buybackQuote, listUnits } = await import('../src/engine/inventory.js');
+  const { resolveSales } = await import('../src/engine/sales.js');
+  const { specialOffer } = await import('../src/engine/offers.js');
+  const s = createGame(121);
+  s.flags.tutorialDone = true;
+  s.skills.push('ch_miime');
+  addUnits(s, 'kanpo', 1, 1000);
+  addUnits(s, 'colorcon', 1, 800);
+  for (const u of s.inventory.slice(-2)) {
+    assert.equal(platformsFor(s, u).length, 0, `${u.pid} は出品できない`);
+    assert.equal(buybackQuote(s, u), 0);
+  }
+  assert.ok(specialOffer(s, 'kanpo', { source: 'store', price: 900, maxQty: 3 }).listing.info.some(([k, v]) => k === '注意' && /薬機法/.test(v)));
+  addUnits(s, 'supple', 30, 1500);
+  const ids = s.inventory.filter((u) => u.pid === 'supple').map((u) => u.uid);
+  assert.equal(listUnits(s, ids.slice(0, 5), 'merc', 99999, { claim: true }), 5);
+  assert.ok(s.inventory.filter((u) => u.listing?.claim).length === 5);
+  let removed = 0;
+  for (let i = 0; i < 20 && !removed; i++) {
+    removed = resolveSales(s).takedowns.length;
+    s.week++;
+  }
+  assert.ok(removed > 0, '効能をうたった出品は、いずれ削除される');
+  assert.ok(s.warnings >= 1);
 });

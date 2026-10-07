@@ -44,6 +44,9 @@ export function salesMails(st) {
       tone: 'good',
     });
   });
+  if (st.takedowns?.length) {
+    mails.push({ from: 'プンシー', subject: '【プンシー】出品を削除しました（ガイドライン違反）', body: `${st.takedowns.map((x) => `「${productOf(x.pid).name}」`).join('')}の説明文に、効能をうたう表現（薬機法に抵触するおそれ）がありました。出品を削除し、警告としました。繰り返すと出品が停止されます。`, tone: 'bad' });
+  }
   for (const x of st.authFailed || []) {
     const p = productOf(x.pid);
     mails.push({ from: 'ホンモノ堂', subject: `【ホンモノ堂】鑑定結果のお知らせ：${p.name}`, body: '鑑定の結果、正規品と確認できませんでした。お品物はご返送いたします。（出品は取り消されました）', tone: 'bad' });

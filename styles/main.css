@@ -1410,3 +1410,5 @@ body.partner-on #side { display: none !important; }
 .kuji-ball.tC { background: #8e44ad; }
 .kuji-ball.tD { background: #2980b9; }
 .kuji-acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.inv-claim { display: flex; align-items: flex-start; gap: 6px; margin: 4px 0; font-size: 12px; color: var(--warn, #f0b35a); }
+.inv-claim small { display: block; font-size: 10px; color: var(--muted); }

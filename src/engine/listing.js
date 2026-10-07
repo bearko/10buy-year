@@ -8,6 +8,7 @@ import { hasSkill, tired } from './effects.js';
 import { perk } from './perks.js';
 import { SPOTS } from './pioneer.js';
 import { sizeLabel } from './shoes.js';
+import { regNote } from './regulated.js';
 
 // ---------------- 商品ジャンルごとの「写真」と「細部チェック」 ----------------
 const CAT_OF = {
@@ -233,6 +234,7 @@ export function buildListing(s, o) {
     ['商品の状態', online && o.fake && !o.clever && chance(s, 0.4) ? '新品、未使用' : cond],
     ['付属品', L.accessories.length ? L.accessories.join('・') : 'なし'],
     ...(o.shoe ? [['サイズ', sizeLabel(o.shoe)]] : []),
+    ...(regNote(o.pid) ? [['注意', regNote(o.pid)]] : []),
   ];
   if (online) {
     L.info.push(['発送元の地域', site.kind === 'shady' ? '海外' : pick(s, ['東京都', '大阪府', '愛知県', '福岡県', '北海道', '未定'])]);

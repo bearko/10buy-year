@@ -1,6 +1,7 @@
 // ルーティン：「仕入れ → 出品 → 売却 → 値下げ・損切り」のサイクルを、決めたルールで毎週回す。
 // 外注はお金を払って体力を使わない分、ルーティンは自分の手で回す分（出品の体力を使う）
 import { productOf, shippingCost, SIZE_INFO } from '../data/products.js';
+import { unsellable } from './regulated.js';
 import { hasSkill } from './effects.js';
 import { activeUnits, buy, capacity, cardAvailable, feeRate, listUnits, platformMult, platformsFor, sellToBuyer, spaceUsed } from './inventory.js';
 import { estimateUnit } from './market.js';
@@ -33,7 +34,7 @@ export function routineBuy(s, offers, cfg = routineCfg(s)) {
     if (o.maxQty <= 0 || suspicion(s, o) >= cfg.avoidClues) continue;
     const p = productOf(o.pid);
     if (p.used && !s.flags.license && !o.brandNew) continue;
-    if (p.alcohol && s.flags.noAlcohol) continue;
+    if ((p.alcohol && s.flags.noAlcohol) || unsellable(p.id)) continue; // 酒の免許なし・薬機法で売れない品は買わない
     const net = o.est * (1 - feeRate(s, 'merc')) - shippingCost(p) + o.price * (o.points || 0);
     if ((net - o.price) / o.price < cfg.minMargin) continue;
     const minQ = o.minQty || 1;

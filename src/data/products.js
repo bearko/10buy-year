@@ -98,8 +98,8 @@ export const PRODUCTS = [
   { id: 'scarf', name: '闇色のリボン', genre: 'ブランドスカーフ', ext: 3110, kind: 'staple', retail: 45000, size: 'S', demand: 1.4, base: 0.95, fakeRisk: 0.45, know: 'fashion', stage: 3 },
   { id: 'moai', name: '財宝ゴールデンモアイ', genre: '美術品・彫刻', ext: 5106, kind: 'luxury', retail: 2500000, size: 'L', demand: 0.3, base: 1.4, fakeRisk: 0.4, know: 'art', stage: 4 },
   // ---- 顧客層（engine/careers.js）を育てる商品：美容・ガジェット・インバウンド（niche：一般の品ぞろえとは別枠で、ときどき並ぶ）----
-  { id: 'pretty_set', name: 'プリティーセット', genre: 'プチプラコスメのセット', ext: 1174, kind: 'staple', retail: 3800, size: 'S', demand: 2.6, base: 1.06, fakeRisk: 0.1, niche: true },
-  { id: 'dream_set', name: 'ドリームセット', genre: 'デパコスの限定コフレ', ext: 2174, kind: 'staple', retail: 8800, size: 'S', demand: 2.0, base: 1.14, fakeRisk: 0.25, niche: true },
+  { id: 'pretty_set', name: 'プリティーセット', genre: 'プチプラコスメのセット', ext: 1174, kind: 'staple', retail: 3800, size: 'S', demand: 2.6, base: 1.06, fakeRisk: 0.1, niche: true, reg: 'claim' },
+  { id: 'dream_set', name: 'ドリームセット', genre: 'デパコスの限定コフレ', ext: 2174, kind: 'staple', retail: 8800, size: 'S', demand: 2.0, base: 1.14, fakeRisk: 0.25, niche: true, reg: 'claim' },
   { id: 'cyber_staff', name: 'サイバースタッフ', genre: 'ワイヤレスイヤホン', ext: 1158, kind: 'staple', retail: 19800, size: 'S', demand: 2.4, base: 1.03, fakeRisk: 0.2, niche: true },
   { id: 'star_globe', name: '魔力で動く天球儀', genre: 'スマートプロジェクター', ext: 3143, kind: 'staple', retail: 39800, size: 'M', demand: 1.6, base: 1.05, fakeRisk: 0.1, niche: true },
   { id: 'bonsai', name: '苔玉盆栽', genre: '苔玉の盆栽', ext: 2163, kind: 'staple', retail: 4800, size: 'M', demand: 1.8, base: 1.08, fakeRisk: 0, niche: true },
@@ -119,6 +119,11 @@ export const PRODUCTS = [
   { id: 'leather_wallet', name: '合皮財布', genre: '輸入ブランドの財布', ext: 3172, kind: 'staple', retail: 15000, size: 'S', demand: 1.5, base: 1.02, fakeRisk: 0.15, spot: 'importer' },
   // シリーズ（世代交代）：2年ごとに次の世代が出て、前の世代は型落ちになる（下の SERIES）
   ...SERIES.flatMap(seriesProducts),
+
+  // 薬機法に注意がいる商品（engine/regulated.js）。医薬品・カラコンは個人が売れない、サプリは効能をうたえない
+  { id: 'kanpo', name: '漢方薬ヴェノムモス', genre: '市販の漢方薬（第2類医薬品）', ext: 3133, kind: 'staple', retail: 2800, size: 'S', demand: 2.0, base: 1.0, fakeRisk: 0, reg: 'med' },
+  { id: 'colorcon', name: 'モノクル', genre: 'カラーコンタクト（度なし）', ext: 1102, kind: 'staple', retail: 1980, size: 'S', demand: 2.4, base: 1.0, fakeRisk: 0, reg: 'device' },
+  { id: 'supple', name: '熱処理されたモスエッグ', genre: '健康サプリ（栄養補助食品）', ext: 1133, kind: 'staple', retail: 3980, size: 'S', demand: 2.2, base: 1.05, fakeRisk: 0.05, reg: 'claim' },
 
   // くじの賞品（engine/kuji.js）。くじでしか手に入らない。下位賞ほど買い手が少なく、たくさん出すとダブついて相場が下がる
   { id: 'kuji_a', name: '真夜中のスタールビー', genre: 'くじのA賞（大型フィギュア）', ext: 5046, kind: 'kuji', retail: 18000, size: 'L', demand: 1.4, base: 1.0, fakeRisk: 0 },

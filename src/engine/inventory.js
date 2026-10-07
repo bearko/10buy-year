@@ -2,6 +2,7 @@
 import { productOf, SIZE_INFO } from '../data/products.js';
 import { catOf } from './listing.js';
 import { registerImport } from './importer.js';
+import { claimable, unsellable } from './regulated.js';
 import { chance } from './rng.js';
 import { addCash, hasSkill, record, yen } from './effects.js';
 import { yearOf } from './calendar.js';
@@ -75,6 +76,7 @@ export function platformsFor(s, u) {
     if (!platformOpen(s, pf)) return false;
     if (pf.id === 'ama' && (u?.used || u?.home || u?.damaged)) return false;
     if (pf.id === 'exp' && u && exportBlocked(s, u.pid)) return false; // 輸出規制
+    if (u && unsellable(u.pid) && !pf.underworld) return false; // 薬機法：医薬品・高度管理医療機器は個人が売れない
     if (pf.cats && u && (!pf.cats.includes(catOf(u.pid)) || u.damaged || u.authFail)) return false; // 専門外・傷あり・鑑定NG
     return true;
   });
@@ -173,7 +175,8 @@ export function buy(s, offer, qty, method = 'cash') {
   return { ok: true, msg: `${product.name}を${qty}個仕入れた！ ${yen(total)}${extra}` };
 }
 
-export function listUnits(s, uids, platform, price) {
+// claim：説明文で効能をうたう（薬機法に触れる。engine/regulated.js）
+export function listUnits(s, uids, platform, price, { claim = false } = {}) {
   const cap = listingCap(s);
   let listed = listedUnits(s).length;
   let n = 0;
@@ -184,7 +187,7 @@ export function listUnits(s, uids, platform, price) {
     if (!u.listing && listed >= cap) break;
     if (!u.listing) listed++;
     // 規制（公式リセール・不正転売禁止）の上限を超える値付けはできない
-    u.listing = { platform, price: Math.round(Math.min(price, priceCap(s, u.pid, platform))), week: s.week };
+    u.listing = { platform, price: Math.round(Math.min(price, priceCap(s, u.pid, platform))), week: s.week, ...(claim && claimable(u.pid) ? { claim: true } : {}) };
     n++;
   }
   s.stats.listed = (s.stats.listed || 0) + n;
@@ -229,7 +232,7 @@ export function addUnits(s, pid, qty, cost, extra = {}) {
 // 買取業者に売る（損切り）。すぐ現金になるが、相場の半分以下。偽物・盗品は値がつかない
 export const BUYBACK_RATE = 0.45;
 export function buybackQuote(s, u) {
-  if (u.fake || u.stolen) return 0;
+  if (u.fake || u.stolen || unsellable(u.pid)) return 0; // 医薬品などは買取業者も引き取らない
   return Math.floor((unitPrice(s, u) * BUYBACK_RATE) / 10) * 10;
 }
 
