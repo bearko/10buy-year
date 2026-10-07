@@ -281,7 +281,13 @@ function waitForCommand(mode) {
     };
     const newTag = () => h('span', { class: 'new-tag' }, 'NEW');
 
-    const idleMessage = () => setMessage('', night ? '夜。もうひと仕事？' : state.sick > 0 ? '体調が悪い…休むか、病院へ行こう。' : '今週は何をしよう？');
+    const guide = () => (night || state.sick > 0 ? null : tutorialGuide(group));
+    const idleMessage = () => {
+      const g = guide();
+      if (g) return setMessage('マイン', g.say);
+      setMessage('', night ? '夜。もうひと仕事？' : state.sick > 0 ? '体調が悪い…休むか、病院へ行こう。' : '今週は何をしよう？');
+    };
+    const point = (on) => (on ? ' tut-point' : '');
     const unpreview = () => {
       selected = null;
       setPreview(null);
@@ -332,7 +338,7 @@ function waitForCommand(mode) {
       const risk = sickRisk(state, c);
       const sel = selected === c.id;
       return card({
-        class: `cmd ${sel ? 'sel' : ''} ${risk >= 0.3 ? 'danger' : risk > 0 ? 'risky' : ''}`,
+        class: `cmd ${sel ? 'sel' : ''} ${risk >= 0.3 ? 'danger' : risk > 0 ? 'risky' : ''}${point(!sel && guide()?.cmd === c.id)}`,
         onclick: () => { if (!busy) select(c); },
       }, c.icon, c.name, sel ? h('span', { class: 'go' }, '決定') : isNew(c) ? newTag() : null, risk > 0 && !sel ? h('span', { class: 'risk' }, '⚠') : null);
     };
@@ -344,7 +350,7 @@ function waitForCommand(mode) {
       const count = state.actionsPerWeek > 1 && !night ? ` ${state.actionsPerWeek - state.actionsLeft + 1}/${state.actionsPerWeek}` : '';
       const head = h('div', { class: 'cmd-header' });
       if (group) {
-        head.append(h('button', { class: 'cmd-back', onclick: () => { if (busy) return; group = null; unpreview(); idleMessage(); draw(); } }, `◀ ${GROUPS.find((g) => g.id === group).name}`));
+        head.append(h('button', { class: `cmd-back${point(guide()?.group && guide().group !== group)}`, onclick: () => { if (busy) return; group = null; unpreview(); idleMessage(); draw(); } }, `◀ ${GROUPS.find((g) => g.id === group).name}`));
       } else {
         head.append(h('span', {}, night ? '夜' : `今週${count}`));
       }
@@ -376,7 +382,7 @@ function waitForCommand(mode) {
       if (group) {
         if (group === 'sell') {
           nav.append(card({
-            class: 'cmd free',
+            class: `cmd free${point(guide()?.cmd === 'list')}`,
             onclick: async () => {
               if (busy) return;
               await inventoryModal(state, refresh);
@@ -395,7 +401,7 @@ function waitForCommand(mode) {
         const list = cmds.filter((c) => c.group === g.id);
         const sel = list.length === 1 && selected === list[0].id;
         nav.append(card({
-          class: `cmd grp ${list.length ? '' : 'off'} ${sel ? 'sel' : ''}`,
+          class: `cmd grp ${list.length ? '' : 'off'} ${sel ? 'sel' : ''}${point(!sel && guide()?.group === g.id)}`,
           onclick: () => {
             if (busy || (!list.length && g.id !== 'sell')) return;
             if (g.id === 'rest') return select(list[0]);
@@ -426,6 +432,31 @@ function waitForCommand(mode) {
     // 体調不良のときは「休む」だけ
     if (state.sick > 0) select(COMMAND_MAP.rest);
   });
+}
+
+// チュートリアル中に指し示すボタン（group：分類、cmd：行動、side：右のボタン）と、マインの案内
+function tutorialGuide(group = null) {
+  const m = !tutorialDone(state) && currentMission(state);
+  if (!m) return null;
+  const wait = '行動を1つ選ぶと1週間が進んで、週末に売れたかどうかがメールで届くわ。';
+  switch (m.id) {
+    case 'list_home':
+    case 'list_bought':
+      return { group: 'sell', cmd: 'list', say: group === 'sell' ? '「在庫を出品」を押して、売りたい物の「出品」ボタンを押すの。ここは週が進まないから、ゆっくり選んで。' : `${m.id === 'list_home' ? '家の不用品' : '仕入れた商品'}を売りに出しましょう。まずは「出品」を開いて。` };
+    case 'sell_home':
+    case 'sell_more':
+      return { group: 'buy', cmd: 'home_search', say: `${wait}今週は「仕入れ」→「家の中を探す」で、次の売り物を探しましょう。` };
+    case 'tree_root':
+    case 'tree_store':
+      return { side: 'tree', say: '右の「スキルツリー」を開いて、光っているパネルを解放して。' };
+    case 'go_store':
+    case 'buy':
+      return { group: 'buy', cmd: 'store', say: '「仕入れ」→「店舗せどり」でお店へ。相場より安い物を見つけたら仕入れましょう。' };
+    case 'sell_bought':
+      return { group: 'buy', say: `${wait}売れなかったら「在庫」から値下げしてもいいわ。` };
+    default:
+      return null;
+  }
 }
 
 // 自分の手で解放できるパネルの数（スキルツリーのボタンに出す）
@@ -482,9 +513,10 @@ function renderTabs() {
     },
     { id: 'log', label: 'ログ', open: () => logModal(state) },
   ];
+  const pointSide = tutorialGuide()?.side;
   for (const t of tabs) {
     nav.append(h('button', {
-      class: `side-btn ${t.id} ${t.lock ? 'locked' : ''}`,
+      class: `side-btn ${t.id} ${t.lock ? 'locked' : ''} ${!t.lock && pointSide === t.id ? 'tut-point' : ''}`,
       onclick: () => {
         if (busy) return;
         if (t.lock) return toast(t.lock, 'bad');
