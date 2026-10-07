@@ -40,7 +40,7 @@ export const rankOf = (nw) => RANKS.find((r) => nw >= r.min);
 
 const KIND_TITLES = {
   staple: 'ワゴンの魔術師', hype: '限定品ハンター', collect: '古物の目利き', boom: 'バブルの申し子',
-  luxury: '正規店マラソンランナー', seasonal: '季節商戦の仕掛け人', perishable: '催事の早起き番長', home: '断捨離の達人',
+  luxury: '正規店マラソンランナー', seasonal: '季節商戦の仕掛け人', perishable: '催事の早起き番長', home: '断捨離の達人', kuji: 'くじの箱買い職人',
 };
 
 export function titleOf(s) {

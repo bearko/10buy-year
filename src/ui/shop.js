@@ -156,7 +156,7 @@ export function offersModal(s, step, onChange) {
         o.listing?.likes ? h('span', {}, `♡${o.listing.likes}`) : null,
         o.maxQty > 1 ? h('span', {}, `残り${o.maxQty}`) : null,
       ),
-      h('div', { class: 'sh-memo' }, o.soldHist ? `売り切れ ${yen(ref)}` : `見立て ${yen(o.est)}`, canCalc(s) ? h('b', { class: profit >= 0 ? 'pos' : 'neg' }, ` ${signYen(profit)}`) : null),
+      h('div', { class: 'sh-memo' }, o.soldHist ? `売れた値段 ${yen(ref)}` : `見立て ${yen(o.est)}`, canCalc(s) ? h('b', { class: profit >= 0 ? 'pos' : 'neg' }, ` ${signYen(profit)}`) : null),
     );
   }
 
@@ -253,7 +253,7 @@ export function offersModal(s, step, onChange) {
     return h('div', {},
       tired(s) ? h('div', { class: 'warn' }, '疲れていて、相場の見立てがぶれやすく、細かいところを見落としやすい（体力30未満）') : null,
       h('div', { class: 'mm-row' }, h('span', {}, hasSkill(s, 'eye_market') ? '推定相場' : '相場（ざっくり）'), h('b', {}, `${yen(o.est)}`), h('small', {}, `確度${confidenceLabel(s)}`)),
-      o.soldHist ? h('div', { class: 'mm-row' }, h('span', {}, '売り切れ相場'), h('b', {}, yen(soldMedian(o.soldHist))), h('small', {}, '最近売れた値段の真ん中')) : null,
+      o.soldHist ? h('div', { class: 'mm-row' }, h('span', {}, 'フリマで売れた値段'), h('b', {}, yen(soldMedian(o.soldHist))), h('small', {}, '最近売れた値段の真ん中')) : null,
       h('div', { class: 'mm-row' }, h('span', {}, '相場との比較'), h('b', {}, `${ratio}%`)),
       h('div', { class: 'mm-row' }, h('span', {}, '見込み利益'), canCalc(s) ? h('b', { class: profit >= 0 ? 'pos' : 'neg' }, `${signYen(profit)}/個`) : h('b', {}, '？')),
       h('div', { class: 'mm-tags' },

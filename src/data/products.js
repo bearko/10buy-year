@@ -120,6 +120,15 @@ export const PRODUCTS = [
   // シリーズ（世代交代）：2年ごとに次の世代が出て、前の世代は型落ちになる（下の SERIES）
   ...SERIES.flatMap(seriesProducts),
 
+  // くじの賞品（engine/kuji.js）。くじでしか手に入らない。下位賞ほど買い手が少なく、たくさん出すとダブついて相場が下がる
+  { id: 'kuji_a', name: '真夜中のスタールビー', genre: 'くじのA賞（大型フィギュア）', ext: 5046, kind: 'kuji', retail: 18000, size: 'L', demand: 1.4, base: 1.0, fakeRisk: 0 },
+  { id: 'kuji_b', name: 'ピジョンブラッド', genre: 'くじのB賞（フィギュア）', ext: 4046, kind: 'kuji', retail: 6000, size: 'M', demand: 1.0, base: 1.0, fakeRisk: 0 },
+  { id: 'kuji_c', name: 'ウィズダムルビー', genre: 'くじのC賞（ぬいぐるみ）', ext: 3046, kind: 'kuji', retail: 2500, size: 'M', demand: 0.9, base: 1.0, fakeRisk: 0 },
+  { id: 'kuji_d', name: 'エリートルビー', genre: 'くじのD賞（アクリルスタンド）', ext: 2046, kind: 'kuji', retail: 1200, size: 'S', demand: 0.7, base: 1.0, fakeRisk: 0 },
+  { id: 'kuji_e', name: 'ルビー', genre: 'くじのE賞（ラバーストラップ）', ext: 1046, kind: 'kuji', retail: 700, size: 'S', demand: 0.6, base: 1.0, fakeRisk: 0 },
+  { id: 'kuji_f', name: 'クラウン', genre: 'くじのF賞（タオル・缶バッジ）', ext: 1036, kind: 'kuji', retail: 400, size: 'S', demand: 0.5, base: 1.0, fakeRisk: 0 },
+  { id: 'kuji_last', name: '冕冠', genre: 'くじのラストワン賞（特別カラーのフィギュア）', ext: 5036, kind: 'kuji', retail: 15000, size: 'L', demand: 1.2, base: 1.0, fakeRisk: 0 },
+
   // 中国輸入でしか仕入れられないノーブランド品（engine/importer.js）
   { id: 'imp_band', name: 'ブロンズリング', genre: 'ノーブランドのスマートバンド', ext: 1009, kind: 'staple', retail: 3980, size: 'S', demand: 2.4, base: 1.0, fakeRisk: 0, imported: true },
   { id: 'imp_light', name: '水晶玉', genre: 'LEDのインテリアライト', ext: 1098, kind: 'staple', retail: 2980, size: 'M', demand: 2.0, base: 1.0, fakeRisk: 0, imported: true },

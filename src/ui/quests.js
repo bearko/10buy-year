@@ -4,7 +4,7 @@ import { dropQuest, MAX_ACTIVE, questRows, questsDone, QUEST_WEEKS, rewardText }
 import { h } from './dom.js';
 import { openModal } from './modal.js';
 
-const GUIDE_LABEL = { biz: 'メニュー →「経営」を開く', rivals: 'メニュー →「業界の動き」を開く', deal: 'メニュー →「取引方針」を開く', collection: 'メニュー →「コレクション」を開く', inv: '「在庫」を開く' };
+const GUIDE_LABEL = { biz: 'メニュー →「経営」を開く', rivals: 'メニュー →「業界の動き」を開く', deal: 'メニュー →「取引の対応」を開く', collection: 'メニュー →「コレクション」を開く', inv: '「在庫」を開く' };
 
 // 閉じたとき、案内先（guide）を選んでいればそれを返す
 export function questsModal(s) {

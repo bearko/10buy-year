@@ -1,5 +1,6 @@
 // ステージ（背景・立ち絵）とメッセージウィンドウ
 import { CAST, portraitOf } from '../data/cast.js';
+import { productImage, productOf } from '../data/products.js';
 import { $, clear, h } from './dom.js';
 
 const BG = (name) => `assets/backgrounds/${name}.jpg`;
@@ -24,6 +25,27 @@ export function setTextSpeed(ms) {
   textSpeed = ms;
 }
 
+// ドット絵（64×64など）は、元の大きさの整数倍で描く。CSS の割合で決まる高さに一番近い倍率へそろえ、
+// ニアレストネイバーで拡大しても点の大きさが不ぞろいにならないようにする
+export function snapPixels(el) {
+  const n = el.naturalHeight;
+  if (!n || el.hidden) return;
+  const key = `${n}:${el.className}:${el.parentElement?.clientHeight}`;
+  if (el.dataset.snap === key) return;
+  el.style.height = '';
+  el.style.width = '';
+  const want = el.getBoundingClientRect().height;
+  if (want <= 0) return;
+  const k = Math.max(1, Math.floor(want / n + 0.2));
+  el.style.height = `${n * k}px`;
+  el.style.width = `${el.naturalWidth * k}px`;
+  el.dataset.snap = key;
+}
+document.addEventListener('load', (e) => {
+  if (e.target instanceof HTMLImageElement && e.target.classList.contains('sprite')) snapPixels(e.target);
+}, true);
+window.addEventListener('resize', () => document.querySelectorAll('img.sprite').forEach((el) => { delete el.dataset.snap; snapPixels(el); }));
+
 let bgName = null;
 export function setBackground(name) {
   const img = $('#stage-bg');
@@ -34,31 +56,64 @@ export function setBackground(name) {
   if (boxes) boxes.hidden = name !== 'home';
 }
 
-// 部屋に積み上がる段ボール（置き場の埋まり具合）。家の背景のときだけ見える
-const STACKS = [3, 88, 13, 78, 23, 68, 33, 58];
-export function setClutter(ratio) {
+// 部屋に積み上がる在庫：仕入れた品そのもののアイコンを床に積む。家の背景のときだけ見える。
+// 品ごとに置き場所（スロット）を覚えておき、売れて出ていった品だけが消える（ほかの品は動かない）
+const STACKS = [3, 89, 14, 78, 25, 67, 36, 56];
+const ROWS = 4;
+export const ROOM_MAX = STACKS.length * ROWS;
+const slotOf = new Map(); // uid -> スロット番号
+export const roomLayer = () => {
   let el = $('#stage-boxes');
   if (!el) {
     el = document.createElement('div');
     el.id = 'stage-boxes';
     $('#stage-bg').after(el);
   }
+  return el;
+};
+export const slotPos = (i) => ({ left: STACKS[i % STACKS.length] + ((Math.floor(i / STACKS.length) * 3) % 5) - 2, bottom: Math.floor(i / STACKS.length) * 13 });
+
+// 週末の販売〜発送の演出が終わるまでは、売れた品を部屋に残しておく（箱に詰めて送り出す様子を見せるため）
+let roomHeld = false;
+export const holdRoom = (v) => {
+  roomHeld = v;
+};
+
+// items：[{ uid, pid }]（古い順）。over：置き場を超えている
+export function setClutter(items, { over = false } = {}) {
+  const el = roomLayer();
   el.hidden = bgName !== 'home';
-  const n = Math.max(0, Math.min(STACKS.length * 4, Math.round(ratio * 20)));
-  if (el.dataset.n === String(n)) return;
-  el.dataset.n = String(n);
-  el.replaceChildren();
-  for (let i = 0; i < n; i++) {
-    const col = i % STACKS.length;
-    const row = Math.floor(i / STACKS.length);
-    const b = document.createElement('i');
-    b.className = 'box';
-    b.style.left = `${STACKS[col] + ((row * 3) % 5) - 2}%`;
-    b.style.bottom = `${row * 15}%`;
-    b.style.setProperty('--w', `${46 + ((i * 7) % 14)}px`);
-    el.append(b);
+  el.classList.toggle('over', over);
+  if (roomHeld) items = [...items, ...[...el.children].filter((img) => !items.some((x) => String(x.uid) === img.dataset.uid)).map((img) => ({ uid: Number(img.dataset.uid), pid: img.dataset.pid }))];
+  const keep = new Set(items.map((x) => x.uid));
+  for (const [uid] of slotOf) if (!keep.has(uid)) slotOf.delete(uid);
+  const used = new Set(slotOf.values());
+  for (const x of items) {
+    if (slotOf.has(x.uid)) continue;
+    let i = 0;
+    while (used.has(i) && i < ROOM_MAX) i++;
+    if (i >= ROOM_MAX) continue; // 置ききれない分は見せない（部屋はもう品でいっぱい）
+    slotOf.set(x.uid, i);
+    used.add(i);
   }
-  el.classList.toggle('over', ratio > 1);
+  const want = new Map(items.filter((x) => slotOf.has(x.uid)).map((x) => [String(x.uid), x]));
+  for (const img of [...el.children]) if (!want.has(img.dataset.uid)) img.remove();
+  const have = new Set([...el.children].map((img) => img.dataset.uid));
+  for (const [uid, x] of want) {
+    if (have.has(uid)) continue;
+    const i = slotOf.get(x.uid);
+    const p = slotPos(i);
+    const img = document.createElement('img');
+    img.className = 'room-item';
+    img.alt = '';
+    img.src = productImage(productOf(x.pid));
+    img.dataset.uid = uid;
+    img.dataset.pid = x.pid;
+    img.style.left = `${p.left}%`;
+    img.style.bottom = `${p.bottom}%`;
+    img.style.zIndex = String(ROWS - Math.floor(i / STACKS.length));
+    el.append(img);
+  }
 }
 
 // 左は常にクリス、右は話し相手
@@ -67,6 +122,7 @@ export function showChris(pose = 'idle') {
   el.src = CAST.chris.poses[pose] || CAST.chris.poses.idle;
   el.dataset.pose = pose;
   el.hidden = false;
+  if (el.complete) snapPixels(el);
   startBlink(pose);
   startLoop(pose);
 }
@@ -134,6 +190,7 @@ export function showPartner(who, pose) {
   el.src = src;
   el.className = `sprite ${c.hero ? 'hero' : c.enemy ? 'enemy' : `orig ${who}`}`;
   el.hidden = false;
+  if (el.complete) snapPixels(el);
   // 右側のパラメータ欄と相手の立ち絵が重ならないように、相手がいる間は隠す
   document.body.classList.add('partner-on');
 }

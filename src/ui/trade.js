@@ -17,7 +17,7 @@ import { h, signYen, yenFmt } from './dom.js';
 import { confirmBox, openModal, toast } from './modal.js';
 
 const KIND_LABEL = {
-  staple: '定番', hype: '限定', collect: 'コレクター', seasonal: '季節', perishable: '生もの', boom: 'ブーム', luxury: '高級', home: '家の不用品',
+  staple: '定番', hype: '限定', collect: 'コレクター', seasonal: '季節', perishable: '生もの', boom: 'ブーム', luxury: '高級', home: '家の不用品', kuji: 'くじ',
 };
 
 const itemIcon = (pid, rep = false) => h('img', { class: 'item-icon', src: productImage(productOf(pid), rep), alt: '' });
