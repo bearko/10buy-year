@@ -2,7 +2,7 @@
 // My Crypto Heroes の効果音（tools/assets.json で元ファイルと対応づけている）
 const SE = {
   sale: 'sale.mp3', trouble: 'trouble.mp3', hint: 'hint.mp3', buy: 'buy.mp3', coin: 'coin.mp3', win: 'win.mp3', lose: 'lose.mp3',
-  unlock: 'unlock.mp3', levelup: 'levelup.mp3', heal: 'heal.mp3', damage: 'damage.mp3', debuff: 'debuff.mp3', stageup: 'stageup.mp3', clear: 'clear.wav',
+  unlock: 'unlock.mp3', levelup: 'levelup.mp3', heal: 'heal.mp3', damage: 'damage.mp3', debuff: 'debuff.mp3', stageup: 'stageup.mp3', clear: 'clear.wav', hit: 'hit.mp3',
 };
 const settings = { on: false };
 let bgm = null;
