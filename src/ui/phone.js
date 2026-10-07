@@ -18,15 +18,17 @@ import { toast } from './modal.js';
 import { soldList } from './storerun.js';
 
 const yen = (n) => `¥${Math.round(n).toLocaleString('ja-JP')}`;
-const dur = (m) => (m >= 60 ? `${Math.floor(m / 60)}時間${m % 60}分` : `${Math.max(0, m)}分`);
+const dur = (x) => {
+  const m = Math.max(0, Math.ceil(x));
+  return m >= 60 ? `${Math.floor(m / 60)}時間${m % 60}分` : `${m}分`;
+};
 
 export function phoneMode(ctx) {
   const { s, step } = ctx;
   const run = step.run;
 
-  // 滞在時間をスキルレベルに応じて計算
-  const sessionTimeSeconds = getPhoneSessionTime(s);
-  run.end = run.start + Math.ceil(sessionTimeSeconds / 60);
+  // 21:00〜深夜1時を実時間で流す。スキルで実時間が延びる（＝時計がゆっくり進む）
+  const rate = (run.end - run.start) / getPhoneSessionTime(s); // ゲーム内の分／実時間の秒
 
   let now = run.start;
   let late = false;
@@ -34,9 +36,12 @@ export function phoneMode(ctx) {
   let prompt = null; // 'late'：深夜1時の確認
   let done = false;
   let settling = false; // オークションの決着で買うときは、購入の時間を足さない
-  let autoLoopId = null; // 自動進行ループのID
+  let loopId = null;
+  let last = 0;
+  let notesShown = false; // 通知が落ちてくる演出は最初の1回だけ
   const sort = { flea: 'new', auction: 'end', mall: 'pt', shady: 'new' };
   const bids = new Map(); // oid -> { max, snipe }
+  const bidDraft = new Map(); // oid -> 入力中の上限額
   const results = []; // 寝る前に見る今夜のまとめ
   const negoLog = new Map(); // oid -> [{ q, a }]
   const ads = [...ADS].sort(() => Math.random() - 0.5);
@@ -45,29 +50,44 @@ export function phoneMode(ctx) {
   const limit = () => run.end + (late ? LATE_EXTRA : 0);
   const avail = (o) => !o.gone && !o.unknown && o.maxQty >= (o.minQty || 1) && !(o.auction?.done);
 
-  // リアルタイム自動進行ループ
-  function startAutoLoop() {
-    autoLoopId = setInterval(() => {
-      if (done) {
-        clearInterval(autoLoopId);
-        return;
-      }
-      now += 0.2; // 200ms = 0.2分 経過
-      tick();
-      ctx.render();
-    }, 200);
+  // 画面は作り直さず、時計まわりの文字だけ書き換える。品切れ・落札など中身が変わったときだけ描き直す
+  function loop() {
+    const t = performance.now();
+    const dt = Math.min(1, (t - last) / 1000); // バックグラウンドから戻っても一気に進めない
+    last = t;
+    if (done || prompt || document.hidden) return;
+    now += dt * rate;
+    const changed = tick();
+    const o = ctx.isOpen();
+    // 商品ページを開いている間は、その商品が変わったときだけ描き直す（入力中の上限額などを消さない）
+    if (changed && (!o || changed.has(o) || prompt || done)) ctx.render();
+    else updateClock();
   }
+  function updateClock() {
+    const root = ctx.root;
+    const set = (sel, text) => { const el = root.querySelector(sel); if (el) el.textContent = text; };
+    set('.ph-status b', hhmm(now));
+    set('.ph-lock:not(.night) b', hhmm(now));
+    const bed = root.querySelector('.ph-bed');
+    if (bed && !done) { bed.textContent = `寝るまで ${dur(limit() - now)}`; bed.classList.toggle('low', limit() - now <= 30); }
+    set('.ph-batt', `4G ${battery()}%`);
+    for (const el of root.querySelectorAll('[data-ends]')) el.textContent = dur(Number(el.dataset.ends) - now);
+  }
+  const battery = () => Math.max(5, 92 - Math.round((now - run.start) / 4));
 
   // ---- 時計 ----
+  // 状態が変わった商品の集まりを返す（何も変わらなければ null）
   function tick() {
+    const changed = new Set();
     for (const o of offers) {
-      if (o.life != null && !o.gone && o.maxQty >= (o.minQty || 1) && now - run.start >= o.life) o.gone = true;
-      if (o.auction && !o.auction.done && now >= o.auction.endsAt) settle(o);
+      if (o.life != null && !o.gone && o.maxQty >= (o.minQty || 1) && now - run.start >= o.life) { o.gone = true; changed.add(o); }
+      if (o.auction && !o.auction.done && now >= o.auction.endsAt) { settle(o); changed.add(o); }
     }
     if (now >= limit() && !done) {
       if (!late) prompt = 'late';
       else finish();
     }
+    return changed.size || prompt || done ? changed : null;
   }
   function spend(min) {
     now += min;
@@ -111,7 +131,7 @@ export function phoneMode(ctx) {
 
   function finish() {
     if (done) return;
-    clearInterval(autoLoopId);
+    clearInterval(loopId);
     // 寝ている間に終わるオークション（ふつうの入札は上限額のまま自動で競る。終了間際の入札はできない）
     for (const o of offers) if (o.auction && !o.auction.done) settle(o, { asleep: true });
     done = true;
@@ -120,11 +140,10 @@ export function phoneMode(ctx) {
 
   // ---- 画面の部品 ----
   function statusBar() {
-    const battery = Math.max(5, 92 - Math.round((now - run.start) / 4));
     return h('div', { class: 'ph-status' },
       h('b', {}, hhmm(now)),
       h('span', { class: `ph-bed ${limit() - now <= 30 ? 'low' : ''}` }, done ? 'おやすみ' : `寝るまで ${dur(limit() - now)}`),
-      h('span', { class: 'ph-batt' }, `4G ${battery}%`),
+      h('span', { class: 'ph-batt' }, `4G ${battery()}%`),
     );
   }
 
@@ -175,16 +194,17 @@ export function phoneMode(ctx) {
 
     const notes = run.notices.map((n) => ({ ...n, o: offers.find((o) => o.oid === n.oid) })).filter((n) => n.o);
     if (notes.length) {
-      body.append(h('div', { class: 'ph-notes' }, h('p', { class: 'ph-section-title' }, '🔔 新着通知'), ...notes.map((n) => {
+      body.append(h('div', { class: `ph-notes ${notesShown ? 'still' : ''}` }, h('p', { class: 'ph-section-title' }, '🔔 新着通知'), ...notes.map((n) => {
         const a = APPS[n.app];
         const gone = !avail(n.o);
         return h('button', { class: `ph-note ${gone ? 'gone' : ''}`, style: { '--c': a.color }, onclick: () => open(n.o) },
           h('div', { class: 'ph-note-h' }, h('i', {}, a.name.slice(0, 1)), h('b', {}, a.name), h('small', {}, gone ? '売り切れ' : `${Math.max(1, (n.o.posted || 5) % 20)}分前`)),
           h('div', {}, n.text));
       })));
+      notesShown = true;
     } else body.append(h('p', { class: 'ph-empty' }, '新しい通知はない。アプリを開いて探そう。'));
 
-    body.append(h('div', { class: 'ph-apps' }, h('p', { class: 'ph-section-title' }, '📱 アプリ一覧'),
+    body.append(h('p', { class: 'ph-section-title' }, '📱 アプリ一覧'), h('div', { class: 'ph-apps' },
       ...Object.entries(APPS).filter(([id]) => byApp(id).length).map(([id, a]) =>
         h('button', { class: 'ph-app', style: { '--c': a.color }, onclick: () => { app = id; ctx.render(); } },
           h('i', {}, a.name.slice(0, 1)), h('b', {}, a.name), h('small', {}, a.sub)))));
@@ -260,13 +280,15 @@ export function phoneMode(ctx) {
     const p = productOf(o.pid);
     const a = o.auction;
     const bid = bids.get(o.oid);
-    const done = a.done ? { won: '✓ 落札', lost: '✗ 競り負け', over: '終了', unpaid: '支払えず' }[a.done] : bid ? (bid.snipe ? '⏰ 待機中' : '📍 入札中') : '';
+    const state = a.done ? { won: '落札', lost: '落札できず', over: '終了', unpaid: '支払えず' }[a.done] : bid ? (bid.snipe ? '終了間際に入札予定' : bid.max > a.rivalMax ? '最高額入札者' : '高値更新された') : '';
+    const good = a.done === 'won' || state === '最高額入札者';
     return h('button', { class: `ph-tile auc ${a.done ? 'sold' : ''}`, onclick: () => open(o) },
       h('div', { class: 'ph-img' }, h('img', { src: productImage(p), alt: '' }),
         h('span', { class: 'ph-price' }, yen(a.cur)),
-        a.done ? h('span', { class: 'sh-sold' }, done) : null),
+        a.done ? h('span', { class: 'sh-sold' }, state) : null),
       h('div', { class: 'ph-name' }, p.name),
-      h('div', { class: 'ph-sub' }, `入札 ${a.bids}`, a.done ? null : h('em', { class: 'neg' }, ` ${dur(a.endsAt - now)}`)));
+      h('div', { class: 'ph-sub' }, `入札${a.bids}・`, a.done ? '終了' : h('em', { class: 'neg' }, '残り', h('span', { 'data-ends': a.endsAt }, dur(a.endsAt - now))), a.extend ? '' : '・延長なし'),
+      state && !a.done ? h('div', { class: 'ph-sub' }, h('em', { class: good ? 'pos' : 'neg' }, state)) : null);
   }
 
   function mallCard(o) {
@@ -278,30 +300,7 @@ export function phoneMode(ctx) {
         o.points ? h('span', { class: 'ph-pt' }, `+${Math.round(o.points * 100)}%`) : null,
         sold ? h('span', { class: 'sh-sold' }, '在庫切れ') : null),
       h('div', { class: 'ph-name' }, p.name),
-      h('div', { class: 'ph-sub' }, o.label || 'モール品'));
-  }
-
-  function aucRow(o) {
-    const p = productOf(o.pid);
-    const a = o.auction;
-    const bid = bids.get(o.oid);
-    const state = a.done ? { won: '落札', lost: '落札できず', over: '終了', unpaid: '支払えず' }[a.done] : bid ? (bid.snipe ? '終了間際に入札予定' : bid.max > a.rivalMax ? '最高額入札者' : '高値更新された') : '';
-    return h('button', { class: `ph-row ${a.done ? 'sold' : ''}`, onclick: () => open(o) },
-      h('img', { src: productImage(p), alt: '' }),
-      h('div', { class: 'ph-row-b' },
-        h('div', { class: 'ph-name' }, p.name),
-        h('div', { class: 'ph-auc' }, h('span', {}, '現在 '), h('b', {}, yen(a.cur)), h('small', {}, ` 入札 ${a.bids}`)),
-        h('div', { class: 'ph-sub' }, a.done ? '終了' : `残り ${dur(a.endsAt - now)}`, a.extend ? ' ・自動延長あり' : ' ・自動延長なし', state ? h('em', { class: a.done === 'won' || state === '最高額入札者' ? 'pos' : 'neg' }, ` ${state}`) : null)));
-  }
-
-  function mallRow(o) {
-    const p = productOf(o.pid);
-    return h('button', { class: `ph-row ${!avail(o) ? 'sold' : ''}`, onclick: () => open(o) },
-      h('img', { src: productImage(p), alt: '' }),
-      h('div', { class: 'ph-row-b' },
-        h('div', { class: 'ph-name' }, p.name),
-        h('div', { class: 'ph-auc' }, h('b', {}, yen(o.price)), o.points ? h('em', { class: 'ph-pt' }, ` ${Math.round(o.points * 100)}%還元`) : null),
-        h('div', { class: 'ph-sub' }, !avail(o) ? '在庫切れ' : o.label, o.life != null && avail(o) ? h('em', { class: 'neg' }, ' 在庫わずか') : null)));
+      h('div', { class: 'ph-sub' }, o.label || 'モール品', o.life != null && !sold ? h('em', { class: 'neg' }, ' 在庫わずか') : null));
   }
 
   // ---- 深夜1時 ----
@@ -361,7 +360,7 @@ export function phoneMode(ctx) {
     const bid = bids.get(o.oid);
     const lines = [
       h('div', { class: 'auc-now' }, h('span', {}, '現在価格'), h('b', {}, yen(a.cur)), h('small', {}, `入札 ${a.bids}件`)),
-      h('div', { class: 'auc-meta' }, h('span', {}, a.done ? '終了しました' : `残り ${dur(a.endsAt - now)}（${hhmm(a.endsAt)}終了）`), h('span', { class: a.extend ? 'neg' : 'pos' }, a.extend ? '自動延長あり' : '自動延長なし')),
+      h('div', { class: 'auc-meta' }, h('span', {}, a.done ? '終了しました' : h('span', {}, '残り ', h('span', { 'data-ends': a.endsAt }, dur(a.endsAt - now)), `（${hhmm(a.endsAt)}終了）`)), h('span', { class: a.extend ? 'neg' : 'pos' }, a.extend ? '自動延長あり' : '自動延長なし')),
       h('small', { class: 'auc-tip' }, a.extend
         ? '自動延長あり：終了5分前に入札があると延長される。終了間際の入札でも出し抜けない'
         : '自動延長なし：終了間際に入札すれば、ライバルは上げ直せない（その時刻まで起きている必要がある）'),
@@ -376,7 +375,7 @@ export function phoneMode(ctx) {
     const bid = bids.get(o.oid);
     const minBid = Math.max(a.cur + bidStep(a.cur), bid ? bid.max + bidStep(bid.max) : 0);
     const suggest = Math.max(minBid, Math.round((o.est * 0.75) / bidStep(o.est)) * bidStep(o.est));
-    const input = h('input', { type: 'number', class: 'auc-input', min: String(minBid), step: String(bidStep(a.cur)), value: String(suggest) });
+    const input = h('input', { type: 'number', class: 'auc-input', min: String(minBid), step: String(bidStep(a.cur)), value: bidDraft.get(o.oid) ?? String(suggest), oninput: (e) => bidDraft.set(o.oid, e.target.value) });
     const money = s.cash + cardAvailable(s);
     const place = (snipe) => {
       const v = Math.round(Number(input.value) || 0);
@@ -384,6 +383,7 @@ export function phoneMode(ctx) {
       if (v < minBid) return toast(`${yen(minBid)}以上で入札しよう`, 'bad');
       if (v > money) return toast('現金とカード残枠を合わせても足りない', 'bad');
       bids.set(o.oid, { max: v, snipe });
+      bidDraft.delete(o.oid);
       if (snipe) {
         // 終了の時刻まで起きて待つ
         playSe('hint');
@@ -403,11 +403,15 @@ export function phoneMode(ctx) {
       h('button', { class: 'btn bb-cash', disabled: !canAct(), onclick: () => place(false) }, '入札する'));
   }
 
-  // 自動進行ループを開始
-  startAutoLoop();
+  last = performance.now();
+  loopId = setInterval(loop, 250);
 
   return {
     cls: 'phone',
+    // Esc などで寝る前に閉じられても、時計を止めてオークションを決着させる
+    onClose() {
+      finish();
+    },
     list() {
       if (done) return doneView();
       return app === 'home' ? homeView() : appView();
