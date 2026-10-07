@@ -93,8 +93,19 @@ export function updateMarket(s) {
   const fxMean = 1.1 + fxBias(s); // 円安ショックの年は円安側へ
   s.fx = Math.max(0.9, Math.min(1.35 + fxBias(s), (s.fx || 1.1) + (fxMean - (s.fx || 1.1)) * 0.1 + gauss(s) * 0.03));
   const w = woy(s.week);
+  const mine = new Map();
+  for (const u of s.inventory || []) if (u.listing) mine.set(u.pid, (mine.get(u.pid) || 0) + 1);
   for (const p of PRODUCTS) {
     const m = s.market[p.id];
+    // 自分の出品が多すぎると、同じ品の相場が下がる（買い手の数に対して出品が余る）
+    const flood = (mine.get(p.id) || 0) - Math.max(4, Math.round(10 * p.demand));
+    if (flood > 0 && p.kind !== 'home') {
+      m.p *= 1 - Math.min(0.08, flood * 0.01);
+      if (!(s.week - (m.floodWarned ?? -99) < 12)) {
+        m.floodWarned = s.week;
+        news.push({ pid: p.id, text: `「${p.name}」の出品が多すぎて、相場が下がり気味（自分の出品 ${mine.get(p.id)}件）`, kind: 'down' });
+      }
+    }
     switch (p.kind) {
       case 'staple': {
         // 新モデル発表：旧型の相場が2割下がり、しばらく（12週）戻らない。1つの商品で2年に1回くらい
