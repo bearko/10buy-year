@@ -116,6 +116,10 @@ export function startWeek(s) {
   return steps;
 }
 
+// トラブルの種類ごとの相手（マイクリのエネミー）と、バトルの題名
+const TROUBLE_FOE = { ghost: 'ghost', swap: 'swapper', claimer: 'claimer', return: 'nego', size: 'nego', bad_review: 'claimer', prank: 'ghost', damage: 'claimer', fake: 'claimer' };
+const TROUBLE_TITLE = { ghost: '音信不通', swap: 'すり替え疑惑', claimer: 'クレーム', return: '返品の要求', size: 'サイズ違いの返品', bad_review: '低評価', prank: 'いたずら購入', damage: '配送破損', fake: '偽物の申告' };
+
 export function endWeek(s) {
   const steps = [];
   const sales = resolveSales(s);
@@ -132,8 +136,9 @@ export function endWeek(s) {
     delayed: sales.delayed,
   });
   if (sales.sold.length) steps.unshift(sfx('sale'));
-  for (const n of sales.negotiations) steps.push(...negotiationSteps(s, n));
-  for (const t of sales.troubles) steps.push(...troubleSteps(s, t));
+  // 値下げ交渉と取引トラブルは「交渉バトル」として見せる（ui/battle.js）
+  for (const n of sales.negotiations) steps.push({ t: 'battle', on: true, enemy: 'nego', title: '値下げ交渉' }, ...negotiationSteps(s, n), { t: 'battle', on: false });
+  for (const t of sales.troubles) steps.push({ t: 'battle', on: true, enemy: TROUBLE_FOE[t.kind] || 'claimer', title: TROUBLE_TITLE[t.kind] || '取引トラブル' }, ...troubleSteps(s, t), { t: 'battle', on: false });
 
   const shop = shopWeek(s);
   if (shop) steps.push(info('自分の店', [`来客 ${shop.visitors}人・${shop.sold}点売れた（${yen(shop.revenue)}）`, shop.bought ? `買取カウンターで${shop.bought}点を買い取った` : ''], shop.sold ? 'good' : 'normal'));

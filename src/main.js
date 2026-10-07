@@ -41,6 +41,7 @@ import { storeMapModal } from './ui/storemap.js';
 import { companionsModal } from './ui/companions.js';
 import { photoModal } from './ui/worklife.js';
 import { shipScene } from './ui/room.js';
+import { battleEnd, battleResult, battleSkill, battleStart, inBattle } from './ui/battle.js';
 import { quoteModal, seriModal } from './ui/pro.js';
 import { kujiModal } from './ui/kuji.js';
 import { autoPick } from './engine/dealpolicy.js';
@@ -114,7 +115,12 @@ async function playSteps(steps) {
         await say(st.who, st.text, st.pose);
         break;
       case 'info':
+        if (inBattle()) await battleResult(st.tone); // 交渉バトルの勝敗（ui/battle.js）
         await showInfo(st.title, st.lines, st.tone);
+        break;
+      case 'battle':
+        if (st.on && !isAuto() && !routineRun) await battleStart(st.enemy, st.title);
+        else battleEnd();
         break;
       case 'gain':
         await flashGain(st.exp);
@@ -124,6 +130,7 @@ async function playSteps(steps) {
         const picked = autoPick(state, st, isAuto() || !!routineRun);
         if (picked >= 0) {
           if (routineRun) routineRun.week.deals = (routineRun.week.deals || 0) + 1;
+          if (inBattle()) await battleSkill(st.options[picked].label);
           queue.unshift({ t: 'talk', who: 'narr', text: `（決めておいた対応：${st.options[picked].label}）` }, ...(st.options[picked].run() || []));
           break;
         }
@@ -131,6 +138,7 @@ async function playSteps(steps) {
         stopAuto(); // 選択肢はプレイヤーが決める
         await endRoutine();
         const idx = await choose(st.options, st.prompt);
+        if (inBattle()) await battleSkill(st.options[idx].label); // 選んだ対応を「スキル」として発動
         queue.unshift(...(st.options[idx].run() || []));
         break;
       }
