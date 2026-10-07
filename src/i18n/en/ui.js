@@ -697,4 +697,10 @@ export default {
   "「{0}」を解放！": "Unlocked “{0}”!",
   "{0}の熟練度が Lv{1} に！": "{0} mastery reached Lv{1}!",
   "経験点が足りない": "Not enough EXP",
+  "まずは転売の流れを楽しみたい人に": "For enjoying the flow of reselling first",
+  "はじめての人に": "For first-timers",
+  "金利は法律の上限。序盤の資金繰りがきつい": "Interest at the legal cap. Tight cash flow early on",
+  "最低返済": "Min. payment",
+  "月{0}": "{0}/month",
+  "年利": "APR",
 };

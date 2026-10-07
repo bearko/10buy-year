@@ -2,12 +2,14 @@ import { $, clear, h } from './dom.js';
 
 // モーダル。render(body, api) で中身を描画し、api.refresh() で再描画できる。
 // footer を渡すと、閉じるボタンの代わりにフッターのボタンを並べる（refresh のたびに描き直す）
-export function openModal(title, render, { closeLabel = '閉じる', onRefresh, footer: renderFooter } = {}) {
+// back を渡すと、下の大きな閉じるボタンの代わりに、見出しの右上に小さな「戻る」を置く（選ぶ画面で押しまちがえないように）
+export function openModal(title, render, { closeLabel = '閉じる', onRefresh, footer: renderFooter, back } = {}) {
   let resolveClosed;
   const closed = new Promise((r) => (resolveClosed = r));
   const body = h('div', { class: 'modal-body' });
   const footer = h('div', { class: 'modal-footer' });
-  const root = h('div', { class: 'modal-backdrop' }, h('div', { class: 'modal', role: 'dialog', 'aria-label': title }, h('div', { class: 'modal-title' }, title), body, footer));
+  const backBtn = back ? h('button', { class: 'modal-back', onclick: () => api.close() }, back) : null;
+  const root = h('div', { class: 'modal-backdrop' }, h('div', { class: 'modal', role: 'dialog', 'aria-label': title }, h('div', { class: `modal-title ${back ? 'has-back' : ''}` }, h('span', {}, title), backBtn), body, back ? null : footer));
   const api = {
     refresh() {
       const y = body.scrollTop;
@@ -30,7 +32,7 @@ export function openModal(title, render, { closeLabel = '閉じる', onRefresh, 
   const onKey = (e) => {
     if (e.key === 'Escape') api.close();
   };
-  if (!renderFooter) footer.append(h('button', { class: 'btn primary', onclick: () => api.close() }, closeLabel));
+  if (!renderFooter && !back) footer.append(h('button', { class: 'btn primary', onclick: () => api.close() }, closeLabel));
   window.addEventListener('keydown', onKey);
   $('#modal-root').append(root);
   api.refresh();

@@ -684,12 +684,19 @@ async function loop() {
 // 難易度を選ぶ（閉じたら null）
 function pickDifficulty() {
   let pick = null;
+  const man = (v) => `${(v / 10000).toLocaleString('ja-JP')}万円`;
   const m = openModal('難易度を選ぶ', (body, api) => {
     body.append(h('p', { class: 'note' }, '借金の額と、毎月の最低返済・金利が変わる。始めたあとは変えられない。'));
-    for (const [id, d] of Object.entries(DIFFICULTIES)) {
-      body.append(h('button', { class: `btn diff-btn ${id === 'normal' ? 'primary' : ''}`, onclick: () => { pick = id; api.close(); } }, h('b', {}, d.name), h('small', {}, d.desc)));
-    }
-  }, { closeLabel: 'やめる' });
+    // 縦長のカードを横に3枚。タップで決まる
+    body.append(h('div', { class: 'diff-cards' }, ...Object.entries(DIFFICULTIES).map(([id, d]) => h('button', { class: `diff-card ${id}`, onclick: () => { pick = id; api.close(); } },
+      id === 'normal' ? h('em', { class: 'diff-rec' }, 'おすすめ') : null,
+      h('b', {}, d.name),
+      h('dl', {},
+        h('dt', {}, '借金'), h('dd', {}, man(d.debt)),
+        h('dt', {}, '最低返済'), h('dd', {}, `月${man(d.minPay)}`),
+        h('dt', {}, '年利'), h('dd', {}, `${Math.round(d.rate * 100)}%`)),
+      h('small', {}, d.note)))));
+  }, { back: '戻る' });
   return m.closed.then(() => pick);
 }
 
@@ -704,7 +711,7 @@ function pickLegacy(ids) {
       body.append(h('button', { class: 'btn diff-btn', onclick: () => { pick = id; api.close(); } }, h('b', {}, sk.name), h('small', {}, sk.desc)));
     }
     body.append(h('button', { class: 'btn diff-btn primary', onclick: () => { pick = ''; api.close(); } }, h('b', {}, '引き継がない'), h('small', {}, 'まっさらな状態から始める')));
-  }, { closeLabel: 'やめる' });
+  }, { back: '戻る' });
   return m.closed.then(() => pick);
 }
 
@@ -719,7 +726,7 @@ function pickStyle() {
       body.append(h('button', { class: 'btn diff-btn', onclick: () => { pick = { type: 'spec', cat }; api.close(); } }, h('b', {}, `${name}専門`), h('small', {}, `${name}の見立てのぶれ0.4倍・真贋の細部+2か所・専門の掘り出し物・買い手1.25倍（専門外の見立ては1.15倍ぶれる）`)));
     }
     body.append(h('div', { class: 'sub' }, STYLES.org.name), h('button', { class: 'btn diff-btn', onclick: () => { pick = { type: 'org' }; api.close(); } }, h('b', {}, STYLES.org.name), h('small', {}, STYLES.org.desc)));
-  }, { closeLabel: 'やめる' });
+  }, { back: '戻る' });
   return m.closed.then(() => pick);
 }
 
