@@ -1294,3 +1294,43 @@ test('中国輸入：3週後に届き、関税・検品不良がある。税関�
   s.week = held.due + HOLD_WEEKS;
   assert.ok(importWeek(s).some((x) => x.t === 'info' && /届いた/.test(x.title)));
 });
+
+test('店のクセ：3回通うと覚える。クセは周ごとに決まっていて、店選びと値段・個数に効く。遠征は店舗せどり10回から', async () => {
+  const { habitKey, knownHabit, visitStore, mapEntries, HABITS } = await import('../src/engine/storemap.js');
+  const { buildStoreRun, storeClock } = await import('../src/engine/sourcing.js');
+  const { storeOffers } = await import('../src/engine/offers.js');
+  const s = createGame(31);
+  assert.equal(habitKey(s, 'デンキの大魔王'), habitKey(createGame(31), 'デンキの大魔王'), '同じ周なら同じクセ');
+  const st = { name: 'デンキの大魔王', label: '家電量販店' };
+  assert.equal(visitStore(s, st), null);
+  visitStore(s, st);
+  assert.equal(knownHabit(s, st.name), null);
+  assert.equal(visitStore(s, st), HABITS[habitKey(s, st.name)], '3回目で覚える');
+  assert.ok(knownHabit(s, st.name));
+  assert.equal(mapEntries(s)[0].visits, 3);
+
+  // 転売に厳しい店の品は2個まで、棚の奥に旧品がある店の品は5%安い
+  s.stats.purchases = 5;
+  const list = storeOffers(s, 30);
+  const before = new Map(list.map((o) => [o.oid, o.price]));
+  const run = buildStoreRun(s, list, storeClock(s), 6);
+  const byId = new Map(list.map((o) => [o.oid, o]));
+  for (const x of run.stores) {
+    const ids = x.sections.flatMap((sec) => sec.oids);
+    if (x.habit === 'strict') for (const id of ids) assert.ok(byId.get(id).maxQty <= 2 || byId.get(id).scarce);
+    if (x.habit === 'deep') for (const id of ids) if (!byId.get(id).scarce) assert.ok(byId.get(id).price < before.get(id) || before.get(id) <= 10);
+  }
+
+  // 遠征
+  s.stage = 1;
+  s.skills.push('src_store');
+  assert.ok(!availableCommands(s).some((c) => c.id === 'expedition'));
+  s.stats.storeTrips = 10;
+  s.cash = 100000;
+  assert.ok(availableCommands(s).some((c) => c.id === 'expedition'));
+  const steps = performCommand(s, 'expedition');
+  const of = steps.find((x) => x.t === 'offers');
+  assert.ok(of.run.region && of.run.stores.every((x) => x.spot || x.name.startsWith(of.run.region)));
+  assert.equal(of.run.clock.start, 600, '朝10時から回れる');
+  assert.equal(s.cash, 94000, '交通費');
+});

@@ -56,8 +56,9 @@ export function storeOfferCount(s) {
   return n + perk(s, 'storeOffers') + (s.style?.type === 'org' ? 2 : 0);
 }
 
-export function storeOffers(s, n = storeOfferCount(s)) {
-  const discountBoost = (s.mods?.storeDiscount ?? 0) + (hasSkill(s, 'bargain') ? 0.05 : 0) + perk(s, 'storeDiscount');
+// trip：遠征（地元の同業者に荒らされていない店。開拓した仕入れ先は地元にしかない）
+export function storeOffers(s, n = storeOfferCount(s), { trip = false } = {}) {
+  const discountBoost = (s.mods?.storeDiscount ?? 0) + (hasSkill(s, 'bargain') ? 0.05 : 0) + perk(s, 'storeDiscount') + (trip ? 0.05 : 0);
 
   const gens = [
     {
@@ -136,8 +137,8 @@ export function storeOffers(s, n = storeOfferCount(s)) {
       make: () => makeOffer(s, 'jewel', { source: 'luxury', label: 'ショーウィンドウの憧れの品', price: productOf('jewel').retail, maxQty: 1, scarce: true, brandNew: true }),
     },
   ];
-  gens.push(genreGen(s, 'used', 0.6, 0.85), ...spotGens(s, 'store'), nicheGen(s, 'store', ['pretty_set', 'bonsai', 'haori']));
-  const offers = applySaturation(s, generate(s, gens, n), 'store');
+  gens.push(genreGen(s, 'used', 0.6, 0.85), ...(trip ? [] : spotGens(s, 'store')), nicheGen(s, 'store', ['pretty_set', 'bonsai', 'haori']));
+  const offers = trip ? generate(s, gens, n) : applySaturation(s, generate(s, gens, n), 'store');
   if (!s.stats.purchases) offers.unshift(firstWagon(s));
   return withUnknown(s, withSpec(s, offers, 'store'));
 }

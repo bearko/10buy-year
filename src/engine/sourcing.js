@@ -9,7 +9,8 @@ import { hasSkill } from './effects.js';
 import { hasCar } from './lifestyle.js';
 import { isReleased, priceOf, roundPrice } from './market.js';
 import { SPOT_MAP } from './pioneer.js';
-import { chance, pick, randInt, randRange } from './rng.js';
+import { chance, pick, randInt, randRange, weightedPick } from './rng.js';
+import { HABITS, habitKey } from './storemap.js';
 import { nodeLv } from './abilities.js';
 
 // ---------------- 時計 ----------------
@@ -18,11 +19,12 @@ export const hhmm = (m) => {
   return `${Math.floor(t / 60) % 24}:${String(t % 60).padStart(2, '0')}`;
 };
 
-// 店舗巡り：昼は12時に出て20時の閉店まで。夜は18時半から22時まで
-export function storeClock(s, night = false) {
+// 店舗巡り：昼は12時に出て20時の閉店まで。夜は18時半から22時まで。遠征は朝8時に出て、着くのは10時
+export function storeClock(s, night = false, { trip = false } = {}) {
   const travel = 50 * (hasSkill(s, 'ino_map') ? 0.7 : 1) * (hasCar(s) ? 0.6 : 1);
   const search = 35 * (1 - Math.min(0.4, s.abilities.buy / 250)) * (hasSkill(s, 'eye_ai') ? 0.6 : 1);
-  return { start: night ? 18 * 60 + 30 : 12 * 60, close: night ? 22 * 60 : 20 * 60, travel: Math.round(travel), search: Math.max(8, Math.round(search)), checkout: 5, research: 3 };
+  const start = trip ? 10 * 60 : night ? 18 * 60 + 30 : 12 * 60;
+  return { start, close: night ? 22 * 60 : 20 * 60, travel: Math.round(travel), search: Math.max(8, Math.round(search)), checkout: 5, research: 3 };
 }
 export const ROUTE_LEN = 8;
 const AVG_SECTIONS = 2.7;
@@ -116,7 +118,7 @@ export function storeTag(o) {
 }
 
 // 店舗巡りのルートを作り、オファーを店と棚に配る
-export function buildStoreRun(s, list, clock, n = 0) {
+export function buildStoreRun(s, list, clock, n = 0, { region = null } = {}) {
   const firstOid = list.find((o) => o.first)?.oid;
   const tags = list.map(storeTag);
   const types = list.map((o, i) => typesFor(o, tags[i]));
@@ -152,9 +154,11 @@ export function buildStoreRun(s, list, clock, n = 0) {
     }
     const t = STORE_TYPES[x.type];
     const used = names.get(x.type) || [];
-    const name = pick(s, t.names.filter((n) => !used.includes(n)).length ? t.names.filter((n) => !used.includes(n)) : t.names);
-    names.set(x.type, [...used, name]);
-    return { id: i, type: x.type, name, label: t.label, color: t.color, dist: randRange(s, 0.6, 1.5), enter: t.enter, sections: t.sections.map((nm) => ({ name: nm, oids: [] })) };
+    const base = pick(s, t.names.filter((n) => !used.includes(n)).length ? t.names.filter((n) => !used.includes(n)) : t.names);
+    names.set(x.type, [...used, base]);
+    const name = region ? `${region}・${base}` : base;
+    const habit = habitKey(s, name); // 店のクセ（engine/storemap.js）
+    return { id: i, type: x.type, name, region, habit, label: t.label, color: t.color, dist: randRange(s, 0.6, 1.5) * (HABITS[habit].dist || 1) * (region ? 1.3 : 1), enter: t.enter, sections: t.sections.map((nm) => ({ name: nm, oids: [] })) };
   });
   // 配る
   list.forEach((o, i) => {
@@ -164,17 +168,28 @@ export function buildStoreRun(s, list, clock, n = 0) {
     else if (SPOT_MAP[tags[i]]) cands = stores.filter((x) => x.spot === tags[i]);
     else cands = stores.filter((x) => types[i].includes(x.type));
     if (!cands.length) cands = stores.filter((x) => x.type !== 'spot');
-    const st = pick(s, cands);
+    const st = weightedPick(s, cands.map((x) => ({ x, weight: HABITS[x.habit]?.weight || 1 }))).x; // ワゴンが宝の山の店には品が集まる
     const sec = o.oid === firstOid ? st.sections[0] : pickSection(s, st, o);
     sec.oids.push(o.oid);
   });
-  const run = { kind: 'store', clock, stores, n };
+  const run = { kind: 'store', clock, stores, n, region };
   if (n) balanceRoute(s, run, list, tags, types, n);
+  // 店のクセ：棚の奥の旧品は安く、転売に厳しい店は1人2個まで
+  const byId = new Map(list.map((o) => [o.oid, o]));
+  for (const st of run.stores) {
+    const hb = HABITS[st.habit];
+    if (!hb || !(hb.disc || hb.cap)) continue;
+    for (const o of st.sections.flatMap((sec) => sec.oids.map((id) => byId.get(id)))) {
+      if (!o || o.scarce) continue;
+      if (hb.disc) o.price = Math.max(10, Math.round((o.price * (1 - hb.disc)) / 10) * 10);
+      if (hb.cap) o.maxQty = Math.min(o.maxQty, hb.cap);
+    }
+  }
   // セールのチラシ：品のある店はたいてい何か載せている（品のない店がチラシを出していることもある）
   for (const st of run.stores) {
     const fl = FLYERS[st.type];
     const has = st.sections.some((sec) => sec.oids.length);
-    if (fl && chance(s, has ? 0.7 : 0.15)) st.flyer = pick(s, fl);
+    if (fl && chance(s, (has ? 0.7 : 0.15) + (HABITS[st.habit]?.flyer || 0))) st.flyer = pick(s, fl);
   }
   return run;
 }

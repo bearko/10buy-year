@@ -917,6 +917,10 @@ body.partner-on #side { display: none !important; }
 .sr-meta .bad { color: #d33; font-weight: 700; }
 .sr-flyer { display: flex; align-items: center; gap: 6px; margin: 0 10px 10px; padding: 5px 8px; border-radius: 6px; background: #fff6d0; border: 1px dashed #d8b84a; font-size: 12px; font-weight: 700; color: #6a4a00; }
 .sr-flyer small { padding: 0 5px; border-radius: 3px; background: #e8413c; color: #fff; font-size: 10px; }
+.sr-habit { display: flex; align-items: center; gap: 6px; margin: 0 10px 10px; padding: 4px 8px; border-radius: 6px; background: #eef4ff; border: 1px solid #b9cdf0; font-size: 12px; color: #23406e; }
+.sr-habit small { padding: 0 5px; border-radius: 3px; background: #3b6fd1; color: #fff; font-size: 10px; }
+.sr-habit.unknown { background: #f3f3f3; border-color: #ddd; color: #888; }
+.sr-habit.unknown small { background: #999; }
 .sr-front { --c: #555; margin: 0 0 8px; background: #fff; }
 .sr-front-sign { display: flex; flex-direction: column; align-items: center; padding: 14px 10px 10px; background: var(--c); color: #fff; border-bottom: 6px solid #0003; animation: sr-in 0.35s ease-out; }
 .sr-front-sign small { font-size: 11px; opacity: 0.85; }
@@ -1332,3 +1336,8 @@ body.partner-on #side { display: none !important; }
 .ach-date { color: var(--muted); }
 .ach-new { margin: 10px 0; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--gold); background: #f5c54214; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
 .ach-new b { color: var(--gold); }
+.map-h { margin: 12px 0 4px; font-size: 14px; color: var(--muted); }
+.map-habit { margin-top: 4px; font-size: 13px; color: var(--info); }
+.map-habit.unknown { color: var(--muted); }
+.map-legend { margin-top: 12px; font-size: 12px; color: var(--muted); }
+.map-legend summary { cursor: pointer; }

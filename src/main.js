@@ -37,6 +37,7 @@ import { questsModal } from './ui/quests.js';
 import { queueScene } from './ui/queue.js';
 import { myStoreModal } from './ui/mystore.js';
 import { routineModal } from './ui/routine.js';
+import { storeMapModal } from './ui/storemap.js';
 import { autoPick } from './engine/dealpolicy.js';
 import { pioneerLine } from './engine/pioneer.js';
 import { satLine } from './engine/rivals.js';
@@ -538,6 +539,7 @@ function renderTabs() {
         onCareers: () => after(careersModal(state)),
         onLife: () => after(lifestyleModal(state, refresh)),
         onCrypto: () => after(cryptoModal(state, refresh)),
+        onMap: () => after(storeMapModal(state)),
       }),
     },
     { id: 'log', label: 'ログ', open: () => logModal(state) },
