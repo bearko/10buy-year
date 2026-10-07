@@ -96,9 +96,18 @@ export function updateMarket(s) {
   for (const p of PRODUCTS) {
     const m = s.market[p.id];
     switch (p.kind) {
-      case 'staple':
-        m.p = clamp(m.p + (p.base - m.p) * 0.3 + gauss(s) * 0.025, 0.8, 1.25);
+      case 'staple': {
+        // 新モデル発表：旧型の相場が2割下がり、しばらく（12週）戻らない。1つの商品で2年に1回くらい
+        if (m.oldModel > 0) m.oldModel--;
+        else if (s.week > 24 && chance(s, 1 / 96)) {
+          m.oldModel = 12;
+          m.p *= 0.8;
+          news.push({ pid: p.id, text: `【新モデル発表】「${p.name}」の新型が出る。型落ちになる旧型の相場が下がりそうだ`, kind: 'down' });
+        }
+        const target = m.oldModel > 0 ? p.base * 0.8 : p.base;
+        m.p = clamp(m.p + (target - m.p) * 0.3 + gauss(s) * 0.025, m.oldModel > 0 ? 0.65 : 0.8, 1.25);
         break;
+      }
       case 'collect':
         m.p = clamp(m.p * (1 + p.drift + gauss(s) * 0.02), 0.6, 3);
         break;
