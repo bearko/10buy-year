@@ -66,7 +66,7 @@ export function salesModal(s, step) {
     if (step.sold.length) {
       body.append(
         h('div', { class: 'summary' },
-          h('span', {}, `売上金 ${yenFmt(totalNet)}（来週入金）`),
+          h('span', {}, `売上金 ${yenFmt(totalNet)}（週明けに入金）`),
           canCalc(s) ? h('span', { class: totalProfit >= 0 ? 'pos' : 'neg' }, `利益 ${signYen(totalProfit)}`) : null,
           step.staminaUsed ? h('span', {}, `梱包・発送で体力 -${step.staminaUsed}`) : null,
           step.outsourced ? h('span', {}, `外注が${step.outsourced}件発送`) : null,
