@@ -157,10 +157,25 @@ export function phoneMode(ctx) {
       h('div', { class: 'ph-lock' }, h('b', {}, hhmm(now)), h('small', {}, `${weekLabel(s.week)}の夜`)),
       ctx.wallet(),
     );
+
+    // バナーカルーセル（セール・キャンペーン告知）
+    const banners = [
+      { bg: '#ff6b6b', text: '🎉 本日限定セール', sub: 'スマートウォッチが30%OFF' },
+      { bg: '#4ecdc4', text: '⭐ 新作続々入荷', sub: 'トレンドアイテムをいち早くGET' },
+      { bg: '#ffe66d', text: '🎁 ポイント2倍キャンペーン', sub: '今夜の購入で2倍ポイント' },
+      { bg: '#c7ceea', text: '💎 限定コラボ商品', sub: 'あの人気キャラとのコラボ' },
+    ];
+    const currentBanner = Math.floor((now - run.start) / 60) % banners.length;
+    body.append(h('div', { class: 'ph-banners' },
+      banners.map((b, i) => h('div', { class: `ph-banner ${i === currentBanner ? 'active' : ''}`, style: { background: b.bg } },
+        h('b', {}, b.text),
+        h('small', {}, b.sub)))));
+
     if (step.autoBought?.length) body.append(h('div', { class: 'shop-auto' }, h('b', {}, '外注が自動で仕入れた'), ...step.autoBought.map((m) => h('div', {}, m))));
+
     const notes = run.notices.map((n) => ({ ...n, o: offers.find((o) => o.oid === n.oid) })).filter((n) => n.o);
     if (notes.length) {
-      body.append(h('div', { class: 'ph-notes' }, ...notes.map((n) => {
+      body.append(h('div', { class: 'ph-notes' }, h('p', { class: 'ph-section-title' }, '🔔 新着通知'), ...notes.map((n) => {
         const a = APPS[n.app];
         const gone = !avail(n.o);
         return h('button', { class: `ph-note ${gone ? 'gone' : ''}`, style: { '--c': a.color }, onclick: () => open(n.o) },
@@ -168,9 +183,12 @@ export function phoneMode(ctx) {
           h('div', {}, n.text));
       })));
     } else body.append(h('p', { class: 'ph-empty' }, '新しい通知はない。アプリを開いて探そう。'));
-    body.append(h('div', { class: 'ph-apps' }, ...Object.entries(APPS).filter(([id]) => byApp(id).length).map(([id, a]) =>
-      h('button', { class: 'ph-app', style: { '--c': a.color }, onclick: () => { app = id; ctx.render(); } },
-        h('i', {}, a.name.slice(0, 1)), h('b', {}, a.name), h('small', {}, a.sub)))));
+
+    body.append(h('div', { class: 'ph-apps' }, h('p', { class: 'ph-section-title' }, '📱 アプリ一覧'),
+      ...Object.entries(APPS).filter(([id]) => byApp(id).length).map(([id, a]) =>
+        h('button', { class: 'ph-app', style: { '--c': a.color }, onclick: () => { app = id; ctx.render(); } },
+          h('i', {}, a.name.slice(0, 1)), h('b', {}, a.name), h('small', {}, a.sub)))));
+
     body.append(adBanner(0));
     if (results.length) body.append(resultsBox());
     return [body, h('div', { class: 'shop-footer ph-foot' }, h('button', { class: 'btn shop-done', onclick: () => { finish(); ctx.render(); } }, 'スマホを置いて寝る'))];
@@ -200,22 +218,29 @@ export function phoneMode(ctx) {
       h('div', { class: 'ph-search' }, h('span', {}, '🔍'), h('span', {}, app === 'mall' ? 'セール・在庫あり' : app === 'auction' ? 'ウォッチリスト・保存した検索' : '保存した検索・販売中のみ')),
       h('div', { class: 'ph-sorts' }, ...sorts.map(([k, l]) => h('button', { class: key === k ? 'on' : '', onclick: () => { sort[app] = k; ctx.render(); } }, l))));
     const body = h('div', { class: `shop-body ph-list ${app}` });
+
+    // プロモーション表示（アプリごと）
     if (app === 'mall') body.append(h('div', { class: 'ph-promo' }, h('b', {}, '本日ポイントアップ！'), h('span', {}, '最大15%還元・エントリー不要')));
+    if (app === 'auction') body.append(h('div', { class: 'ph-promo auction' }, h('b', {}, '⏰ 終了間際は狙い目！'), h('span', {}, '最後の数分で値上がり幅が決まる')));
     if (app === 'shady') body.append(h('div', { class: 'ph-promo shady' }, h('b', {}, '★超激安★全品90%OFF★'), h('span', {}, '本物保証です！安心の取引！')));
+
     if (!list.length) body.append(h('p', { class: 'ph-empty' }, '該当する商品はありません'));
-    if (app === 'flea' || app === 'shady') {
-      const grid = h('div', { class: 'ph-grid' });
-      list.forEach((o, i) => {
-        grid.append(o.unknown ? ctx.gridItem(o) : tile(o));
-        if (i === 5) grid.append(adBanner(1));
-      });
-      body.append(grid);
-    } else {
-      list.forEach((o, i) => {
-        body.append(app === 'auction' ? aucRow(o) : mallRow(o));
-        if (i === 3) body.append(adBanner(2));
-      });
-    }
+
+    // 全アプリ共通：グリッド表示
+    const grid = h('div', { class: 'ph-grid' });
+    list.forEach((o, i) => {
+      if (o.unknown) {
+        grid.append(ctx.gridItem(o));
+      } else if (app === 'auction') {
+        grid.append(aucCard(o));
+      } else if (app === 'mall') {
+        grid.append(mallCard(o));
+      } else {
+        grid.append(tile(o));
+      }
+      if (i === 5) grid.append(adBanner(1));
+    });
+    body.append(grid);
     return [head, body];
   }
 
@@ -229,6 +254,31 @@ export function phoneMode(ctx) {
         o.negotiated === 'ok' ? h('span', { class: 'ph-badge' }, '専用') : null),
       h('div', { class: 'ph-name' }, p.name),
       h('div', { class: 'ph-sub' }, o.listing?.likes ? `♡${o.listing.likes}` : '', ` ${o.posted ? `${o.posted}分前` : ''}`));
+  }
+
+  function aucCard(o) {
+    const p = productOf(o.pid);
+    const a = o.auction;
+    const bid = bids.get(o.oid);
+    const done = a.done ? { won: '✓ 落札', lost: '✗ 競り負け', over: '終了', unpaid: '支払えず' }[a.done] : bid ? (bid.snipe ? '⏰ 待機中' : '📍 入札中') : '';
+    return h('button', { class: `ph-tile auc ${a.done ? 'sold' : ''}`, onclick: () => open(o) },
+      h('div', { class: 'ph-img' }, h('img', { src: productImage(p), alt: '' }),
+        h('span', { class: 'ph-price' }, yen(a.cur)),
+        a.done ? h('span', { class: 'sh-sold' }, done) : null),
+      h('div', { class: 'ph-name' }, p.name),
+      h('div', { class: 'ph-sub' }, `入札 ${a.bids}`, a.done ? null : h('em', { class: 'neg' }, ` ${dur(a.endsAt - now)}`)));
+  }
+
+  function mallCard(o) {
+    const p = productOf(o.pid);
+    const sold = !avail(o);
+    return h('button', { class: `ph-tile mall ${sold ? 'sold' : ''}`, onclick: () => open(o) },
+      h('div', { class: 'ph-img' }, h('img', { src: productImage(p), alt: '' }),
+        h('span', { class: 'ph-price' }, yen(o.price)),
+        o.points ? h('span', { class: 'ph-pt' }, `+${Math.round(o.points * 100)}%`) : null,
+        sold ? h('span', { class: 'sh-sold' }, '在庫切れ') : null),
+      h('div', { class: 'ph-name' }, p.name),
+      h('div', { class: 'ph-sub' }, o.label || 'モール品'));
   }
 
   function aucRow(o) {
