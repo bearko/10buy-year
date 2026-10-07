@@ -1484,3 +1484,23 @@ body.partner-on #side { display: none !important; }
 .live-banner.on { border: 1px solid #ffd76a; background: #ffd76a1a; color: #ffd76a; }
 .live-banner b { display: block; }
 .live-banner small { display: block; font-size: calc(11px * var(--fs, 1)); opacity: 0.9; }
+
+/* 見出しの右上の小さな「戻る」（選ぶ画面で、下の大きなボタンを押しまちがえないように） */
+.modal-title.has-back { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.modal-back { flex: none; font: inherit; font-size: calc(12px * var(--fs, 1)); padding: 6px 12px; border-radius: 8px; border: 1px solid var(--line); background: #1a2350e6; color: var(--text); cursor: pointer; }
+.modal-back::before { content: '◀ '; font-size: 0.8em; opacity: 0.8; }
+.modal:has(.modal-back) .modal-body { padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
+
+/* 難易度：縦長のカードを横に並べる */
+.diff-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+.diff-card { position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px; min-height: 230px; padding: 22px 6px 12px; font: inherit; color: var(--text); text-align: center; border-radius: 12px; border: 2px solid var(--line); background: linear-gradient(#26305e, #1a2246); cursor: pointer; }
+.diff-card b { font-size: calc(18px * var(--fs, 1)); }
+.diff-card dl { margin: 0; display: grid; gap: 2px; width: 100%; }
+.diff-card dt { font-size: calc(10px * var(--fs, 1)); color: var(--muted); }
+.diff-card dd { margin: 0 0 4px; font-size: calc(14px * var(--fs, 1)); font-weight: 700; color: #ffd76a; }
+.diff-card small { margin-top: auto; font-size: calc(11px * var(--fs, 1)); line-height: 1.4; opacity: 0.85; }
+.diff-card.easy { border-color: #4fbf8a; }
+.diff-card.normal { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold), 0 0 14px #f5c54255; }
+.diff-card.hard { border-color: #d9605a; }
+.diff-card:active { transform: scale(0.98); }
+.diff-rec { position: absolute; top: -1px; left: 50%; transform: translate(-50%, -50%); padding: 2px 8px; border-radius: 99px; background: var(--gold); color: #1b1300; font-style: normal; font-size: calc(10px * var(--fs, 1)); font-weight: 700; white-space: nowrap; }

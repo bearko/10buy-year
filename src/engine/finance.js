@@ -21,10 +21,10 @@ import { chance } from './rng.js';
 
 // 難易度：借金の額・毎月の最低返済・金利
 export const DIFFICULTIES = {
-  easy: { name: 'やさしい', debt: 800000, minPay: 20000, rate: 0.1, desc: '借金80万円・最低返済 月2万円・年利10%。まずは転売の流れを楽しみたい人に' },
-  normal: { name: 'ふつう', debt: 1500000, minPay: 30000, rate: 0.15, desc: '借金150万円・最低返済 月3万円・年利15%。おすすめ' },
+  easy: { name: 'やさしい', debt: 800000, minPay: 20000, rate: 0.1, desc: '借金80万円・最低返済 月2万円・年利10%。まずは転売の流れを楽しみたい人に', note: 'まずは転売の流れを楽しみたい人に' },
+  normal: { name: 'ふつう', debt: 1500000, minPay: 30000, rate: 0.15, desc: '借金150万円・最低返済 月3万円・年利15%。おすすめ', note: 'はじめての人に' },
   // 年利は利息制限法の上限（元本100万円以上は15%）を超えないようにする
-  hard: { name: 'きびしい', debt: 2500000, minPay: 45000, rate: 0.15, desc: '借金250万円・最低返済 月4.5万円・年利15%（法律の上限）。序盤の資金繰りがきつい' },
+  hard: { name: 'きびしい', debt: 2500000, minPay: 45000, rate: 0.15, desc: '借金250万円・最低返済 月4.5万円・年利15%（法律の上限）。序盤の資金繰りがきつい', note: '金利は法律の上限。序盤の資金繰りがきつい' },
 };
 export const difficultyOf = (s) => DIFFICULTIES[s.difficulty] || DIFFICULTIES.normal;
 export const minPayment = (s) => difficultyOf(s).minPay;
