@@ -15,6 +15,8 @@ import { allEndings } from './engine/ending.js';
 import { SKILL_MAP, SKILLS } from './data/skills.js';
 import { dailyLabel, dailySeed, todayKey } from './engine/daily.js';
 import { weekKey, weeklySeed, weekRange } from './engine/weekly.js';
+import { liveEventOn, liveRange, nextLiveEvent } from './data/live.js';
+import { syncLive } from './engine/live.js';
 import { fetchRanking, rankingList, submitBox } from './ui/online.js';
 import { SPECIALTIES, STYLES, styleLabel, styleOf } from './engine/style.js';
 import { createGame } from './engine/state.js';
@@ -629,6 +631,8 @@ async function loop() {
     if (state.phase === 'weekStart') {
       drawIdleCommands();
       if (routineRun) routineRun.week = { ...emptyRoutineWeek(), ...routineStale(state, routineRun.cfg) };
+      // 期間限定フェア：現実の日付で決まる（チュートリアルが終わってから）
+      await playSteps(syncLive(state, tutorialDone(state) ? liveEventOn()?.id : null));
       await playSteps(startWeek(state));
       await tutorialStep();
       saveGame(state);
@@ -778,6 +782,7 @@ function showTitle() {
         h('img', { class: 'sprite maycri', src: CAST.maycri.poses.wide, alt: 'マイクリくん' }),
       ),
       h('p', { class: 'lead' }, '仮想通貨で溶かして、友達にまで借金をした。', h('br'), '押し入れの本を1冊売るところから、10年の転売キャリアが始まる。'),
+      liveBanner(),
       h('div', { class: 'title-buttons' },
         hasSave ? h('button', { class: 'btn primary big', onclick: () => continueGame() }, 'つづきから') : null,
         h('button', { class: `btn big ${hasSave ? '' : 'primary'}`, onclick: () => { if (!hasSave || window.confirm('セーブデータを消して最初から始めますか？')) newGame(); } }, 'はじめから'),
@@ -799,6 +804,14 @@ function showTitle() {
   );
   showScreen('title-screen');
   playBgm('land');
+}
+
+// 現実の季節に合わせた期間限定フェアの告知
+function liveBanner() {
+  const ev = liveEventOn();
+  if (ev) return h('p', { class: 'live-banner on' }, h('b', {}, `開催中：${ev.name}`), h('small', {}, `${liveRange(ev)}・限定の「${productOf(ev.pid).genre}」が店とネットに並ぶ`));
+  const next = nextLiveEvent();
+  return h('p', { class: 'live-banner' }, h('small', {}, `次の期間限定フェア：${next.name}（${liveRange(next)}）`));
 }
 
 const soundLabel = () => (soundOn() ? '🔊 サウンド ON' : '🔇 サウンド OFF');
