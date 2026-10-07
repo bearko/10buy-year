@@ -2,7 +2,7 @@
 import { suspicion } from './listing.js';
 import { productOf, shippingCost } from '../data/products.js';
 import { hasSkill } from './effects.js';
-import { activeUnits, buy, capacity, cardAvailable, feeRate, listUnits, platformMult, platformsFor, spaceUsed } from './inventory.js';
+import { abroadMult, activeUnits, buy, capacity, cardAvailable, feeRate, listUnits, platformMult, platformsFor, spaceUsed } from './inventory.js';
 import { SIZE_INFO } from '../data/products.js';
 import { estimateUnit } from './market.js';
 import { CORP_SOCIAL, LIVING_COST } from './career.js';
@@ -12,6 +12,7 @@ import { minPayment } from './finance.js';
 export function bestPlatform(s, u) {
   const p = productOf(u.pid);
   const ids = platformsFor(s, u).map((pf) => pf.id).filter((id) => !(id === 'merc' && s.banWeeks > 0) && !(id === 'ama' && s.amaBan > 0));
+  if (ids.includes('exp') && (s.fx || 1) * abroadMult(s, u) >= 1.35) return 'exp'; // 国内で値崩れした品は海外へ
   if (['collect', 'luxury'].includes(p.kind) && ids.includes('auc')) return 'auc';
   if (ids.includes('ama') && ['staple', 'hype', 'seasonal', 'boom'].includes(p.kind)) return 'ama';
   if (ids.includes('black')) return 'black';
@@ -29,7 +30,7 @@ export function autoList(s) {
     const pf = bestPlatform(s, u);
     if (!pf) continue;
     const est = estimateUnit(s, u);
-    n += listUnits(s, [u.uid], pf, (pf === 'auc' ? est * 0.75 : est * 1.02) * platformMult(s, pf));
+    n += listUnits(s, [u.uid], pf, (pf === 'auc' ? est * 0.75 : est * 1.02) * platformMult(s, pf, u));
   }
   return n;
 }

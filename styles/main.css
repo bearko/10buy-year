@@ -590,8 +590,8 @@ body.partner-on #side { display: none !important; }
 .loot-pager button { font: inherit; font-size: 11px; width: 30px; height: 24px; border-radius: 99px; border: 1px solid var(--gold); background: #1a2350; color: var(--gold); cursor: pointer; }
 
 /* 在庫・出品：売り先タブ＋商品ごとのスライダー＋即ボタン */
-.mk-tabs { position: sticky; top: -12px; z-index: 2; display: flex; gap: 4px; align-items: stretch; margin: -4px 0 8px; padding: 4px 0; background: var(--bg); }
-.mk-tab { flex: 1; display: flex; flex-direction: column; align-items: center; font: inherit; font-size: 14px; padding: 8px 4px; border-radius: 8px; border: 2px solid var(--line); background: var(--panel); color: var(--muted); cursor: pointer; }
+.mk-tabs { position: sticky; top: -12px; z-index: 2; display: flex; gap: 4px; align-items: stretch; flex-wrap: wrap; margin: -4px 0 8px; padding: 4px 0; background: var(--bg); }
+.mk-tab { flex: 1 0 auto; display: flex; white-space: nowrap; flex-direction: column; align-items: center; font: inherit; font-size: 13px; padding: 8px 6px; border-radius: 8px; border: 2px solid var(--line); background: var(--panel); color: var(--muted); cursor: pointer; }
 .mk-tab.on { border-color: var(--info); background: #16304a; color: #fff; }
 .mk-tab.ban { opacity: 0.6; }
 .mk-tab small { font-size: 10px; color: var(--bad); }

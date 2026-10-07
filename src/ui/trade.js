@@ -4,7 +4,7 @@ import { productImage, productOf, shipFor, shippingCost } from '../data/products
 import { weekLabel, yearOf } from '../engine/calendar.js';
 import { flag, hasSkill } from '../engine/effects.js';
 import {
-  activeUnits, buybackQuote, capacity, feeRate, groupInventory, platformMult, platformOpen, hardCapacity, listedUnits, listingCap, listUnits, platformFee, platformsFor, PLATFORMS, sellToBuyer, spaceUsed, unlistUnits,
+  abroadMult, activeUnits, buybackQuote, capacity, feeRate, groupInventory, platformMult, platformOpen, hardCapacity, listedUnits, listingCap, listUnits, platformFee, platformsFor, PLATFORMS, sellToBuyer, spaceUsed, unlistUnits,
 } from '../engine/inventory.js';
 import { confidenceLabel, estimateAt, estimateUnit, isReleased, roundPrice, visibleProducts } from '../engine/market.js';
 import { openLotteries } from '../engine/offers.js';
@@ -118,7 +118,7 @@ export function inventoryModal(s, onChange) {
       const u0 = g.units[0];
       const platform = g.listing ? g.listing.platform : market;
       // 販路の倍率（海外ECの為替・裏市場）を推定相場にかけて見せる
-      const est = Math.round(estimateUnit(s, u0) * platformMult(s, platform));
+      const est = Math.round(estimateUnit(s, u0) * platformMult(s, platform, u0));
       const cur = pick.get(g.key) || { mult: g.listing ? g.listing.price / Math.max(1, est) : 1, qty: g.units.length };
       pick.set(g.key, cur);
       const p = productOf(g.pid);
@@ -176,7 +176,7 @@ export function inventoryModal(s, onChange) {
     body.append(...[
       h('div', { class: 'mk-tabs' },
         ...markets.map((m) => h('button', { class: `mk-tab ${m.id === market ? 'on' : ''} ${banned(s, m.id) ? 'ban' : ''}`, onclick: () => { market = m.id; api.refresh(); } }, m.name, banned(s, m.id) ? h('small', {}, '停止中') : null)),
-        h('button', { class: `mk-info-btn ${showInfo ? 'on' : ''}`, onclick: () => { showInfo = !showInfo; api.refresh(); } }, 'ⓘ マーケット情報'),
+        h('button', { class: `mk-info-btn ${showInfo ? 'on' : ''}`, onclick: () => { showInfo = !showInfo; api.refresh(); } }, 'ⓘ 情報'),
       ),
       showInfo
         ? h('div', { class: 'mk-info' },
@@ -288,6 +288,7 @@ export function inventoryModal(s, onChange) {
           editionTag(s, u0),
           g.damaged ? h('span', { class: 'tag bad' }, '傷あり') : null,
           g.authFail ? h('span', { class: 'tag bad' }, '鑑定NG（偽物）') : null,
+          market === 'exp' && !g.listing && abroadMult(s, g.units[0]) >= 1.1 ? h('span', { class: 'tag good' }, `海外なら相場×${abroadMult(s, g.units[0]).toFixed(1)}`) : null,
           g.expire !== null && g.expire !== undefined ? h('span', { class: 'tag bad' }, `賞味期限 ${weekLabel(g.expire)}まで`) : null,
           x.waiting ? h('span', { class: 'tag' }, `${weekLabel(g.arrive)}に届く`) : null,
           !x.waiting && kpiLevel(s) >= 2 ? h('span', { class: `tag ${days >= 90 ? 'bad' : ''}` }, `在庫${days}日`) : null,

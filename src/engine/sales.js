@@ -34,7 +34,7 @@ function fixedPriceMarket(s, units, buyers, platform, out, allowNego, mult = 1) 
   const boost = s.listBoost ? 1.25 : 1;
   const rf = ratingFactor(s);
   for (const u of units.sort((a, b) => a.listing.price - b.listing.price)) {
-    const ratio = u.listing.price / Math.max(1, unitPrice(s, u) * mult);
+    const ratio = u.listing.price / Math.max(1, unitPrice(s, u) * (typeof mult === 'function' ? mult(u) : mult));
     if (buyers > 0 && chance(s, Math.min(0.97, sellChance(s, ratio) * Math.min(1.15, rf * boost)))) {
       buyers--;
       out.sold.push(makeSale(u, u.listing.price, platform));
@@ -65,7 +65,8 @@ export function resolveSales(s) {
 
     // 海外EC（為替で売値が変わる）と裏市場（表の数倍）
     const exp = units.filter((u) => u.listing.platform === 'exp');
-    if (exp.length) fixedPriceMarket(s, exp, poisson(s, d * 0.9 * rf), 'exp', out, false, platformMult(s, 'exp'));
+    // 海外の買い手は、国内の季節やブームの終わりに左右されにくい
+    if (exp.length) fixedPriceMarket(s, exp, poisson(s, Math.max(d, p.demand * 0.6 * specBuyers(s, p.id)) * 0.9 * rf), 'exp', out, false, (u) => platformMult(s, 'exp', u));
     // 専門マーケット（鑑定つき）：偽物は鑑定ではじかれて戻ってくる。値下げ交渉はない
     const spec = units.filter((u) => u.listing.platform === 'spec');
     for (const u of spec.filter((x) => x.fake)) {
