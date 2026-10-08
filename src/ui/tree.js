@@ -1,11 +1,10 @@
 // 転売屋スキルツリー画面。中心から7つのルートが放射状に伸びる。ドラッグで移動、ホイール／ピンチで拡大縮小。
 import { CAPSTONE_NEED, ROUTES, ROUTE_MAP, ROUTE_LEVELS, SKILL_MAP, SKILLS, TREE_NODES, nodePos } from '../data/skills.js';
 import {
-  ABILITIES, ABILITY_MAX, abilityCost, canAfford, CONVERT_RATE, convertExp, EXP_NAME, EXP_TYPES, isOffRoute, learnSkill, nodeBlockers, nodeLv, nodeState, nodeTeaser, nodeVisible,
-  claimableNodes, raiseAbility, rankOf, recordValue, skillCost,
+  canAfford, EXP_NAME, EXP_TYPES, isOffRoute, learnSkill, nodeBlockers, nodeLv, nodeState, nodeTeaser, nodeVisible, claimableNodes, recordValue, skillCost,
 } from '../engine/abilities.js';
 import { mainRoutes, routeCounts, routeLevel, routePerkText } from '../engine/perks.js';
-import { abilityEffects } from '../engine/abilityfx.js';
+import { openAbilities } from './abilities.js';
 import { currentBgm, playBgm, playSe } from './audio.js';
 import { isEn, tr } from '../i18n/index.js';
 
@@ -37,8 +36,7 @@ function levelText(s, sk) {
 export function openTree(s, onChange, { focus = null } = {}) {
   return new Promise((resolve) => {
     let selected = null;
-    let panel = null; // 'abilities' | 'red'
-    const conv = { from: null, to: null }; // 経験点の振り替え
+    let panel = null; // 'red'
     const view = { x: 0, y: 0, scale: window.innerWidth < 560 ? 0.62 : 0.85 };
 
     // ---- ワールド座標の範囲 ----
@@ -253,7 +251,6 @@ export function openTree(s, onChange, { focus = null } = {}) {
 
     function renderSheet() {
       clear(sheet);
-      if (panel === 'abilities') return renderAbilities();
       if (panel === 'red') return renderRed();
       if (!selected) return renderIdle();
       const sk = SKILL_MAP[selected];
@@ -330,67 +327,9 @@ export function openTree(s, onChange, { focus = null } = {}) {
           )
           : h('p', { class: 'sheet-note' }, '伸ばした方向で「目指すルート」が決まる。3個・6個で熟練度ボーナス、5個そろえると到達点が開く。'),
         h('div', { class: 'sheet-btns' },
-          h('button', { class: 'tree-btn sub', onclick: () => { panel = 'abilities'; renderSheet(); } }, '基礎能力'),
+          h('button', { class: 'tree-btn sub', onclick: async () => { await openAbilities(s, onChange); renderAll(); } }, '基礎能力'),
           h('button', { class: 'tree-btn sub', onclick: () => { panel = 'red'; renderSheet(); } }, `不調${s.skills.some((id) => SKILL_MAP[id]?.kind === 'red') ? ' !' : ''}`),
           h('button', { class: 'tree-btn sub', onclick: () => centerOn('src_home', true) }, '中心へ'),
-        ),
-      );
-    }
-
-    function renderAbilities() {
-      add(
-        h('div', { class: 'sheet-top' }, h('div', { class: 'sheet-name' }, '基礎能力'), h('button', { class: 'sheet-x', onclick: () => { panel = null; renderSheet(); } }, '×')),
-        ...ABILITIES.map((a) => {
-          const lv = s.abilities[a.id];
-          const cost = abilityCost(a.id, lv);
-          const ok = lv < ABILITY_MAX && canAfford(s, cost);
-          // いまの効果と、+5 したときの効果を並べる
-          const now = abilityEffects(s, a.id, lv);
-          const next = abilityEffects(s, a.id, Math.min(ABILITY_MAX, lv + 5));
-          const raise = (n) => {
-            const before = rankOf(s.abilities[a.id]);
-            if (!raiseAbility(s, a.id, n)) return;
-            playSe('levelup');
-            const after = rankOf(s.abilities[a.id]);
-            if (after !== before) rankUp(a.name, after);
-            changed();
-          };
-          return h('div', { class: 'ab-row' },
-            h('span', { class: `rank r${rankOf(lv)}` }, rankOf(lv)),
-            h('div', { class: 'ab-main' }, h('b', {}, `${a.name} ${lv}`), h('div', { class: 'bar' }, h('i', { style: { width: `${lv}%` } })), h('small', {}, a.desc),
-              h('div', { class: 'ab-fx' }, ...now.map((e, i) => h('span', {}, `${e.label} `, h('b', {}, e.value), lv < ABILITY_MAX && next[i].value !== e.value ? h('em', {}, ` → ${next[i].value}`) : null)))),
-            h('div', { class: 'ab-btns' },
-              h('button', { class: 'tree-btn mini', disabled: !ok, onclick: () => raise(1) }, '+1'),
-              h('button', { class: 'tree-btn mini', disabled: !ok, onclick: () => raise(5) }, '+5'),
-              h('small', { class: 'cost-row' }, ...costText(cost)),
-            ),
-          );
-        }),
-        convertBox(),
-      );
-    }
-
-    // 経験点の振り替え（×0.5）。多い種類から少ない種類へ
-    function convertBox() {
-      const most = [...EXP_TYPES].sort((a, b) => s.exp[b.id] - s.exp[a.id]);
-      if (!EXP_TYPES.some((e) => e.id === conv.from)) conv.from = most[0].id;
-      if (!EXP_TYPES.some((e) => e.id === conv.to) || conv.to === conv.from) conv.to = most[most.length - 1].id;
-      const seg = (key) => h('div', { class: 'seg cv-seg' }, ...EXP_TYPES.map((e) => h('button', { class: `btn small ${conv[key] === e.id ? 'on' : ''}`, disabled: key === 'to' && e.id === conv.from, onclick: () => { conv[key] = e.id; renderSheet(); } }, `${e.name} ${Math.floor(s.exp[e.id])}`)));
-      const go = (amount) => {
-        const got = convertExp(s, conv.from, conv.to, amount);
-        if (!got) return;
-        playSe('coin');
-        changed();
-      };
-      const have = Math.floor(s.exp[conv.from]);
-      return h('div', { class: 'convert' },
-        h('div', { class: 'sub' }, `経験点の振り替え（×${CONVERT_RATE}）`),
-        h('small', { class: 'note' }, '余った経験点を、別の種類に半分の値で移せる'),
-        h('small', {}, 'この経験点から'), seg('from'),
-        h('small', {}, 'この経験点へ'), seg('to'),
-        h('div', { class: 'cv-btns' },
-          ...[100, 500].map((n) => h('button', { class: 'tree-btn mini', disabled: have < n, onclick: () => go(n) }, `${n} → ${Math.floor(n * CONVERT_RATE)}`)),
-          h('button', { class: 'tree-btn mini', disabled: have < 2, onclick: () => go(have) }, `全部 ${have} → ${Math.floor(have * CONVERT_RATE)}`),
         ),
       );
     }
@@ -443,14 +382,6 @@ export function openTree(s, onChange, { focus = null } = {}) {
       }
       renderAll(fresh, burst);
       onChange?.();
-    }
-
-    // 基礎能力のランクが上がったとき、画面いっぱいにランクの文字を出す
-    function rankUp(name, rank) {
-      const el = h('div', { class: 'rank-up' }, h('small', {}, `${name} RANK UP`), h('b', { class: `r${rank}` }, rank));
-      root.append(el);
-      playSe('stageup');
-      setTimeout(() => el.remove(), 1500);
     }
 
     // 中心から光の輪が広がる

@@ -3,7 +3,7 @@ import { prologue } from './data/story.js';
 import { CAST } from './data/cast.js';
 import { productOf } from './data/products.js';
 import { availableCommands, availableNightCommands, COMMAND_MAP, commandPreview, GROUPS, performCommand, sickRisk, staminaCost } from './engine/commands.js';
-import { claimableNodes } from './engine/abilities.js';
+import { ABILITIES, claimableNodes, raiseAbility } from './engine/abilities.js';
 import { hasSkill, MOOD_MULT } from './engine/effects.js';
 import { finalResult } from './engine/ending.js';
 import { activeUnits, idleListing, listedUnits, overCapacity } from './engine/inventory.js';
@@ -24,7 +24,8 @@ import { endWeek, startWeek } from './engine/turn.js';
 import { checkTutorial, currentMission, treeOpen, tutorialDone } from './engine/tutorial.js';
 import { playBgm, playSe, setSound, soundOn } from './ui/audio.js';
 import { $, clear, h, wait, yenFmt } from './ui/dom.js';
-import { renderHud, renderParams, renderTicker, setPreview } from './ui/hud.js';
+import { renderHud, renderParams, renderTicker, setParamsOpen, setPreview } from './ui/hud.js';
+import { openAbilities } from './ui/abilities.js';
 import { confirmBox, openModal, toast } from './ui/modal.js';
 import { choose, hidePartner, holdRoom, isAuto, say, setAuto, setBackground, setClutter, setLogger, setMessage, setTextSpeed, showChris, showInfo } from './ui/stage.js';
 import { bizModal, menuModal } from './ui/status.js';
@@ -551,6 +552,15 @@ function treeBadge() {
   return n ? `${n}` : '';
 }
 
+// 能力強化のバッジ：いまの経験点で +5 以上上げられる能力の数（+1 だけだと、ほぼいつも付いてしまうので）
+function abilityBadge() {
+  const n = ABILITIES.filter((a) => {
+    const t = structuredClone({ exp: state.exp, abilities: state.abilities });
+    return raiseAbility(t, a.id, 5) >= 5;
+  }).length;
+  return n ? `${n}` : '';
+}
+
 // ステージ右側のボタン（在庫・スキルツリー・メニュー）。相場と経営はメニューの中
 function renderTabs() {
   const nav = clear($('#side-btns'));
@@ -598,6 +608,7 @@ function renderTabs() {
         onCompanions: () => after(companionsModal(state)),
       }),
     },
+    { id: 'ab', label: '能力強化', open: () => openAbilities(state, refresh), lock: !treeOpen(state) && '最初の売上のあとに開ける', badge: abilityBadge() },
     { id: 'log', label: 'ログ', open: () => logModal(state) },
   ];
   const pointSide = tutorialGuide()?.side;
@@ -971,5 +982,11 @@ async function shareResult(r) {
 
 initFontScale();
 initPixelArt(); // ドット絵を端末の画素の整数倍で出す
+// 右のパネルの基礎能力を押したら、能力強化の画面を開く
+setParamsOpen(() => {
+  if (busy || !state) return;
+  if (!treeOpen(state)) return toast('最初の売上のあとに開ける', 'bad');
+  openAbilities(state, refresh).then(() => refresh());
+});
 await initLang(); // 英語版なら訳を読みこんでから
 showTitle();
