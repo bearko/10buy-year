@@ -1,6 +1,7 @@
 // ステージ（背景・立ち絵）とメッセージウィンドウ
 import { CAST, portraitOf } from '../data/cast.js';
 import { fitPixel, pixelSrc } from './pixel.js';
+import { tierOf } from './battle.js';
 import { productImage, productOf } from '../data/products.js';
 import { marked, typeTarget } from './markup.js';
 import { $, clear, h } from './dom.js';
@@ -283,7 +284,7 @@ export function choose(options, prompt) {
             log({ who: 'chris', text: `▶ ${o.label}`, kind: 'choice' });
             resolve(i);
           },
-        }, h('span', {}, o.label), o.sub ? h('small', {}, o.sub) : null),
+        }, h('span', {}, o.label), o.sub ? h('small', {}, o.sub) : null, typeof o.chance === 'number' ? h('small', { class: `choice-rate t-${tierOf(o.chance)}` }, `成功率 ${Math.round(o.chance * 100)}%`) : null),
       );
     });
   });

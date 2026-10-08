@@ -10,7 +10,7 @@ import { resolveLotteries } from './commands.js';
 import { checkQuests, questWeek } from './quests.js';
 import { lotteryOffer } from './offers.js';
 import { resolveSales } from './sales.js';
-import { negotiationSteps, troubleSteps } from '../data/troubles.js';
+import { NEGOTIABLE, negotiationSteps, talkStart, troubleSteps } from '../data/troubles.js';
 import { decaySaturation, rivalWeek } from './rivals.js';
 import { regimeWeek } from './regimes.js';
 import { deptWeek } from './collection.js';
@@ -137,8 +137,15 @@ export function endWeek(s) {
   });
   if (sales.sold.length) steps.unshift(sfx('sale'));
   // 値下げ交渉と取引トラブルは「交渉バトル」として見せる（ui/battle.js）
-  for (const n of sales.negotiations) steps.push({ t: 'battle', on: true, enemy: 'nego', title: '値下げ交渉' }, ...negotiationSteps(s, n), { t: 'battle', on: false });
-  for (const t of sales.troubles) steps.push({ t: 'battle', on: true, enemy: TROUBLE_FOE[t.kind] || 'claimer', title: TROUBLE_TITLE[t.kind] || '取引トラブル' }, ...troubleSteps(s, t), { t: 'battle', on: false });
+  // 交渉判定のあるものだけ。上に交渉成功率のゲージを出し、初期値は能力・スキルで底上げされた分
+  for (const n of sales.negotiations) steps.push({ t: 'battle', on: true, enemy: 'nego', title: '値下げ交渉', start: talkStart(s, 'nego') }, ...negotiationSteps(s, n), { t: 'battle', on: false });
+  for (const t of sales.troubles) {
+    if (!NEGOTIABLE.has(t.kind)) {
+      steps.push(...troubleSteps(s, t));
+      continue;
+    }
+    steps.push({ t: 'battle', on: true, enemy: TROUBLE_FOE[t.kind] || 'claimer', title: TROUBLE_TITLE[t.kind] || '取引トラブル', start: talkStart(s, t.kind) }, ...troubleSteps(s, t), { t: 'battle', on: false });
+  }
 
   const shop = shopWeek(s);
   if (shop) steps.push(info('自分の店', [`来客 ${shop.visitors}人・${shop.sold}点売れた（${yen(shop.revenue)}）`, shop.bought ? `買取カウンターで${shop.bought}点を買い取った` : ''], shop.sold ? 'good' : 'normal'));
