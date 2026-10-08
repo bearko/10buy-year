@@ -114,7 +114,7 @@ function alignStage(img, devW, devH, canPad) {
   img.style.translate = `${Math.round(b.left * r) / r - s.left}px ${Math.round(b.top * r) / r - s.top}px`;
 }
 
-function fitAll(root = document) {
+export function fitAll(root = document) {
   for (const img of root.querySelectorAll ? root.querySelectorAll('img') : []) if (img.complete) fitPixel(img);
 }
 
