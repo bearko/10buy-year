@@ -1,13 +1,14 @@
 // 経営（KPI）・メニュー画面
 import { productOf } from '../data/products.js';
-import { weekLabel } from '../engine/calendar.js';
+import { TOTAL_WEEKS, TOTAL_YEARS, weekLabel, yearOf } from '../engine/calendar.js';
 import { debtFreeSteps, difficultyOf, minPayment, repay } from '../engine/finance.js';
 import { agingChart, profitChart } from './charts.js';
 import { styleLabel, styleOf } from '../engine/style.js';
 import { computeKpis, formatKpi, KPI_DEFS, kpiLevel } from '../engine/kpi.js';
 import { STAGES, stageOf, stageProgress } from '../engine/career.js';
 import { grossProfit } from '../engine/state.js';
-import { playSe, setSound, soundOn } from './audio.js';
+import { buzz, canVibrate, playSe, setSound, setVibrate, setVolume, soundOn, vibrateEnabled, volumeOf } from './audio.js';
+import { oneTap, setOneTap } from './prefs.js';
 import { FONT_SCALES, fontScale, setFontScale } from './a11y.js';
 import { getLang, setLang } from '../i18n/index.js';
 import { h, signYen, yenFmt } from './dom.js';
@@ -40,6 +41,7 @@ export function bizModal(s, onChange, playSteps) {
     const kLast = last ? computeKpis(s, last) : null;
 
     body.append(
+      roadBar(s),
       h('div', { class: 'stage-box' },
         h('div', { class: 'stage-steps' }, ...STAGES.map((x) => h('span', { class: `st ${x.id === s.stage ? 'on' : x.id < s.stage ? 'done' : ''}`, 'aria-current': x.id === s.stage ? 'step' : null }, x.id < s.stage ? `✓${x.id}` : x.id))),
         h('div', { class: 'name' }, `ステージ${st.id}：${st.name}`, h('small', {}, `（目安 ${st.period}）`)),
@@ -132,11 +134,25 @@ export function bizModal(s, onChange, playSteps) {
   }).closed;
 }
 
+// 10年の道のり：10年の帯に、各ステージに上がった点と、いまの位置
+function roadBar(s) {
+  const pct = (w) => `${Math.min(100, (w / TOTAL_WEEKS) * 100)}%`;
+  const ups = Object.entries(s.stageWeeks || {}).filter(([to]) => Number(to) > 1);
+  return h('div', { class: 'road' },
+    h('div', { class: 'road-h' }, h('b', {}, '10年の道のり'), h('small', {}, `${yearOf(s.week)}年目・残り${TOTAL_WEEKS - s.week}週`)),
+    h('div', { class: 'road-track' },
+      h('i', { class: 'road-fill', style: { width: pct(s.week) } }),
+      ...Array.from({ length: TOTAL_YEARS - 1 }, (_, i) => h('span', { class: 'road-tick', style: { left: `${((i + 1) / TOTAL_YEARS) * 100}%` } })),
+      ...ups.map(([to, w]) => h('span', { class: 'road-st', style: { left: pct(w) }, title: `ステージ${to}：${weekLabel(w)}` }, to)),
+      h('span', { class: 'road-me', style: { left: pct(s.week) } }, '▼')),
+    h('div', { class: 'road-years' }, ...Array.from({ length: TOTAL_YEARS }, (_, i) => h('small', {}, i + 1))));
+}
+
 function row(label, value, cls = '') {
   return h('div', { class: 'lg-row' }, h('span', {}, label), h('b', { class: cls }, value));
 }
 
-export function menuModal({ s, onTitle, onSpeed, speed, onRestart, onChange, onMarket, onBiz, onShop, onDeal, onRivals, onCollection, onCareers, onLife, onCrypto, onMap, onCompanions, marketLock, newsCount = 0, fresh = () => false, seen = () => {} }) {
+export function menuModal({ s, onTitle, onSpeed, speed, onRestart, onChange, onMarket, onBiz, onShop, onDeal, onRivals, onCollection, onCareers, onLife, onCrypto, onMap, onCompanions, onGlossary, onGuide, marketLock, newsCount = 0, fresh = () => false, seen = () => {} }) {
   // 途中で開く項目は、開くまで出さない。開いたら NEW（押したら既読）
   const item = (id, show, label, go, extra = null) => (show
     ? h('button', { class: `btn big ${id}-btn ${fresh(id) ? 'fresh' : ''}`, onclick: () => { seen(id); api.close(); go?.(); } }, label, fresh(id) ? h('span', { class: 'new-tag' }, 'NEW') : extra)
@@ -156,6 +172,11 @@ export function menuModal({ s, onTitle, onSpeed, speed, onRestart, onChange, onM
         h('div', { class: 'menu-h' }, '画面と音'),
         h('div', { class: 'menu-list' },
           h('button', { class: 'btn', onclick: () => { setSound(!soundOn()); api.refresh(); } }, `サウンド: ${soundOn() ? 'ON' : 'OFF'}`),
+          // BGMと効果音の音量を別々に
+          ...[['bgm', 'BGM'], ['se', '効果音']].map(([k, label]) => h('div', { class: 'seg' }, h('span', {}, `${label}の音量 `),
+            ...[['小', 0.35], ['中', 0.7], ['大', 1]].map(([l, v]) => h('button', { class: `btn small ${Math.abs(volumeOf(k) - v) < 0.01 ? 'on' : ''}`, onclick: () => { setVolume(k, v); if (k === 'se') playSe('coin'); api.refresh(); } }, l)))),
+          canVibrate() ? h('button', { class: 'btn', onclick: () => { setVibrate(!vibrateEnabled()); if (vibrateEnabled()) buzz(30); api.refresh(); } }, `振動: ${vibrateEnabled() ? 'ON' : 'OFF'}`) : null,
+          h('button', { class: 'btn', onclick: () => { setOneTap(!oneTap()); api.refresh(); } }, `行動を1タップで決める: ${oneTap() ? 'ON（長押しで予告だけ見る）' : 'OFF'}`),
           h('button', { class: 'btn', 'data-no-tr': '', onclick: () => { if (window.confirm(getLang() === 'en' ? 'Switch to Japanese? (The game reloads. Your save is kept.)' : '英語に切りかえますか？（ゲームを読みこみ直します。セーブはそのまま）')) setLang(getLang() === 'en' ? 'ja' : 'en'); } }, getLang() === 'en' ? '日本語 / Japanese' : 'English / 英語'),
           h('div', { class: 'seg' }, h('span', {}, '文字の大きさ '), ...FONT_SCALES.map(([label, v]) => h('button', { class: `btn small ${fontScale() === v ? 'on' : ''}`, 'aria-pressed': String(fontScale() === v), onclick: () => { setFontScale(v); api.refresh(); } }, label))),
           h('div', { class: 'seg' }, h('span', {}, '文字送り '), ...[['はやい', 8], ['ふつう', 22], ['おそい', 40], ['一瞬', 0]].map(([label, ms]) => h('button', { class: `btn small ${speed() === ms ? 'on' : ''}`, onclick: () => { onSpeed(ms); api.refresh(); } }, label))),
@@ -192,6 +213,7 @@ export function menuModal({ s, onTitle, onSpeed, speed, onRestart, onChange, onM
         item('life', s && s.stage >= 2, '暮らし', onLife),
         item('collection', s && (s.stage >= 3 || s.collection?.length), 'コレクション', onCollection),
         item('map', s && Object.keys(s.storeMap || {}).length, '店の地図', onMap)),
+      ...group('手引き', big('用語集', onGlossary), big('遊び方', onGuide)),
       h('button', { class: 'btn menu-settings', onclick: () => { view = 'settings'; api.refresh(); } }, '⚙ 設定（音・文字・取引の対応・データ）'),
     );
   }).closed;
