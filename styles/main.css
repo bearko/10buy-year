@@ -1450,18 +1450,31 @@ body.partner-on #side { display: none !important; }
 .comp-reward.got { color: #ffd76a; }
 /* 交渉バトル（ui/battle.js）。カットインはマイクリのパッシブスキル演出（Style/Cutins/passive_skill_cutin.css）に倣う */
 .bt { position: absolute; inset: 0; z-index: 5; pointer-events: none; }
-.bt-hud { position: absolute; left: 8px; right: 8px; top: 30px; display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-radius: 8px; background: #000a; color: #fff; font-size: calc(12px * var(--fs, 1)); }
-.bt-hud b { font: 700 16px/1 'Orbitron', sans-serif; color: #ffd76a; }
-.bt-me { color: #8fd3ff; }
-.bt-foe { flex: 1; display: flex; flex-direction: column; color: #ffb3b3; text-align: right; }
-.bt-foe small { font-size: calc(9px * var(--fs, 1)); color: #fff9; }
-.bt-gauge { height: 8px; margin-top: 2px; border-radius: 4px; background: #401; overflow: hidden; }
-.bt-gauge i { display: block; width: 100%; height: 100%; margin-left: auto; background: linear-gradient(90deg, #ff6b6b, #ffb36b); transition: width 0.5s ease-out; }
 /* クリス（72×140）は縮めず、等倍のまま胸から上を切り出す */
 .bt-fx { position: absolute; right: 8%; bottom: 18%; width: 100px; height: 100px; background: url('../assets/effects/hit.webp') 0 0 no-repeat; transform: scale(1.6); image-rendering: pixelated; }
-.bt-hud { animation: bt-in 0.2s ease-out; }
+.bt-hud { position: absolute; left: 8px; right: 8px; top: 30px; display: flex; align-items: center; gap: 10px; padding: 5px 10px; border-radius: 10px; background: #000b; color: #fff; font-size: calc(12px * var(--fs, 1)); animation: bt-in 0.2s ease-out; }
+.bt-names { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.bt-names > b { font: 700 14px/1 'Orbitron', sans-serif; color: #ffd76a; }
+.bt-me { color: #8fd3ff; }
+.bt-foe { min-width: 0; color: #ffb3b3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* 交渉成功率の円ゲージ。25/50/75% を境に 赤→オレンジ→黄→緑 */
+.bt { --rate: #ff5b5b; }
+.bt[data-tier="o"] { --rate: #ff9f40; }
+.bt[data-tier="y"] { --rate: #ffd23f; }
+.bt[data-tier="g"] { --rate: #3ddc84; }
+.bt-rate { flex: none; display: flex; align-items: center; gap: 6px; }
+.bt-rate > div { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.05; }
+.bt-rate small { font-size: calc(9px * var(--fs, 1)); color: #fffa; }
+.bt-pct { min-width: 3.2em; font: 700 calc(20px * var(--fs, 1))/1 'Orbitron', sans-serif; color: var(--rate); text-shadow: 0 0 8px color-mix(in srgb, var(--rate) 50%, transparent); }
+.bt-ring { width: 40px; height: 40px; }
+.bt-ring-bg { fill: none; stroke: #ffffff22; stroke-width: 4; }
+.bt-ring-fill { fill: none; stroke: var(--rate); stroke-width: 4; stroke-linecap: round; filter: drop-shadow(0 0 3px var(--rate)); }
+.bt.fixed .bt-ring { animation: bt-ring-pop 0.35s ease-out; }
+.bt.off .bt-rate { opacity: 0.35; }
+@keyframes bt-ring-pop { 50% { transform: scale(1.18); } }
+.choice small.choice-rate { font-weight: bold; }
+.choice-rate.t-r { color: #ff7b7b; } .choice-rate.t-o { color: #ffaf5f; } .choice-rate.t-y { color: #ffd23f; } .choice-rate.t-g { color: #3ddc84; }
 @keyframes bt-in { from { opacity: 0; transform: translateY(-6px); } }
-.bt-foe > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* スキル名：クリスの頭上に出す */
 .bt-skill { position: absolute; left: 30%; top: 70px; z-index: 5; display: flex; flex-direction: column; align-items: center; max-width: 60%; padding: 3px 10px 4px; border: 1px solid #8fd3ff; border-radius: 8px; background: #0b1d33e6; color: #fff; transform: translateX(-50%); white-space: nowrap; pointer-events: none; animation: bt-skill-in 0.18s ease-out; }
 .bt-skill::after { content: ''; position: absolute; left: 50%; bottom: -6px; border: 6px solid transparent; border-bottom: 0; border-top-color: #8fd3ff; transform: translateX(-50%); }

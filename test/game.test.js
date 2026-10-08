@@ -1651,6 +1651,27 @@ test('予約・輸送中でまだ届いていない品は、部屋の置き場�
   assert.equal(overCapacity(s), true);
 });
 
+import { talkBonus, talkChance, talkStart, troubleSteps, TALK_MAX } from '../src/data/troubles.js';
+test('交渉バトル：成功率ゲージの初期値は能力・スキルの底上げ分、選んだ対応に最終的な成功率がつく', () => {
+  const s = createGame(3);
+  s.abilities.talk = 40;
+  assert.equal(talkStart(s, 'claimer'), Math.min(TALK_MAX, talkBonus(s)));
+  assert.ok(Math.abs(talkBonus(s) - 0.2) < 1e-9);
+  const sale = { id: 1, uid: 1, pid: 'boots', price: 10000, platform: 'merc', delayed: false };
+  const ch = troubleSteps(s, { kind: 'claimer', sale }).find((x) => x.t === 'choice');
+  const explain = ch.options.find((o) => o.key === 'explain');
+  assert.ok(Math.abs(explain.chance - talkChance(s, 0.3)) < 1e-9);
+  assert.ok(explain.chance > talkStart(s, 'claimer')); // スキル発動でゲージが上がる
+  assert.equal(ch.options.find((o) => o.key === 'half').chance, undefined); // 交渉判定のない対応
+  // 対策スキルで勝ちが決まっているときは 100%
+  s.skills.push('serial_memo');
+  assert.equal(talkStart(s, 'swap'), 1);
+  // 上限は95%
+  s.abilities.talk = 100;
+  s.skills.push('tonchi');
+  assert.equal(talkChance(s, 0.3), TALK_MAX);
+});
+
 test('コード・CSS・HTMLに書いたアセットのパスがすべて存在する', () => {
   const files = ['index.html', 'tools/og.html', 'styles/main.css'];
   const walk = (dir) => {

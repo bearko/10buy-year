@@ -128,7 +128,7 @@ async function playSteps(steps) {
         await showInfo(st.title, st.lines, st.tone);
         break;
       case 'battle':
-        if (st.on && !isAuto() && !routineRun) await battleStart(st.enemy, st.title);
+        if (st.on && !isAuto() && !routineRun) await battleStart(st.enemy, st.title, st.start);
         else battleEnd();
         break;
       case 'gain':
@@ -139,7 +139,7 @@ async function playSteps(steps) {
         const picked = autoPick(state, st, isAuto() || !!routineRun);
         if (picked >= 0) {
           if (routineRun) routineRun.week.deals = (routineRun.week.deals || 0) + 1;
-          if (inBattle()) await battleSkill(st.options[picked].label);
+          if (inBattle()) await battleSkill(st.options[picked]);
           queue.unshift({ t: 'talk', who: 'narr', text: `（決めておいた対応：${st.options[picked].label}）` }, ...(st.options[picked].run() || []));
           break;
         }
@@ -147,7 +147,7 @@ async function playSteps(steps) {
         stopAuto(); // 選択肢はプレイヤーが決める
         await endRoutine();
         const idx = await choose(st.options, st.prompt);
-        if (inBattle()) await battleSkill(st.options[idx].label); // 選んだ対応を「スキル」として発動
+        if (inBattle()) await battleSkill(st.options[idx]); // 選んだ対応を「スキル」として発動（成功率のゲージが貯まる）
         queue.unshift(...(st.options[idx].run() || []));
         break;
       }

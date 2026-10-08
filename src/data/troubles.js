@@ -9,10 +9,22 @@ import { choice, gain, info, narr, sfx, talk } from '../engine/steps.js';
 // 「取引の対応」で答えを決めておける選択肢（engine/dealpolicy.js）
 const tagged = (policy, options, ctx) => ({ ...choice(options), policy, ctx });
 
-// 交渉判定。交渉力と「このはし渡るべからず」で成功率が上がる。
+// 交渉判定。交渉力と「このはし渡るべからず」・ルートの熟練度で成功率が上がる。
+// talkBonus：選んだ対応に関係なく上乗せされる分（交渉バトルの成功率ゲージの初期値）
+export const TALK_MAX = 0.95;
+export const talkBonus = (s) => s.abilities.talk / 200 + (hasSkill(s, 'tonchi') ? 0.3 : 0) + perk(s, 'talkCheck');
+// base：対応ごとの難しさ。最終的な成功率（上限95%）
+export const talkChance = (s, base = 0.25) => Math.min(TALK_MAX, base + talkBonus(s));
 export function talkCheck(s, base = 0.25) {
-  const p = base + s.abilities.talk / 200 + (hasSkill(s, 'tonchi') ? 0.3 : 0) + perk(s, 'talkCheck');
-  return chance(s, Math.min(0.95, p));
+  return chance(s, talkChance(s, base));
+}
+
+// 交渉バトルにする取引トラブル（交渉判定のある対応を選べるもの）
+export const NEGOTIABLE = new Set(['swap', 'claimer']);
+// 交渉バトルの成功率ゲージの初期値。対策スキルで勝ちが決まっているときは 100%
+export function talkStart(s, kind) {
+  if (kind === 'swap' && hasSkill(s, 'serial_memo')) return 1;
+  return Math.min(TALK_MAX, talkBonus(s));
 }
 
 export function troubleSteps(s, trouble) {
@@ -60,6 +72,7 @@ export function troubleSteps(s, trouble) {
             key: 'fight',
             label: '事務局に相談して争う',
             sub: '交渉判定',
+            chance: talkChance(s, 0.2),
             run: () => {
               if (talkCheck(s, 0.2)) {
                 addExp(s, { social: 10, mind: 6 });
@@ -83,6 +96,7 @@ export function troubleSteps(s, trouble) {
             key: 'explain',
             label: '誠実に説明する',
             sub: '交渉判定',
+            chance: talkChance(s, sale.delayed ? 0.1 : 0.3),
             run: () => {
               if (talkCheck(s, sale.delayed ? 0.1 : 0.3)) {
                 addExp(s, { social: 12 });
@@ -281,6 +295,7 @@ export function negotiationSteps(s, nego) {
         key: 'firm',
         label: '「値下げは考えていません」',
         sub: '交渉判定',
+        chance: talkChance(s, 0.05),
         run: () => {
           addExp(s, { social: 4 });
           if (talkCheck(s, 0.05)) return [talk('nego', '……じゃあその値段で買います！'), sfx('sale'), info('強気が通った', [`「${name}」が${yen(nego.price)}で売れた`], 'good'), ...sell(nego.price)];
