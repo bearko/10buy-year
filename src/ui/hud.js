@@ -174,7 +174,7 @@ function timelineModal(s) {
 }
 
 // ステージ右側のパネル。基礎能力（ふだん）と経験点を切り替えられる。
-// 経験点：予告中は増える量、獲得時は光らせる（獲得の演出のあいだは、基礎能力の表示でも経験点を出す）
+// 経験点：予告中は増える量、獲得時は光らせる（予告と獲得の演出のあいだは、基礎能力の表示でも経験点を出す）
 const PARAMS_KEY = '10buy-year:params';
 let paramsMode = 'ab';
 try {
@@ -191,7 +191,9 @@ export function setParamsOpen(fn) {
 
 export function renderParams(s, { gains = null } = {}) {
   const el = clear($('#params'));
-  const mode = gains ? 'exp' : paramsMode;
+  // 行動を選んで予告しているあいだも、増える経験点が見えるように経験点の表示にする（選んでいる表示は変えない）
+  const previewing = Object.values(preview?.exp || {}).some(Boolean);
+  const mode = gains || previewing ? 'exp' : paramsMode;
   const setMode = (m) => {
     paramsMode = m;
     try {

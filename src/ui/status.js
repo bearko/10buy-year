@@ -162,7 +162,7 @@ export function menuModal({ s, onTitle, onSpeed, speed, onRestart, onChange, onM
         s?.skills.includes('out_buy')
           ? h('button', { class: 'btn', onclick: () => { s.settings.autoBuy = !s.settings.autoBuy; api.refresh(); onChange?.(); } }, `外注の自動仕入れ: ${s.settings.autoBuy ? 'ON' : 'OFF'}`)
           : null,
-        h('p', { class: 'note' }, 'ゲームは毎週のはじめに自動でセーブされる。'),
+        h('p', { class: 'note' }, 'ゲームは行動が終わるたびと、アプリを切り替えたときに自動でセーブされる。'),
         h('button', { class: 'btn', onclick: () => { api.close(); onTitle(); } }, 'タイトルへ戻る'),
         h('button', { class: 'btn danger', onclick: () => { if (window.confirm('セーブデータを消して最初からやり直しますか？')) { api.close(); onRestart(); } } }, '最初からやり直す'),
       ),
