@@ -1,5 +1,6 @@
 // ステージ（背景・立ち絵）とメッセージウィンドウ
 import { CAST, portraitOf } from '../data/cast.js';
+import { fitPixel, pixelSrc } from './pixel.js';
 import { productImage, productOf } from '../data/products.js';
 import { marked, typeTarget } from './markup.js';
 import { $, clear, h } from './dom.js';
@@ -26,26 +27,8 @@ export function setTextSpeed(ms) {
   textSpeed = ms;
 }
 
-// ドット絵（64×64など）は、元の大きさの整数倍で描く。CSS の割合で決まる高さに一番近い倍率へそろえ、
-// ニアレストネイバーで拡大しても点の大きさが不ぞろいにならないようにする
-export function snapPixels(el) {
-  const n = el.naturalHeight;
-  if (!n || el.hidden) return;
-  const key = `${n}:${el.className}:${el.parentElement?.clientHeight}`;
-  if (el.dataset.snap === key) return;
-  el.style.height = '';
-  el.style.width = '';
-  const want = el.getBoundingClientRect().height;
-  if (want <= 0) return;
-  const k = Math.max(1, Math.floor(want / n + 0.2));
-  el.style.height = `${n * k}px`;
-  el.style.width = `${el.naturalWidth * k}px`;
-  el.dataset.snap = key;
-}
-document.addEventListener('load', (e) => {
-  if (e.target instanceof HTMLImageElement && e.target.classList.contains('sprite')) snapPixels(e.target);
-}, true);
-window.addEventListener('resize', () => document.querySelectorAll('img.sprite').forEach((el) => { delete el.dataset.snap; snapPixels(el); }));
+// ドット絵を、1ドットが端末の画素の整数倍になる大きさで出す（ui/pixel.js。読みこみ・画面の大きさの変化にも追従する）
+export const snapPixels = (el) => fitPixel(el);
 
 let bgName = null;
 export function setBackground(name) {
@@ -188,7 +171,7 @@ export function showPartner(who, pose) {
     return;
   }
   const c = CAST[who];
-  el.src = src;
+  el.src = pixelSrc(src);
   el.className = `sprite ${c.hero ? 'hero' : c.enemy ? 'enemy' : `orig ${who}`}`;
   el.hidden = false;
   if (el.complete) snapPixels(el);
