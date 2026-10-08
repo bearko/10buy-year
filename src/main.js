@@ -36,6 +36,7 @@ import { logModal, pushLog } from './ui/log.js';
 import { offersModal } from './ui/shop.js';
 import { initFontScale } from './ui/a11y.js';
 import { initPixelArt } from './ui/pixel.js';
+import { initLayout } from './ui/layout.js';
 import { initBackNav } from './ui/backnav.js';
 import { getLang, initLang, setLang, tr } from './i18n/index.js';
 import { listNowPrompt } from './ui/listnow.js';
@@ -55,6 +56,7 @@ import { battleEnd, battleResult, battleSkill, battleStart, inBattle } from './u
 import { monthCard } from './ui/monthcard.js';
 import { resumeCard } from './ui/resume.js';
 import { setNight, setSeason, weekFlip } from './ui/calendar.js';
+import { decadeChart, highlightList, resultImage, revealSequence } from './ui/finale.js';
 import { quoteModal, seriModal } from './ui/pro.js';
 import { kujiModal } from './ui/kuji.js';
 import { autoPick } from './engine/dealpolicy.js';
@@ -1013,26 +1015,31 @@ function showEnding() {
     pushMentor(mentorRecord(state, r));
   }
   const newAch = pushRecords(checkAchievements(state, r), r.ending.id);
+  const rec = loadRecords();
+  const ends = allEndings();
+  const seenEnds = ends.filter((e) => rec.endings?.[e.id]).length;
   const el = clear($('#ending-screen'));
   playBgm('land');
   playSe(['arrested', 'bankrupt', 'vanished'].includes(r.ending.id) ? 'lose' : 'win');
-  el.append(
-    h('div', { class: 'ending' },
-      h('p', { class: 'kicker' }, '最終査定'),
-      h('h2', {}, r.ending.title),
-      h('img', { class: 'sprite big', src: CAST.chris.poses[r.ending.pose] || CAST.chris.poses.idle, alt: 'クリス' }),
-      ...r.ending.lines.map((l) => h('p', { class: 'ending-line' }, l)),
-      h('div', { class: 'result' },
-        h('div', { class: `rank huge r${r.rank}` }, r.rank),
-        h('div', {},
-          h('div', { class: 'rank-label' }, r.rankLabel),
-          h('div', {}, `称号：${r.title}`),
-          h('div', {}, r.stage),
-        ),
+  const chris = CAST.chris.poses[r.ending.pose] || CAST.chris.poses.idle;
+  const hl = highlightList(state);
+  const root = h('div', { class: 'ending' },
+    h('p', { class: 'kicker rv', 'data-hold': 300 }, '最終査定'),
+    h('h2', { class: 'rv', 'data-hold': 500 }, r.ending.title),
+    h('img', { class: 'sprite big rv', src: chris, alt: 'クリス' }),
+    ...r.ending.lines.map((l) => h('p', { class: 'ending-line rv', 'data-hold': 900 }, l)),
+    h('div', { class: 'end-worth rv', 'data-hold': 300 }, h('small', {}, '純資産（スコア）'), h('b', { 'data-count': Math.round(r.netWorth) }, yenFmt(0))),
+    h('div', { class: 'result' },
+      h('div', { class: `rank huge r${r.rank} rv rv-stamp`, 'data-hold': 700 }, r.rank),
+      h('div', { class: 'rv', 'data-hold': 400 },
+        h('div', { class: 'rank-label' }, r.rankLabel),
+        h('div', {}, `称号：${r.title}`),
+        h('div', {}, r.stage),
       ),
+    ),
+    h('div', { class: 'rv rv-rest' },
       h('div', { class: 'ledger-grid' },
         r.vision ? row('志', `${r.vision.name}（達成 ${r.vision.done}/3）`) : null,
-        row('純資産（スコア）', yenFmt(r.netWorth)),
         row('残った借金', yenFmt(r.debt)),
         row('累計売上', yenFmt(r.revenue)),
         row('粗利益', yenFmt(r.profit)),
@@ -1040,20 +1047,63 @@ function showEnding() {
         row('取引トラブル', `${r.troubles}件`),
         row('定価で確保した品薄商品', `${r.scarceBought}個`),
       ),
+      decadeChart(state.monthly || []),
+      hl ? h('div', { class: 'sub' }, '10年の名場面') : null,
+      hl,
       newAch.length ? h('div', { class: 'ach-new' }, h('b', {}, '実績を解除'), ...newAch.map((id) => { const a = ACHIEVEMENTS.find((x) => x.id === id); return h('div', {}, `${a.name}（${a.desc}）`); })) : null,
       newCaps.length ? h('p', { class: 'note' }, `次の周に引き継げる到達点が増えた：${newCaps.map((id) => SKILL_MAP[id].name).join('、')}`) : null,
       h('p', { class: 'note' }, r.scarceBought ? `あなたが確保した${r.scarceBought}個の品薄商品。その向こうには、定価で買えなかった誰かがいたかもしれないし、近くの店で買えずにあなたから買えて喜んだ誰かもいたかもしれない。` : '品薄の限定品には手を出さず、価格差で稼ぎきった10年だった。'),
       state.weekly ? submitBox({ week: state.weekly, netWorth: Math.round(r.netWorth), revenue: Math.round(r.revenue), endingId: r.ending.id, title: r.title, stage: r.stage }) : null,
       h('div', { class: 'sub' }, 'この端末のランキング'),
       ...ranking.slice(0, 5).map((x, i) => h('div', { class: 'ledger-row' }, h('small', {}, `${i + 1}位`), h('span', {}, `${x.ending}／${x.title}`), h('b', {}, yenFmt(x.netWorth)))),
+      h('p', { class: 'end-count' }, `エンディング ${seenEnds}/${ends.length}`, seenEnds < ends.length ? h('small', {}, `（まだ見ていないエンディングが${ends.length - seenEnds}つ）`) : h('small', {}, '（すべて見た！）')),
       h('div', { class: 'title-buttons' },
-        h('button', { class: 'btn primary big', onclick: () => window.location.reload() }, 'タイトルへ'),
-        h('button', { class: 'btn', onclick: () => shareResult(r) }, 'シェアする'),
+        h('button', { class: 'btn primary big', onclick: () => playAgain() }, 'もう一度はじめる'),
+        h('button', { class: 'btn', onclick: () => shareResult(r, chris) }, 'シェアする'),
+        h('button', { class: 'btn', onclick: () => saveResultImage(r, chris) }, '結果を画像で保存'),
         h('button', { class: 'btn', onclick: () => copyResult(r) }, '結果をコピー'),
+        h('button', { class: 'btn', onclick: () => window.location.reload() }, 'タイトルへ'),
       ),
     ),
   );
+  el.append(root);
   showScreen('ending-screen');
+  revealSequence(root);
+}
+
+// 「もう一度はじめる」：読みこみ直してから、はじめからの流れへ（前の周の状態を残さない）
+const AGAIN_KEY = '10buy-year:again';
+function playAgain() {
+  try {
+    window.sessionStorage.setItem(AGAIN_KEY, '1');
+  } catch {
+    /* noop */
+  }
+  window.location.reload();
+}
+function takeAgain() {
+  try {
+    const on = window.sessionStorage.getItem(AGAIN_KEY) === '1';
+    window.sessionStorage.removeItem(AGAIN_KEY);
+    return on;
+  } catch {
+    return false;
+  }
+}
+
+async function resultFile(r, chris) {
+  const blob = await resultImage(r, state, { url: GAME_URL, chris });
+  return blob ? new File([blob], '10buy-year-result.png', { type: 'image/png' }) : null;
+}
+
+async function saveResultImage(r, chris) {
+  const file = await resultFile(r, chris);
+  if (!file) return toast('画像を作れなかった', 'bad');
+  const a = h('a', { href: URL.createObjectURL(file), download: file.name });
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 }
 
 function row(label, value) {
@@ -1072,11 +1122,13 @@ function copyResult(r) {
 }
 
 // スマホは端末のシェア画面、PCはXの投稿画面を開く
-async function shareResult(r) {
+async function shareResult(r, chris) {
   const text = `${resultText(r)}\n#10buyyear`;
   if (navigator.share) {
     try {
-      await navigator.share({ title: '10 buy year！', text, url: GAME_URL });
+      const file = navigator.canShare ? await resultFile(r, chris).catch(() => null) : null;
+      const files = file && navigator.canShare({ files: [file] }) ? [file] : undefined;
+      await navigator.share({ title: '10 buy year！', text, url: GAME_URL, files });
       return;
     } catch (e) {
       if (e?.name === 'AbortError') return;
@@ -1087,6 +1139,7 @@ async function shareResult(r) {
 
 initFontScale();
 initPixelArt(); // ドット絵を端末の画素の整数倍で出す
+initLayout(); // ステージの高さを、画面の高さと行動カードの段数に合わせる
 // 右のパネルの基礎能力を押したら、能力強化の画面を開く
 setParamsOpen(() => {
   if (busy || !state) return;
@@ -1095,3 +1148,4 @@ setParamsOpen(() => {
 });
 await initLang(); // 英語版なら訳を読みこんでから
 showTitle();
+if (takeAgain()) newGame();

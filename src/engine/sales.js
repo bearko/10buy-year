@@ -182,7 +182,7 @@ export function finalizeSale(s, sale, out) {
   if (product.used && !u.home) st.usedSold = (st.usedSold || 0) + 1;
   if (!u.home) {
     st.purchasedSold++;
-    if (!st.firstFlip) st.firstFlip = { pid: sale.pid, price: sale.price, cost: u.cost, platform: sale.platform };
+    if (!st.firstFlip) st.firstFlip = { pid: sale.pid, price: sale.price, cost: u.cost, platform: sale.platform, week: s.week };
   }
   if (!st.bestSale || sale.profit > st.bestSale.profit) st.bestSale = { pid: sale.pid, profit: sale.profit, price: sale.price, week: s.week };
   if (product.alcohol) st.alcoholSold++;

@@ -103,13 +103,13 @@ h1 small { display: block; font-size: calc(16px * var(--fs, 1)); text-shadow: no
 /* ---------- ステージ ---------- */
 /* 縦長のスマホでは、ステージを画面の高さに合わせて大きくし（選択肢が出ても高さは変えない）、行動カードを画面の下（親指の届く場所）に置く */
 #game-screen:not([hidden]) { display: flex; flex-direction: column; min-height: 100dvh; }
-#stage { position: relative; flex: none; height: clamp(204px, max(calc(34dvh + 34px), calc(100dvh - 400px)), 440px); overflow: hidden; background: #000; }
+#stage { position: relative; flex: none; height: clamp(204px, calc(34dvh + 34px), 340px); overflow: hidden; background: #000; } /* 実際の高さは ui/layout.js が測って決める */
 #stage-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: brightness(0.62); }
 #news-ticker { position: absolute; top: 0; left: 0; right: 0; padding: 4px 8px; background: #000b; font-size: calc(12px * var(--fs, 1)); z-index: 2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #news-ticker:empty { display: none; }
 #news-ticker small { color: var(--muted); }
 .sprite { position: absolute; bottom: 0; image-rendering: pixelated; filter: drop-shadow(0 4px 0 #0007); }
-#sprite-left { left: 8%; height: 88%; }
+#sprite-left { left: 8%; height: min(88%, 230px); }
 #sprite-right { right: 8%; height: 70%; bottom: 6%; }
 #sprite-right.hero { height: 62%; bottom: 10%; }
 #sprite-right.enemy { height: 64%; bottom: 10%; }
@@ -118,7 +118,7 @@ h1 small { display: block; font-size: calc(16px * var(--fs, 1)); text-shadow: no
 .sprite[hidden] { display: none; }
 
 /* ---------- メッセージ ---------- */
-#message { position: relative; flex: none; min-height: clamp(112px, calc(100dvh - 690px), 180px); margin: 6px 8px 0; padding: 8px 12px 10px; background: #0b1020ee; border: 2px solid #c8cff5; border-radius: var(--radius); cursor: pointer; user-select: none; }
+#message { position: relative; flex: 1 0 auto; min-height: clamp(112px, calc(100dvh - 690px), 180px); margin: 6px 8px 0; padding: 8px 12px 10px; background: #0b1020ee; border: 2px solid #c8cff5; border-radius: var(--radius); cursor: pointer; user-select: none; }
 #speaker { color: var(--gold); font-size: calc(13px * var(--fs, 1)); min-height: 18px; }
 #text { white-space: pre-wrap; min-height: 48px; }
 #message.narr #text { color: #cfd6ff; font-style: italic; }
@@ -167,7 +167,7 @@ h1 small { display: block; font-size: calc(16px * var(--fs, 1)); text-shadow: no
 .x.info, .pr.info { --c: #7cc7ff; } .x.act, .pr.act { --c: #ff9f6b; } .x.tech, .pr.tech { --c: #c9a6ff; } .x.social, .pr.social { --c: #6be58f; } .x.mind, .pr.mind { --c: #ffe066; }
 
 /* 経験点パネル（ステージの右側。行動を選ぶ間と獲得時だけ出る） */
-#side { position: absolute; right: 6px; top: 24px; z-index: 3; width: 118px; display: flex; flex-direction: column; gap: 5px; }
+#side { position: absolute; right: 6px; top: 32px; z-index: 3; width: 118px; display: flex; flex-direction: column; gap: 5px; }
 #params { display: flex; flex-direction: column; gap: 2px; padding: 5px 6px; background: #080c1acc; border: 1px solid var(--line); border-radius: 8px; }
 /* 演出中（会話の相手が右に立つ）は隠す。経験点の獲得時だけパネルを出す */
 body.busy #side { display: none; }
@@ -1274,7 +1274,7 @@ body.partner-on #side { display: none !important; }
 
 /* 縦が短い画面：右のパラメータ欄とボタンを詰めて、ステージに収める */
 @media (max-height: 800px) {
-  #side { top: 22px; gap: 4px; }
+  #side { top: 30px; gap: 4px; }
   #params { gap: 1px; padding: 3px 6px; }
   #side-btns { grid-template-columns: 1fr 1fr; gap: 3px; }
   #side-btns .side-btn { padding: 5px 0; font-size: calc(10px * var(--fs, 1)); white-space: nowrap; letter-spacing: -0.02em; }
@@ -1284,7 +1284,7 @@ body.partner-on #side { display: none !important; }
 }
 /* さらに縦が短い画面（360×640 など）：パラメータ欄の行を詰める */
 @media (max-height: 700px) {
-  #side { top: 22px; gap: 3px; }
+  #side { top: 28px; gap: 3px; }
   #params { padding: 2px 5px; line-height: 1.25; }
   .pr, .pr.ab { font-size: calc(11px * var(--fs, 1)); }
   #side-btns .side-btn { padding: 4px 0; }
@@ -1689,3 +1689,55 @@ body.night-time #stage-fx { background: linear-gradient(#0a1440aa, #0a144055 70%
 .wk-flip.month b { font-size: calc(40px * var(--fs, 1)); color: #c22; }
 .wk-flip span { font-size: calc(14px * var(--fs, 1)); font-weight: 700; }
 @keyframes wk-flip { 0% { opacity: 0; transform: translateX(-50%) perspective(400px) rotateX(-70deg); } 25%, 70% { opacity: 1; transform: translateX(-50%) perspective(400px) rotateX(0); } 100% { opacity: 0; transform: translateX(-50%) translateY(-14px) perspective(400px) rotateX(35deg); } }
+
+/* ---------- エンディングのふり返り（F2） ---------- */
+.ending.rv-on .rv { opacity: 0; transform: translateY(8px); }
+.ending.rv-on .rv.in { opacity: 1; transform: none; transition: opacity 0.45s, transform 0.45s; }
+.ending.rv-on .rv-stamp { transform: scale(2.6) rotate(-14deg); }
+.ending.rv-on .rv-stamp.in { transform: rotate(-8deg); transition: none; animation: rv-stamp 0.42s cubic-bezier(0.3, 1.5, 0.5, 1); }
+.ending.rv-on:not(.rv-done) { cursor: pointer; }
+@keyframes rv-stamp { 0% { opacity: 0; transform: scale(2.6) rotate(-14deg); } 70% { opacity: 1; transform: scale(0.92) rotate(-8deg); } 100% { transform: rotate(-8deg); } }
+.end-worth { margin: 14px 0 0; display: flex; flex-direction: column; align-items: center; }
+.end-worth small { color: var(--muted); }
+.end-worth b { font-size: calc(30px * var(--fs, 1)); color: #fff; font-variant-numeric: tabular-nums; }
+.dc { margin: 16px 0 6px; text-align: left; }
+.dc-plot { position: relative; height: 130px; background: #0004; border-radius: 8px; padding: 6px 4px 18px; }
+.dc-svg { width: 100%; height: 100%; display: block; }
+.dc-zero { stroke: #ffffff33; stroke-width: 1; vector-effect: non-scaling-stroke; }
+.dc-gain { fill: #6be58f99; }
+.dc-loss { fill: #ff6b6b99; }
+.dc-line { fill: none; stroke: var(--gold); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.dc-hits { position: absolute; inset: 0 4px; display: flex; }
+.dc-hit { flex: 1 1 0; background: none; border: 0; border-left: 1px dotted #ffffff14; color: var(--muted); display: flex; align-items: flex-end; justify-content: center; padding: 0 0 2px; font: inherit; cursor: pointer; }
+.dc-hit:first-child { border-left: 0; }
+.dc-hit.on { background: #ffffff10; color: var(--gold); }
+.dc-hit small { font-size: calc(10px * var(--fs, 1)); }
+.hl-list { display: flex; flex-direction: column; gap: 6px; text-align: left; margin: 6px 0 12px; }
+.hl-row { display: flex; gap: 10px; align-items: flex-start; background: #ffffff08; border-radius: 8px; padding: 6px 10px; }
+.hl-icon { font-size: calc(20px * var(--fs, 1)); line-height: 1.4; }
+.hl-row small { display: block; color: var(--muted); font-size: calc(11px * var(--fs, 1)); }
+.hl-row b { color: var(--gold); }
+.hl-text { font-size: calc(13px * var(--fs, 1)); }
+.end-count { margin: 14px 0 4px; color: var(--gold); }
+.end-count small { display: block; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .ending.rv-on .rv, .ending.rv-on .rv-stamp { opacity: 1; transform: none; animation: none; } }
+
+/* ステージが低いとき（ui/layout.js が body に stage-s / stage-xs をつける）：右の欄を詰めて、ステージに収める */
+body.stage-s #side { top: 30px; gap: 4px; }
+body.stage-s #params { gap: 1px; padding: 3px 6px; }
+body.stage-s #side-btns { grid-template-columns: 1fr 1fr; gap: 3px; }
+body.stage-s #side-btns .side-btn { padding: 5px 0; font-size: calc(10px * var(--fs, 1)); white-space: nowrap; letter-spacing: -0.02em; }
+body.stage-s #side-btns .side-btn.log { grid-column: auto; }
+body.stage-s #side-btns .side-btn.quest, body.stage-s #side-btns .side-btn.tree { grid-column: 1 / -1; padding: 5px 4px; font-size: calc(12px * var(--fs, 1)); }
+body.stage-s .pr-tabs button { font-size: calc(9px * var(--fs, 1)); padding: 0; }
+body.stage-xs #side { top: 28px; gap: 3px; }
+body.stage-xs #params { padding: 2px 5px; line-height: 1.25; }
+body.stage-xs .pr, body.stage-xs .pr.ab { font-size: calc(11px * var(--fs, 1)); }
+body.stage-xs #side-btns .side-btn { padding: 4px 0; }
+body.stage-xs #side-btns .side-btn.quest, body.stage-xs #side-btns .side-btn.tree { padding: 4px; font-size: calc(11px * var(--fs, 1)); }
+
+/* 行動が7つ以上ある分類（後半の「仕入れ」など）：カードを横長に詰めて、画面に収める */
+#commands:has(> .cmd:nth-child(7 of .cmd)) { gap: 5px; }
+#commands:has(> .cmd:nth-child(7 of .cmd)) .cmd:not(.grp) { flex-direction: row; justify-content: flex-start; min-height: 46px; padding: 4px 6px 4px 14px; text-align: left; gap: 5px; }
+#commands:has(> .cmd:nth-child(7 of .cmd)) .cmd:not(.grp) .cmd-ic { width: 24px; height: 24px; }
+#commands:has(> .cmd:nth-child(7 of .cmd)) .cmd:not(.grp) b { font-size: calc(11.5px * var(--fs, 1)); line-height: 1.2; }
