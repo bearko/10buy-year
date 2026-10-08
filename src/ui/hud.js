@@ -1,11 +1,12 @@
 import { TOTAL_WEEKS, weekLabel } from '../engine/calendar.js';
-import { EXP_TYPES } from '../engine/abilities.js';
+import { ABILITIES, ABILITY_MAX, abilityCost, canAfford, EXP_TYPES, rankOf } from '../engine/abilities.js';
 import { MOOD_LABELS } from '../engine/effects.js';
 import { minPayment } from '../engine/finance.js';
 import { goalOf, stageOf } from '../engine/career.js';
 import { currentMission } from '../engine/tutorial.js';
 import { $, clear, h, yenFmt } from './dom.js';
 import { openModal } from './modal.js';
+import { isEn } from '../i18n/index.js';
 
 const MOOD_CLASS = ['m0', 'm1', 'm2', 'm3', 'm4'];
 
@@ -172,9 +173,53 @@ function timelineModal(s) {
   });
 }
 
-// ステージ右側の経験点パネル。予告中は増える量、獲得時は光らせる
+// ステージ右側のパネル。基礎能力（ふだん）と経験点を切り替えられる。
+// 経験点：予告中は増える量、獲得時は光らせる（獲得の演出のあいだは、基礎能力の表示でも経験点を出す）
+const PARAMS_KEY = '10buy-year:params';
+let paramsMode = 'ab';
+try {
+  if (window.localStorage.getItem(PARAMS_KEY) === 'exp') paramsMode = 'exp';
+} catch {
+  /* noop */
+}
+// 英語の能力名は、右の細い欄に収まる短い形で
+const AB_SHORT_EN = { eye: 'Eye', buy: 'Sourcing', list: 'Listing', talk: 'Nego', pack: 'Packing' };
+let paramsOpen = null; // 基礎能力の行を押したときに開く画面（main.js が渡す）
+export function setParamsOpen(fn) {
+  paramsOpen = fn;
+}
+
 export function renderParams(s, { gains = null } = {}) {
   const el = clear($('#params'));
+  const mode = gains ? 'exp' : paramsMode;
+  const setMode = (m) => {
+    paramsMode = m;
+    try {
+      window.localStorage.setItem(PARAMS_KEY, m);
+    } catch {
+      /* noop */
+    }
+    renderParams(s);
+  };
+  el.setAttribute('aria-label', mode === 'ab' ? '基礎能力' : '経験点');
+  el.append(h('div', { class: 'pr-tabs', role: 'tablist' },
+    h('button', { class: mode === 'ab' ? 'on' : '', role: 'tab', 'aria-selected': String(mode === 'ab'), onclick: () => setMode('ab') }, isEn() ? 'Abilities' : '基礎能力'),
+    h('button', { class: mode === 'exp' ? 'on' : '', role: 'tab', 'aria-selected': String(mode === 'exp'), onclick: () => setMode('exp') }, '経験点'),
+  ));
+  if (mode === 'ab') {
+    // ランクと値。いまの経験点で上げられる能力には ▲
+    for (const a of ABILITIES) {
+      const lv = s.abilities[a.id];
+      const can = lv < ABILITY_MAX && canAfford(s, abilityCost(a.id, lv));
+      el.append(h('button', { class: `pr ab ${can ? 'can' : ''}`, title: can ? `${a.name}：いまの経験点で上げられる` : a.name, onclick: () => paramsOpen?.() },
+        h('span', { class: 'pn' }, isEn() ? AB_SHORT_EN[a.id] : a.name),
+        h('span', { class: `rk r${rankOf(lv)}` }, rankOf(lv)),
+        h('b', {}, lv),
+        h('i', {}, can ? '▲' : ''),
+      ));
+    }
+    return;
+  }
   const d = gains || preview?.exp || {};
   for (const e of EXP_TYPES) {
     const v = d[e.id] || 0;
