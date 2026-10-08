@@ -1764,3 +1764,31 @@ body.stage-xs #side-btns .side-btn.quest, body.stage-xs #side-btns .side-btn.tre
 .ab-foot-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .ab-auto-note { position: absolute; left: 50%; bottom: calc(80px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 5; max-width: 90%; padding: 8px 14px; border-radius: 99px; background: #0d2a1acc; border: 1px solid #34D57A; color: #d9ffe6; font-size: calc(13px * var(--fs, 1)); text-align: center; pointer-events: none; animation: rv-fade 2.2s ease-out forwards; }
 @keyframes rv-fade { 0% { opacity: 0; transform: translate(-50%, 8px); } 12%, 75% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; } }
+
+/* 在庫画面：絞り込み・並べ替え・1行1品の表示（B5） */
+.inv-tools { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin: 0 0 8px; flex-wrap: wrap; }
+.inv-filters { display: flex; gap: 4px; flex-wrap: wrap; }
+.inv-chip { font: inherit; font-size: calc(12px * var(--fs, 1)); padding: 3px 9px; border-radius: 99px; border: 1px solid var(--line); background: #ffffff08; color: var(--text); cursor: pointer; }
+.inv-chip small { margin-left: 4px; color: var(--muted); }
+.inv-chip.on { border-color: var(--gold); color: var(--gold); background: #f5c54218; }
+.inv-chip:disabled { opacity: 0.4; cursor: default; }
+.inv-tools-r { display: flex; gap: 4px; margin-left: auto; }
+.inv-sort { font: inherit; font-size: calc(12px * var(--fs, 1)); padding: 3px 6px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--text); }
+.inv-view { font: inherit; font-size: calc(14px * var(--fs, 1)); width: 32px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--text); cursor: pointer; }
+.inv-row { display: flex; align-items: center; gap: 8px; padding: 5px 8px; margin-bottom: 4px; border-radius: 8px; border: 1px solid var(--line); background: #ffffff06; cursor: pointer; user-select: none; }
+.inv-row.listed { border-left: 3px solid var(--good); }
+.inv-row.selected { border-color: var(--gold); background: #f5c54214; }
+.inv-row .item-icon { width: 34px; height: 34px; flex: none; }
+.ir-main { flex: 1; min-width: 0; }
+.ir-name { font-size: calc(13px * var(--fs, 1)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ir-name small { color: var(--muted); }
+.ir-sub { display: flex; gap: 6px; font-size: calc(11px * var(--fs, 1)); color: var(--muted); }
+.ir-st.listed { color: var(--good); }
+.ir-st.wait { color: var(--info); }
+.ir-r { display: flex; flex-direction: column; align-items: flex-end; flex: none; line-height: 1.25; }
+.ir-r small { color: var(--muted); font-size: calc(10px * var(--fs, 1)); }
+.ir-r b { font-size: calc(12px * var(--fs, 1)); }
+.ir-more { color: var(--muted); font-size: calc(18px * var(--fs, 1)); }
+.inv-row .sel-dot { position: static; }
+.card.inv { position: relative; }
+.inv-fold { position: absolute; top: 6px; right: 6px; font: inherit; font-size: calc(11px * var(--fs, 1)); width: 26px; height: 22px; border-radius: 6px; border: 1px solid var(--line); background: #0006; color: var(--muted); cursor: pointer; }

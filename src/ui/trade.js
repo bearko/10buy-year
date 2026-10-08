@@ -70,10 +70,31 @@ export function salesSummary(s, step) {
 let market = 'merc'; // 前回選んだ売り先を覚えておく
 const feelOf = (ratio) => (ratio <= 0.92 ? 'すぐ売れそう' : ratio <= 1.05 ? '相場どおり' : ratio <= 1.2 ? 'やや強気' : '売れにくそう');
 const banned = (s, id) => (id === 'merc' && s.banWeeks > 0) || (id === 'ama' && s.amaBan > 0);
+// 一覧の絞り込み・並べ替え・表示の詰め方（開き直しても覚えておく）
+let invFilter = 'all';
+let invSort = 'rec';
+const VIEW_KEY = '10buy-year:invView';
+const loadView = () => {
+  try {
+    return window.localStorage.getItem(VIEW_KEY);
+  } catch {
+    return null;
+  }
+};
+const saveView = (v) => {
+  try {
+    window.localStorage.setItem(VIEW_KEY, v);
+  } catch {
+    /* noop */
+  }
+};
+const COMPACT_FROM = 8; // 品がこれ以上あれば、はじめは1行1品で並べる
+const SORTS = [['rec', 'おすすめ順'], ['profit', '見込み利益順'], ['days', '在庫日数順'], ['over', '割高な出品順']];
 
 export function inventoryModal(s, onChange) {
   const pick = new Map(); // グループごとの { mult, qty }
   const selected = new Set(); // まとめて操作する商品（グループのキー）
+  const expanded = new Set(); // 1行表示のうち、カードに広げている商品
   let selecting = false;
   let showInfo = false;
   // 停止中の売り先は避けて開く
@@ -94,9 +115,22 @@ export function inventoryModal(s, onChange) {
       api.refresh();
       onChange?.();
     };
-    const groups = groupInventory(s);
-    groups.sort((x, y) => (x.listing ? 1 : 0) - (y.listing ? 1 : 0)); // 出品していない物を上に
-    for (const key of [...selected]) if (!groups.some((g) => g.key === key)) selected.delete(key);
+    const allGroups = groupInventory(s);
+    allGroups.sort((x, y) => (x.listing ? 1 : 0) - (y.listing ? 1 : 0)); // 出品していない物を上に
+    for (const key of [...selected]) if (!allGroups.some((g) => g.key === key)) selected.delete(key);
+    // 絞り込み（未出品・出品中・90日以上）
+    const isStale = (g) => g.arrive <= s.week && heldDays(s, g.units[0]) >= 90;
+    const FILTERS = [
+      ['all', 'すべて', () => true],
+      ['unlisted', '未出品', (g) => !g.listing],
+      ['listed', '出品中', (g) => !!g.listing],
+      ['stale', '90日以上', isStale],
+    ];
+    if (!FILTERS.some(([id]) => id === invFilter)) invFilter = 'all';
+    const groups = allGroups.filter(FILTERS.find(([id]) => id === invFilter)[2]);
+    // チュートリアルで出品ボタンを指しているあいだは、いつものカードで見せる
+    const tutList = ['list_home', 'list_bought'].includes(currentMission(s)?.id);
+    const compact = !tutList && (loadView() || (allGroups.length >= COMPACT_FROM ? 'compact' : 'card')) === 'compact';
 
     // 商品ごとの値付け・個数と、そこから決まる金額
     function plan(g) {
@@ -121,6 +155,15 @@ export function inventoryModal(s, onChange) {
         canHere: platformsFor(s, u0).some((m) => m.id === platform) && !banned(s, platform),
       };
     }
+
+    // 並べ替え
+    const unitProfit = (g) => { const x = plan(g); return expectedProfit(s, g.pid, g.listing ? g.listing.price : x.est, g.cost, x.platform); };
+    const sortKey = {
+      profit: (g) => -unitProfit(g) * g.units.length,
+      days: (g) => -heldDays(s, g.units[0]),
+      over: (g) => (g.listing ? -(g.listing.price / Math.max(1, plan(g).est)) : 0),
+    }[invSort];
+    if (sortKey) groups.sort((a, b) => sortKey(a) - sortKey(b));
 
     // 即決買取（設定で確認をはさむ。「次回から表示しない」で設定を切る）
     async function sellBack(entries) {
@@ -187,14 +230,27 @@ export function inventoryModal(s, onChange) {
           ? h('button', { class: `inv-sel-btn ${selecting ? 'on' : ''}`, onclick: () => { selecting = !selecting; if (!selecting) selected.clear(); api.refresh(); } }, selecting ? '選択をやめる' : '☑ 選択')
           : null,
       ),
+      // 絞り込みのチップと、並べ替え・表示の切りかえ
+      allGroups.length > 1
+        ? h('div', { class: 'inv-tools' },
+          h('div', { class: 'inv-filters' }, ...FILTERS.map(([id, label, f]) => {
+            const n = allGroups.filter(f).length;
+            return h('button', { class: `inv-chip ${invFilter === id ? 'on' : ''}`, disabled: !n && id !== 'all', onclick: () => { invFilter = id; api.refresh(); } }, label, h('small', {}, n));
+          })),
+          h('div', { class: 'inv-tools-r' },
+            h('select', { class: 'inv-sort', 'aria-label': '並べ替え', onchange: (e) => { invSort = e.target.value; api.refresh(); } },
+              ...SORTS.map(([id, label]) => h('option', { value: id, selected: invSort === id }, label))),
+            tutList ? null : h('button', { class: 'inv-view', 'aria-label': compact ? 'カードで表示' : '1行ずつ表示', title: compact ? 'カードで表示' : '1行ずつ表示', onclick: () => { saveView(compact ? 'card' : 'compact'); expanded.clear(); api.refresh(); } }, compact ? '▦' : '☰'),
+          ))
+        : null,
     ].filter(Boolean));
 
     // ワンタップの一括操作：未出品を相場で出品／出品中を5%値下げ／90日以上の在庫を買取
-    if (!selecting && groups.length) {
+    if (!selecting && allGroups.length) {
       const ready = (g) => { const x = plan(g); return !x.waiting && !x.blocked && x.canHere; };
-      const unlisted = groups.filter((g) => !g.listing && ready(g));
-      const listed = groups.filter((g) => g.listing);
-      const stale = groups.filter((g) => g.arrive <= s.week && heldDays(s, g.units[0]) >= 90);
+      const unlisted = allGroups.filter((g) => !g.listing && ready(g));
+      const listed = allGroups.filter((g) => g.listing);
+      const stale = allGroups.filter(isStale);
       const quick = (label, n, onclick, cls = '') => (n ? h('button', { class: `btn small ${cls}`, onclick }, `${label}（${n}）`) : null);
       const row = [
         quick('未出品を相場で出品', unlisted.length, () => {
@@ -215,7 +271,8 @@ export function inventoryModal(s, onChange) {
       if (row.length) body.append(h('div', { class: 'inv-quick' }, ...row));
     }
 
-    if (!groups.length) body.append(h('p', { class: 'empty' }, s.stats.purchases ? '在庫はない。仕入れに行こう。' : '在庫はない。「家の中を探す」で不用品を探そう。'));
+    if (!allGroups.length) body.append(h('p', { class: 'empty' }, s.stats.purchases ? '在庫はない。仕入れに行こう。' : '在庫はない。「家の中を探す」で不用品を探そう。'));
+    else if (!groups.length) body.append(h('p', { class: 'empty' }, 'この条件の品はない。'));
     const bulk = { listLbl: null, buyLbl: null };
     const updateBulk = () => {
       if (!bulk.listLbl) return;
@@ -226,7 +283,7 @@ export function inventoryModal(s, onChange) {
       bulk.buyLbl.replaceChildren(h('span', {}, 'まとめて即決買取'), h('small', {}, yenFmt(sel.reduce((a, x) => a + x.quote * x.uids.length, 0))));
       bulk.buyLbl.disabled = !sel.length;
     };
-    for (const g of groups) body.append(itemRow(g));
+    for (const g of groups) body.append(compact && !expanded.has(g.key) ? compactRow(g) : itemRow(g));
 
     if (selecting) {
       const sel = groups.filter((g) => selected.has(g.key));
@@ -255,6 +312,43 @@ export function inventoryModal(s, onChange) {
         h('div', { class: 'bulk-btns' }, bulk.listLbl, bulk.buyLbl),
       ));
       updateBulk();
+    }
+
+    // 1行1品：絵・名前と個数・状態（出品中の値段／未出品／届く日）・在庫日数・見込み利益。タップでカードに広げる
+    function compactRow(g) {
+      const p = productOf(g.pid);
+      const x = plan(g);
+      const days = heldDays(s, g.units[0]);
+      const on = selected.has(g.key);
+      const status = x.waiting
+        ? h('span', { class: 'ir-st wait' }, `${weekLabel(g.arrive)}に届く`)
+        : g.listing
+          ? h('span', { class: 'ir-st listed' }, `${PLATFORMS[g.listing.platform].name} ${yenFmt(g.listing.price)}`)
+          : h('span', { class: 'ir-st' }, x.blocked ? '出品できない' : '未出品');
+      const profit = canCalc(s) && !x.waiting ? unitProfit(g) : null;
+      const row = h('div', {
+        class: `inv-row ${g.listing ? 'listed' : ''} ${on ? 'selected' : ''}`,
+        role: 'button',
+        tabindex: 0,
+        onclick: () => {
+          if (selecting) {
+            if (!x.waiting) toggle(g.key);
+            return;
+          }
+          expanded.add(g.key);
+          api.refresh();
+        },
+        onkeydown: (e) => { if (e.key === 'Enter') e.currentTarget.click(); },
+      },
+      itemIcon(g.pid, g.rep),
+      h('div', { class: 'ir-main' },
+        h('div', { class: 'ir-name' }, p.name, h('small', {}, ` ×${g.units.length}`)),
+        h('div', { class: 'ir-sub' }, status, !x.waiting && kpiLevel(s) >= 2 ? h('span', { class: days >= 90 ? 'neg' : '' }, `${days}日`) : null, g.damaged || g.authFail ? h('span', { class: 'neg' }, g.authFail ? '鑑定NG' : '傷あり') : null)),
+      h('div', { class: 'ir-r' },
+        h('small', {}, x.waiting ? '' : `${estLabel(s) === '推定相場' ? '相場' : '相場≒'} ${yenFmt(x.est)}`),
+        profit === null ? null : h('b', { class: profit >= 0 ? 'pos' : 'neg' }, `${signYen(profit)}/個`)),
+      selecting && !x.waiting ? h('span', { class: `sel-dot ${on ? 'on' : ''}` }, '✓') : h('span', { class: 'ir-more', 'aria-hidden': 'true' }, '›'));
+      return row;
     }
 
     function itemRow(g) {
@@ -292,7 +386,8 @@ export function inventoryModal(s, onChange) {
         itemIcon(g.pid, g.rep),
         x.waiting ? null : h('button', { class: `sel-dot ${on ? 'on' : ''}`, 'aria-label': on ? '選択を外す' : '選択', onclick: (e) => { e.stopPropagation(); toggle(g.key); } }, '✓'),
       );
-      const card = h('div', { class: `card inv ${g.listing ? 'listed' : ''} ${on ? 'selected' : ''} ${selecting ? 'selecting' : ''}` }, iconBox, head);
+      const card = h('div', { class: `card inv ${g.listing ? 'listed' : ''} ${on ? 'selected' : ''} ${selecting ? 'selecting' : ''}` }, iconBox, head,
+        compact ? h('button', { class: 'inv-fold', 'aria-label': 'たたむ', onclick: () => { expanded.delete(g.key); api.refresh(); } }, '▲') : null);
       if (x.waiting) return card;
 
       // 長押しで選択を始める。選択中はカードのタップで選択を切り替える
