@@ -1667,3 +1667,25 @@ body.partner-on #side { display: none !important; }
 .auto-read { position: absolute; top: 4px; right: 6px; z-index: 1; padding: 1px 7px; border: 1px solid #c8cff566; border-radius: 99px; background: transparent; color: #c8cff599; font: 700 10px/1.4 'Orbitron', sans-serif; letter-spacing: 0.05em; cursor: pointer; }
 .auto-read.on { border-color: var(--gold); color: var(--gold); background: #f5c54222; }
 .install-btn { border-color: var(--gold); color: var(--gold); }
+
+/* 時間の流れ（ui/calendar.js）：季節の粒・夜の色味・日めくり */
+#stage-fx { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+#stage-fx::before, #stage-fx::after { content: ''; position: absolute; inset: -40px 0 0 0; background-repeat: repeat; opacity: 0.75; }
+#stage[data-season="spring"] #stage-fx::before { background-image: radial-gradient(4px 3px at 20% 10%, #ffc3dc 60%, transparent 62%), radial-gradient(3px 4px at 70% 40%, #ffd6e7 60%, transparent 62%), radial-gradient(4px 3px at 45% 75%, #ffb3d1 60%, transparent 62%); background-size: 180px 180px; animation: fx-fall 14s linear infinite; }
+#stage[data-season="spring"] #stage-fx::after { background-image: radial-gradient(3px 3px at 35% 30%, #ffe0ee 60%, transparent 62%), radial-gradient(4px 3px at 85% 85%, #ffc3dc 60%, transparent 62%); background-size: 240px 240px; animation: fx-fall 20s linear infinite; }
+#stage[data-season="summer"] #stage-fx::before { inset: 0; background: linear-gradient(170deg, #ffe08a30, transparent 55%); opacity: 1; }
+#stage[data-season="autumn"] #stage-fx::before { background-image: radial-gradient(5px 3px at 25% 15%, #e8823a 60%, transparent 62%), radial-gradient(4px 4px at 75% 55%, #c9692c 60%, transparent 62%), radial-gradient(5px 3px at 50% 85%, #f0a04b 60%, transparent 62%); background-size: 220px 220px; animation: fx-fall 16s linear infinite; opacity: 0.6; }
+#stage[data-season="winter"] #stage-fx::before { background-image: radial-gradient(3px 3px at 15% 20%, #fff 60%, transparent 62%), radial-gradient(4px 4px at 60% 50%, #fff 60%, transparent 62%), radial-gradient(3px 3px at 85% 80%, #fff 60%, transparent 62%), radial-gradient(3px 3px at 40% 90%, #fff 60%, transparent 62%); background-size: 150px 150px; animation: fx-fall 18s linear infinite; opacity: 0.85; }
+#stage[data-season="winter"] #stage-fx::after { background-image: radial-gradient(3px 3px at 30% 40%, #ffffffcc 60%, transparent 62%), radial-gradient(2px 2px at 75% 15%, #ffffffcc 60%, transparent 62%); background-size: 220px 220px; animation: fx-fall 26s linear infinite; opacity: 0.6; }
+@keyframes fx-fall { from { background-position: 0 0; } to { background-position: 60px 360px; } }
+body.night-time #stage-bg { filter: brightness(0.4) saturate(0.75); }
+body.night-time #stage-fx { background: linear-gradient(#0a1440aa, #0a144055 70%, transparent); }
+@media (prefers-reduced-motion: reduce) { #stage-fx::before, #stage-fx::after { animation: none; } }
+
+.wk-flip { position: absolute; left: 50%; top: 22%; z-index: 6; display: flex; flex-direction: column; align-items: center; min-width: 120px; padding: 10px 18px 12px; border-radius: 10px; background: #fdfaf2; color: #2a2a2a; box-shadow: 0 8px 20px #0008; border-top: 10px solid #d33; transform: translateX(-50%); animation: wk-flip 0.65s ease-in-out both; cursor: pointer; }
+.wk-flip.month { animation-duration: 0.9s; }
+.wk-flip small { font-size: calc(11px * var(--fs, 1)); color: #777; }
+.wk-flip b { font: 700 calc(30px * var(--fs, 1)) / 1.1 'Orbitron', 'Zen Kaku Gothic New', sans-serif; }
+.wk-flip.month b { font-size: calc(40px * var(--fs, 1)); color: #c22; }
+.wk-flip span { font-size: calc(14px * var(--fs, 1)); font-weight: 700; }
+@keyframes wk-flip { 0% { opacity: 0; transform: translateX(-50%) perspective(400px) rotateX(-70deg); } 25%, 70% { opacity: 1; transform: translateX(-50%) perspective(400px) rotateX(0); } 100% { opacity: 0; transform: translateX(-50%) translateY(-14px) perspective(400px) rotateX(35deg); } }

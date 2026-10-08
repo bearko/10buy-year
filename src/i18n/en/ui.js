@@ -48,6 +48,8 @@ export default {
   "値付けする": "Set prices",
   "出品を変更": "Edit listings",
   "能力強化": "Abilities",
+  "{0}年目": "Year {0}",
+  "第{0}週": "Week {0}",
   "ホーム画面に追加": "Add to Home Screen",
   "📲 ホーム画面に追加（全画面で遊べる）": "📲 Add to Home Screen (play full screen)",
   "Safari の共有ボタン（□に↑）から「ホーム画面に追加」を選ぶと、アドレスバーのない全画面で遊べる。": "In Safari, tap the Share button (square with an arrow) and choose “Add to Home Screen” to play full screen without the address bar.",

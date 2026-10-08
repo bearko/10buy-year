@@ -54,6 +54,7 @@ import { shipScene } from './ui/room.js';
 import { battleEnd, battleResult, battleSkill, battleStart, inBattle } from './ui/battle.js';
 import { monthCard } from './ui/monthcard.js';
 import { resumeCard } from './ui/resume.js';
+import { setNight, setSeason, weekFlip } from './ui/calendar.js';
 import { quoteModal, seriModal } from './ui/pro.js';
 import { kujiModal } from './ui/kuji.js';
 import { autoPick } from './engine/dealpolicy.js';
@@ -294,6 +295,7 @@ function refresh() {
   if (!document.body.classList.contains('gain-flash')) renderParams(state);
   renderTicker(state);
   renderTabs();
+  setSeason(state.week);
   // 部屋に積んである在庫（届いている品。アマクリに預けた品は倉庫にあるので除く）
   setClutter(activeUnits(state).filter((u) => u.listing?.platform !== 'ama').sort((a, b) => a.uid - b.uid).map((u) => ({ uid: u.uid, pid: u.pid })), { over: overCapacity(state) });
 }
@@ -685,6 +687,7 @@ async function loop() {
   while (!state.over) {
     if (state.phase === 'weekStart') {
       drawIdleCommands();
+      await weekFlip(state.week, { quick: isAuto() }); // 日めくり
       if (routineRun) routineRun.week = { ...emptyRoutineWeek(), ...routineStale(state, routineRun.cfg) };
       // 期間限定フェア：現実の日付で決まる（チュートリアルが終わってから）
       await playSteps(syncLive(state, tutorialDone(state) ? liveEventOn()?.id : null));
@@ -708,12 +711,14 @@ async function loop() {
       persist(); // 行動ごとにセーブ（週の途中でアプリを閉じても、終わった行動は残る）
     }
     if (state.nightLeft > 0 && state.sick <= 0 && !state.over) {
+      setNight(true);
       const cmd = await nextCommand('night');
       state.nightLeft = 0;
       if (cmd !== 'sleep') {
         await playSteps(performCommand(state, cmd, { night: true }));
         await tutorialStep();
       }
+      setNight(false);
       persist();
     }
     holdRoom(true); // 売れた品は、発送の演出まで部屋に残す
