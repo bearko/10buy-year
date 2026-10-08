@@ -63,7 +63,17 @@ export function fitPixel(img) {
   const bh = img.offsetHeight;
   if (!bw || !bh) return;
   const scale = Math.min(bw / nw, bh / nh); // 枠に収まる倍率（contain）
+  // 元より小さく縮めて出す画像（340px のアイコンを 18px で出すなど）は、ドットをそろえようがないので CSS の大きさのまま
+  if (scale * r < 1) {
+    img.dataset.px = key;
+    return;
+  }
   const k = Math.max(1, Math.round(scale * r)); // 1ドットあたりの端末の画素数
+  // 小さく出すアイコン（38px に 64px の絵など）は、整数倍にすると大きさが2割以上変わってしまう。見た目の大きさを優先して、そのまま
+  if (Math.abs(k - scale * r) / (scale * r) > 0.12) {
+    img.dataset.px = key;
+    return;
+  }
   const w = nw + pad * 2;
   const h = nh + pad * 2;
   img.style.width = `${(w * k) / r}px`;
