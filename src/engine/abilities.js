@@ -73,6 +73,20 @@ export function raiseAbility(s, abilityId, times = 1) {
   return done;
 }
 
+// 自動で割り振る：いまの経験点で上げられる能力のうち、いちばん低いものから1ずつ、上げられなくなるまで。
+// 同じ高さなら能力の並び順。上げた回数を { 能力id: 回数 } で返す
+export function autoRaise(s) {
+  const done = {};
+  for (;;) {
+    const next = ABILITIES
+      .filter((a) => s.abilities[a.id] < ABILITY_MAX && canAfford(s, abilityCost(a.id, s.abilities[a.id])))
+      .sort((a, b) => s.abilities[a.id] - s.abilities[b.id])[0];
+    if (!next) return done;
+    raiseAbility(s, next.id, 1);
+    done[next.id] = (done[next.id] || 0) + 1;
+  }
+}
+
 // ---------------- スキルツリー ----------------
 export const nodeLv = (s, id) => (s.nodeLv?.[id] || 0);
 const owns = (s, id) => s.skills.includes(id) || nodeLv(s, id) > 0;

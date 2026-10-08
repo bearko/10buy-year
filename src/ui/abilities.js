@@ -1,6 +1,7 @@
 // 基礎能力の画面（全画面）。トップ画面の「能力強化」とスキルツリーの「基礎能力」から開く。
 // 上に経験点を常に出し、5つの基礎能力を上げる。経験点の振り替えも、スクロールせずに開けるよう上にボタンを置く
-import { ABILITIES, ABILITY_MAX, abilityCost, canAfford, CONVERT_RATE, convertExp, EXP_NAME, EXP_TYPES, raiseAbility, rankOf } from '../engine/abilities.js';
+// 下には「戻る」と「自動で割り振る」（低い能力から、いまの経験点で上げられるだけ上げる）を並べる
+import { ABILITIES, ABILITY_MAX, abilityCost, autoRaise, canAfford, CONVERT_RATE, convertExp, EXP_NAME, EXP_TYPES, raiseAbility, rankOf } from '../engine/abilities.js';
 import { abilityEffects } from '../engine/abilityfx.js';
 import { playSe } from './audio.js';
 import { $, clear, h } from './dom.js';
@@ -13,7 +14,8 @@ export function openAbilities(s, onChange) {
     const root = h('div', { class: 'tree-screen ab-screen', role: 'dialog', 'aria-label': '基礎能力' });
     const head = h('header', { class: 'ab-head' });
     const body = h('div', { class: 'ab-body' });
-    root.append(head, body);
+    const foot = h('footer', { class: 'ab-foot' });
+    root.append(head, body, foot);
     $('#modal-root').append(root);
 
     const close = () => {
@@ -37,7 +39,6 @@ export function openAbilities(s, onChange) {
     function render() {
       clear(head).append(
         h('div', { class: 'ab-title' },
-          h('button', { class: 'tree-back', 'aria-label': '戻る', onclick: close }, '←'),
           h('div', { class: 'tree-title' }, h('b', {}, '基礎能力'), h('small', {}, 'ABILITIES')),
           h('button', { class: `ab-cv-toggle ${conv.open ? 'on' : ''}`, onclick: () => { conv.open = !conv.open; render(); } }, '⇄ 経験点の振り替え'),
         ),
@@ -45,6 +46,11 @@ export function openAbilities(s, onChange) {
         h('div', { class: 'ab-exp' }, ...EXP_TYPES.map((e) => h('span', { class: `x ${e.id}` }, h('i', {}, e.name), h('b', {}, Math.floor(s.exp[e.id]).toLocaleString())))),
       );
       if (conv.open) head.append(convertBox());
+      const canAny = ABILITIES.some((a) => s.abilities[a.id] < ABILITY_MAX && canAfford(s, abilityCost(a.id, s.abilities[a.id])));
+      clear(foot).append(
+        h('button', { class: 'ab-foot-btn back', onclick: close }, '戻る'),
+        h('button', { class: 'ab-foot-btn auto', disabled: !canAny, onclick: autoAll }, '自動で割り振る'),
+      );
       clear(body).append(
         h('p', { class: 'ab-lead' }, '行動で貯めた経験点を使って、基礎能力を上げる。能力が上がると、仕入れ・出品・交渉などの結果がよくなる。ランクは G〜S。'),
         ...ABILITIES.map(row),
@@ -86,6 +92,21 @@ export function openAbilities(s, onChange) {
             ),
           ),
       );
+    }
+
+    // 低い能力から、いまの経験点で上げられるだけ上げる。上がった分を下に短く出す
+    function autoAll() {
+      const before = Object.fromEntries(ABILITIES.map((a) => [a.id, rankOf(s.abilities[a.id])]));
+      const done = autoRaise(s);
+      const ups = ABILITIES.filter((a) => done[a.id]);
+      if (!ups.length) return;
+      playSe('levelup');
+      changed();
+      const ranked = ups.find((a) => rankOf(s.abilities[a.id]) !== before[a.id]);
+      if (ranked) rankUp(ranked.name, rankOf(s.abilities[ranked.id]));
+      const note = h('div', { class: 'ab-auto-note' }, ups.map((a) => `${a.name} +${done[a.id]}`).join('・'));
+      root.append(note);
+      setTimeout(() => note.remove(), 2200);
     }
 
     // 経験点の振り替え（×0.5）。多い種類から少ない種類へ

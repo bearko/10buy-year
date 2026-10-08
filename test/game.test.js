@@ -10,7 +10,7 @@ import { EVENTS } from '../src/data/events.js';
 import { SKILLS, SKILL_MAP } from '../src/data/skills.js';
 import { COMMANDS } from '../src/engine/commands.js';
 import { createGame } from '../src/engine/state.js';
-import { abilityCost, raiseAbility } from '../src/engine/abilities.js';
+import { abilityCost, autoRaise, raiseAbility } from '../src/engine/abilities.js';
 import { buy, cardAvailable, hardCapacity, listUnits, sellToBuyer, spaceUsed } from '../src/engine/inventory.js';
 import { availableCommands, performCommand } from '../src/engine/commands.js';
 import { learnSkill, nodeState, nodeTeaser, nodeVisible, OFF_ROUTE_RATE, skillCost } from '../src/engine/abilities.js';
@@ -55,6 +55,21 @@ test('能力は上げるほどコストが増え、経験点が足りなけれ�
   s.exp.mind = 100;
   assert.ok(raiseAbility(s, 'eye', 3) === 3);
   assert.equal(s.abilities.eye, 23);
+});
+
+test('基礎能力の自動割り振り：低い能力から、経験点が尽きるまで上げる', () => {
+  const s = createGame(1);
+  s.abilities = { ...s.abilities, eye: 40, buy: 20, list: 30, talk: 20, pack: 50 };
+  s.exp = { info: 60, act: 60, tech: 60, social: 60, mind: 60 };
+  const before = { ...s.abilities };
+  const done = autoRaise(s);
+  assert.ok(Object.values(done).reduce((a, n) => a + n, 0) > 0);
+  // 低かった能力から上がる（いちばん高かった能力は、低い能力より多くは上がらない）
+  assert.ok((done.pack || 0) <= (done.buy || 0));
+  for (const [id, n] of Object.entries(done)) assert.equal(s.abilities[id], before[id] + n);
+  // もう1つも上げられない
+  assert.deepEqual(autoRaise(s), {});
+  for (const v of Object.values(s.exp)) assert.ok(v >= 0);
 });
 
 test('仕入れ：現金とカード枠の範囲でしか買えない', () => {

@@ -136,20 +136,26 @@ function row(label, value, cls = '') {
   return h('div', { class: 'lg-row' }, h('span', {}, label), h('b', { class: cls }, value));
 }
 
-export function menuModal({ s, onTitle, onSpeed, speed, onRestart, onChange, onMarket, onBiz, onShop, onDeal, onRivals, onCollection, onCareers, onLife, onCrypto, onMap, onCompanions, marketLock, newsCount = 0 }) {
-  return openModal('メニュー', (body, api) => {
+export function menuModal({ s, onTitle, onSpeed, speed, onRestart, onChange, onMarket, onBiz, onShop, onDeal, onRivals, onCollection, onCareers, onLife, onCrypto, onMap, onCompanions, marketLock, newsCount = 0, fresh = () => false, seen = () => {} }) {
+  // 途中で開く項目は、開くまで出さない。開いたら NEW（押したら既読）
+  const item = (id, show, label, go, extra = null) => (show
+    ? h('button', { class: `btn big ${id}-btn ${fresh(id) ? 'fresh' : ''}`, onclick: () => { seen(id); api.close(); go?.(); } }, label, fresh(id) ? h('span', { class: 'new-tag' }, 'NEW') : extra)
+    : null);
+  let api;
+  return openModal('メニュー', (body, a) => {
+    api = a;
     body.append(
       h('div', { class: 'menu-main' },
-        h('button', { class: `btn big ${marketLock ? 'locked' : ''}`, onclick: () => { if (marketLock) return toast(marketLock, 'bad'); api.close(); onMarket?.(); } }, marketLock ? '🔒相場' : '相場', !marketLock && newsCount ? h('span', { class: 'badge' }, newsCount) : null),
+        item('market', s && !marketLock, '相場', onMarket, newsCount ? h('span', { class: 'badge' }, newsCount) : null),
         h('button', { class: 'btn big', onclick: () => { api.close(); onBiz?.(); } }, '経営'),
-        s?.shop ? h('button', { class: 'btn big shop-btn', onclick: () => { api.close(); onShop?.(); } }, '自分の店') : null,
-        s && s.stage >= 2 ? h('button', { class: 'btn big', onclick: () => { api.close(); onRivals?.(); } }, '業界の動き') : null,
-        s && (s.stage >= 3 || s.collection?.length) ? h('button', { class: 'btn big', onclick: () => { api.close(); onCollection?.(); } }, 'コレクション') : null,
-        s && s.stage >= 2 ? h('button', { class: 'btn big', onclick: () => { api.close(); onCareers?.(); } }, 'キャリア') : null,
-        s && s.stage >= 2 ? h('button', { class: 'btn big', onclick: () => { api.close(); onLife?.(); } }, '暮らし') : null,
-        s?.crypto?.open ? h('button', { class: 'btn big', onclick: () => { api.close(); onCrypto?.(); } }, '仮想通貨') : null,
+        item('shop', !!s?.shop, '自分の店', onShop),
+        item('rivals', s && s.stage >= 2, '業界の動き', onRivals),
+        item('collection', s && (s.stage >= 3 || s.collection?.length), 'コレクション', onCollection),
+        item('careers', s && s.stage >= 2, 'キャリア', onCareers),
+        item('life', s && s.stage >= 2, '暮らし', onLife),
+        item('crypto', !!s?.crypto?.open, '仮想通貨', onCrypto),
         s ? h('button', { class: 'btn big', onclick: () => { api.close(); onCompanions?.(); } }, '仲間') : null,
-        s && Object.keys(s.storeMap || {}).length ? h('button', { class: 'btn big', onclick: () => { api.close(); onMap?.(); } }, '店の地図') : null,
+        item('map', s && Object.keys(s.storeMap || {}).length, '店の地図', onMap),
       ),
       h('div', { class: 'menu-list' },
         h('button', { class: 'btn', onclick: () => { setSound(!soundOn()); api.refresh(); } }, `サウンド: ${soundOn() ? 'ON' : 'OFF'}`),

@@ -110,15 +110,15 @@ h1 small { display: block; font-size: calc(16px * var(--fs, 1)); text-shadow: no
 #news-ticker small { color: var(--muted); }
 .sprite { position: absolute; bottom: 0; image-rendering: pixelated; filter: drop-shadow(0 4px 0 #0007); }
 #sprite-left { left: 8%; height: min(88%, 230px); }
-#sprite-right { right: 8%; height: 70%; bottom: 6%; }
-#sprite-right.hero { height: 62%; bottom: 10%; }
-#sprite-right.enemy { height: 64%; bottom: 10%; }
-#sprite-right.orig.mine { height: 80%; bottom: 0; }
-#sprite-right.orig.maycri { height: 42%; bottom: 8%; }
+#sprite-right { right: 8%; height: min(70%, 183px); bottom: 6%; } /* 右の人物もクリス（88%・最大230px）と同じ縮尺で頭打ち */
+#sprite-right.hero { height: min(62%, 162px); bottom: 10%; }
+#sprite-right.enemy { height: min(64%, 167px); bottom: 10%; }
+#sprite-right.orig.mine { height: min(80%, 209px); bottom: 0; }
+#sprite-right.orig.maycri { height: min(42%, 110px); bottom: 8%; }
 .sprite[hidden] { display: none; }
 
 /* ---------- メッセージ ---------- */
-#message { position: relative; flex: none; min-height: clamp(112px, calc(100dvh - 690px), 180px); margin: 6px 8px 0; padding: 8px 12px 10px; background: #0b1020ee; border: 2px solid #c8cff5; border-radius: var(--radius); cursor: pointer; user-select: none; }
+#message { position: relative; flex: none; min-height: clamp(128px, calc(100dvh - 674px), 180px); margin: 6px 8px 0; padding: 8px 12px 10px; background: #0b1020ee; border: 2px solid #c8cff5; border-radius: var(--radius); cursor: pointer; user-select: none; }
 #speaker { color: var(--gold); font-size: calc(13px * var(--fs, 1)); min-height: 18px; }
 #text { white-space: pre-wrap; min-height: 48px; }
 #message.narr #text { color: #cfd6ff; font-style: italic; }
@@ -724,7 +724,7 @@ body.partner-on #side { display: none !important; }
 .stage-prog .sp-row { display: flex; justify-content: space-between; gap: 8px; font-size: calc(13px * var(--fs, 1)); }
 
 /* 会話ログ */
-.side-btn.log { grid-column: 2; }
+.side-btn.log { grid-column: auto; }
 .side-btn.ab { color: #ffe9a8; border-color: #f5c54288; }
 .log-tabs { position: sticky; top: -10px; z-index: 1; display: flex; gap: 6px; padding: 4px 0 8px; background: var(--bg); }
 .log-tabs button { font: inherit; font-size: calc(12px * var(--fs, 1)); padding: 4px 12px; border-radius: 99px; border: 1px solid var(--line); background: none; color: var(--muted); cursor: pointer; }
@@ -1624,8 +1624,8 @@ body.partner-on #side { display: none !important; }
 .wk-notes .neg, .wk-best em.neg { color: #dc2626; }
 
 /* お知らせのまとめ（ui/stage.js showInfos） */
-#message.digest #text { max-height: 34dvh; overflow-y: auto; }
-.dg-item { padding: 3px 0 3px 8px; border-left: 3px solid var(--info); margin-bottom: 4px; }
+.dg-item { padding: 1px 0 1px 8px; border-left: 3px solid var(--info); margin-bottom: 3px; }
+#message.digest #text { font-size: 0.92em; line-height: 1.35; }
 .dg-item b { display: block; font-size: calc(12px * var(--fs, 1)); color: var(--info); }
 .dg-item.good { border-color: var(--good); }
 .dg-item.good b { color: var(--good); }
@@ -1741,5 +1741,26 @@ body.stage-xs #side-btns .side-btn.quest, body.stage-xs #side-btns .side-btn.tre
 #commands:has(> .cmd:nth-child(7 of .cmd)) .cmd:not(.grp) { flex-direction: row; justify-content: flex-start; min-height: 46px; padding: 4px 6px 4px 14px; text-align: left; gap: 5px; }
 #commands:has(> .cmd:nth-child(7 of .cmd)) .cmd:not(.grp) .cmd-ic { width: 24px; height: 24px; }
 #commands:has(> .cmd:nth-child(7 of .cmd)) .cmd:not(.grp) b { font-size: calc(11.5px * var(--fs, 1)); line-height: 1.2; }
-/* 選択肢がないあいだは、メッセージ欄の高さを固定する（行動の予告が長くても、下の行動カードが動かないように。あふれた分は欄の中でスクロール） */
-#message:not(:has(#choices > *)) { height: clamp(112px, calc(100dvh - 690px), 180px); overflow-y: auto; overscroll-behavior: contain; }
+/* 選択肢がないあいだは、メッセージ欄の高さを固定する（下の行動カードが動かないように。長い文は ui/stage.js が1枚ずつに分ける） */
+#message:not(:has(#choices > *)) { height: clamp(128px, calc(100dvh - 674px), 180px); overflow: hidden; }
+
+/* 段階的な開放（C6）：開いたボタンは NEW で光って現れる */
+.side-btn .new-tag, .menu-main .btn .new-tag { position: absolute; top: -7px; right: -4px; z-index: 1; font-family: 'Orbitron', var(--font); font-size: calc(9px * var(--fs, 1)); font-weight: 700; letter-spacing: 0.06em; padding: 1px 6px; border-radius: 99px; background: linear-gradient(135deg, #ff4d6d, #ff8a3d); color: #fff; box-shadow: 0 0 10px #ff4d6d99; animation: new-pulse 1.2s ease-in-out infinite; }
+.menu-main .btn { position: relative; }
+.side-btn.fresh, .menu-main .btn.fresh { border-color: #ff8a3d; box-shadow: 0 0 0 1px #ff8a3d88, 0 0 12px #ff8a3d55; animation: ui-reveal 0.6s cubic-bezier(0.3, 1.5, 0.5, 1); }
+@keyframes ui-reveal { 0% { opacity: 0; transform: scale(0.6); } 100% { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .side-btn.fresh, .menu-main .btn.fresh { animation: none; } .side-btn .new-tag, .menu-main .btn .new-tag { animation: none; } }
+
+/* メッセージは枠からあふれさせない：お知らせ・会話は1枚ずつに分け、予告（タップを待たない表示）は文字を少し小さく */
+#message.tight #text { font-size: 0.9em; line-height: 1.35; }
+#message.tighter #text { font-size: 0.8em; line-height: 1.3; }
+
+/* 基礎能力の画面：下に「戻る」（グレー）と「自動で割り振る」（緑）を横並び */
+.ab-body { padding-bottom: 12px; }
+.ab-foot { position: relative; z-index: 2; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); background: rgba(10, 12, 16, 0.94); border-top: 1px solid var(--t-line); }
+.ab-foot-btn { min-height: 48px; border-radius: 10px; font: inherit; font-size: calc(15px * var(--fs, 1)); font-weight: 700; cursor: pointer; }
+.ab-foot-btn.back { background: #3a3f4b; border: 1px solid #5a6070; color: #e6e9f0; }
+.ab-foot-btn.auto { background: linear-gradient(180deg, #34D57A, #16A34A); border: 1px solid #fff4; color: #04140a; }
+.ab-foot-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.ab-auto-note { position: absolute; left: 50%; bottom: calc(80px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 5; max-width: 90%; padding: 8px 14px; border-radius: 99px; background: #0d2a1acc; border: 1px solid #34D57A; color: #d9ffe6; font-size: calc(13px * var(--fs, 1)); text-align: center; pointer-events: none; animation: rv-fade 2.2s ease-out forwards; }
+@keyframes rv-fade { 0% { opacity: 0; transform: translate(-50%, 8px); } 12%, 75% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; } }
