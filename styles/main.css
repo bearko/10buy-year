@@ -118,7 +118,7 @@ h1 small { display: block; font-size: calc(16px * var(--fs, 1)); text-shadow: no
 .sprite[hidden] { display: none; }
 
 /* ---------- メッセージ ---------- */
-#message { position: relative; flex: 1 0 auto; min-height: clamp(112px, calc(100dvh - 690px), 180px); margin: 6px 8px 0; padding: 8px 12px 10px; background: #0b1020ee; border: 2px solid #c8cff5; border-radius: var(--radius); cursor: pointer; user-select: none; }
+#message { position: relative; flex: none; min-height: clamp(112px, calc(100dvh - 690px), 180px); margin: 6px 8px 0; padding: 8px 12px 10px; background: #0b1020ee; border: 2px solid #c8cff5; border-radius: var(--radius); cursor: pointer; user-select: none; }
 #speaker { color: var(--gold); font-size: calc(13px * var(--fs, 1)); min-height: 18px; }
 #text { white-space: pre-wrap; min-height: 48px; }
 #message.narr #text { color: #cfd6ff; font-style: italic; }
@@ -137,7 +137,7 @@ h1 small { display: block; font-size: calc(16px * var(--fs, 1)); text-shadow: no
 .choice small { margin-left: 8px; color: var(--warn); font-size: calc(12px * var(--fs, 1)); }
 
 /* ---------- コマンド ---------- */
-#commands { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: auto; padding: 8px 8px calc(16px + env(safe-area-inset-bottom)); }
+#commands { display: grid; grid-template-columns: repeat(3, 1fr); grid-auto-rows: min-content; align-content: start; gap: 6px; padding: 8px 8px calc(16px + env(safe-area-inset-bottom)); }
 #commands.groups { grid-template-columns: repeat(4, 1fr); }
 /* 出品枠のあきの知らせ（行動カードの上の帯） */
 .cmd-idle { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 5px 10px; border: 1px solid #ffd76a66; border-radius: 8px; background: #ffd76a14; color: #ffe9a8; font: inherit; font-size: calc(12px * var(--fs, 1)); cursor: pointer; }
@@ -1741,3 +1741,5 @@ body.stage-xs #side-btns .side-btn.quest, body.stage-xs #side-btns .side-btn.tre
 #commands:has(> .cmd:nth-child(7 of .cmd)) .cmd:not(.grp) { flex-direction: row; justify-content: flex-start; min-height: 46px; padding: 4px 6px 4px 14px; text-align: left; gap: 5px; }
 #commands:has(> .cmd:nth-child(7 of .cmd)) .cmd:not(.grp) .cmd-ic { width: 24px; height: 24px; }
 #commands:has(> .cmd:nth-child(7 of .cmd)) .cmd:not(.grp) b { font-size: calc(11.5px * var(--fs, 1)); line-height: 1.2; }
+/* 選択肢がないあいだは、メッセージ欄の高さを固定する（行動の予告が長くても、下の行動カードが動かないように。あふれた分は欄の中でスクロール） */
+#message:not(:has(#choices > *)) { height: clamp(112px, calc(100dvh - 690px), 180px); overflow-y: auto; overscroll-behavior: contain; }
