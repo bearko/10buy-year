@@ -55,6 +55,8 @@ import { shipScene } from './ui/room.js';
 import { battleEnd, battleResult, battleSkill, battleStart, inBattle } from './ui/battle.js';
 import { monthCard } from './ui/monthcard.js';
 import { yearCard } from './ui/yearcard.js';
+import { glossaryModal, guideModal } from './ui/guide.js';
+import { oneTap } from './ui/prefs.js';
 import { resumeCard } from './ui/resume.js';
 import { setNight, setSeason, weekFlip } from './ui/calendar.js';
 import { decadeChart, highlightList, resultImage, revealSequence } from './ui/finale.js';
@@ -454,10 +456,24 @@ function waitForCommand(mode) {
     const cmdCard = (c) => {
       const risk = sickRisk(state, c);
       const sel = selected === c.id;
-      return card({
+      // 1タップで決める設定（チュートリアルの案内中と、体調を崩しそうな行動は、いつもどおり2タップ）：長押しで予告だけ見る
+      const quick = oneTap() && !guide() && risk === 0;
+      let pressed = false;
+      let timer = null;
+      const el = card({
         class: `cmd ${sel ? 'sel' : ''} ${risk >= 0.3 ? 'danger' : risk > 0 ? 'risky' : ''}${point(!sel && guide()?.cmd === c.id)}`,
-        onclick: () => { if (!busy) select(c); },
+        onclick: () => {
+          if (busy) return;
+          if (pressed) { pressed = false; return; }
+          if (quick) pickCmd(c.id);
+          else select(c);
+        },
       }, c.icon, c.name, costLine(c), sel ? h('span', { class: 'go' }, '決定') : isNew(c) ? newTag() : null, risk > 0 && !sel ? h('span', { class: 'risk' }, '⚠') : null);
+      if (quick) {
+        el.addEventListener('pointerdown', () => { pressed = false; timer = setTimeout(() => { pressed = true; select(c); }, 450); });
+        for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) el.addEventListener(ev, () => clearTimeout(timer));
+      }
+      return el;
     };
 
     function draw() {
@@ -651,6 +667,8 @@ function renderTabs() {
         onCrypto: () => after(cryptoModal(state, refresh)),
         onMap: () => after(storeMapModal(state)),
         onCompanions: () => after(companionsModal(state)),
+        onGlossary: () => after(glossaryModal()),
+        onGuide: () => after(guideModal()),
         fresh: uiFresh,
         seen: (id) => { uiSeen(id); refresh(); },
       }),

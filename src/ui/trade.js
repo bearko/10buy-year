@@ -511,23 +511,41 @@ function sparkline(values) {
   return svg;
 }
 
+// タブ（ニュース／持っている品／すべて）と並べ替え。開き直しても覚えておく
+let mkTab = null;
+let mkSort = 'rec';
 export function marketModal(s) {
-  return openModal('相場・ニュース', (body) => {
-    if (s.news.length) {
-      body.append(h('div', { class: 'news-list' }, h('div', { class: 'sub' }, '今週のニュース'), ...s.news.map((n) => h('div', { class: `news ${n.kind}` }, n.text))));
+  const rows = () => visibleProducts(s).filter((x) => x.kind !== 'home').map((p) => {
+    const m = s.market[p.id];
+    const n = m.hist.length;
+    const series = m.hist.map((v, i) => estimateAt(s, p.id, s.week - (n - 1 - i), v));
+    const cur = series[series.length - 1];
+    const prev = series[series.length - 2] ?? cur;
+    return { p, m, series, cur, diff: cur - prev, pct: prev ? (cur - prev) / prev : 0, held: activeUnits(s).filter((u) => u.pid === p.id).length };
+  });
+  return openModal('相場・ニュース', (body, api) => {
+    const all = rows();
+    const heldN = all.filter((r) => r.held).length;
+    if (!mkTab) mkTab = heldN ? 'held' : 'all'; // 持っている品の上がり下がりを先に
+    const tabs = [['news', `ニュース ${s.news.length}`], ['held', `持っている品 ${heldN}`], ['all', `すべて ${all.length}`]];
+    body.append(h('div', { class: 'mk-tabs mkt-tabs' }, ...tabs.map(([id, label]) => h('button', { class: `mk-tab ${mkTab === id ? 'on' : ''}`, onclick: () => { mkTab = id; api.refresh(); } }, label))));
+    if (mkTab === 'news') {
+      if (s.news.length) body.append(h('div', { class: 'news-list' }, ...s.news.map((x) => h('div', { class: `news ${x.kind}` }, x.text))));
+      else body.append(h('p', { class: 'empty' }, '今週のニュースはない。'));
+      const lots = hasSkill(s, 'src_lottery') ? openLotteries(s) : [];
+      if (lots.length) body.append(h('p', { class: 'note' }, `抽選受付中：${lots.map((p) => `「${p.name}」`).join('')}`));
+      return;
     }
-    const lots = hasSkill(s, 'src_lottery') ? openLotteries(s) : [];
-    if (lots.length) body.append(h('p', { class: 'note' }, `抽選受付中：${lots.map((p) => `「${p.name}」`).join('')}`));
-    body.append(h('p', { class: 'note' }, `推定相場の確度：${confidenceLabel(s)}`));
-    for (const p of visibleProducts(s).filter((x) => x.kind !== 'home')) {
-      const m = s.market[p.id];
-      const n = m.hist.length;
-      const series = m.hist.map((v, i) => estimateAt(s, p.id, s.week - (n - 1 - i), v));
-      const cur = series[series.length - 1];
-      const prev = series[series.length - 2] ?? cur;
-      const diff = cur - prev;
+    body.append(h('div', { class: 'mkt-bar' },
+      h('small', { class: 'note' }, `推定相場の確度：${confidenceLabel(s)}`),
+      h('select', { class: 'inv-sort', 'aria-label': '並べ替え', onchange: (e) => { mkSort = e.target.value; api.refresh(); } },
+        ...[['rec', '標準'], ['up', '値上がり順'], ['down', '値下がり順']].map(([id, label]) => h('option', { value: id, selected: mkSort === id }, label)))));
+    let list = mkTab === 'held' ? all.filter((r) => r.held) : all;
+    if (mkSort === 'up') list = [...list].sort((a, b) => b.pct - a.pct);
+    if (mkSort === 'down') list = [...list].sort((a, b) => a.pct - b.pct);
+    if (!list.length) body.append(h('p', { class: 'empty' }, '持っている品はない。'));
+    for (const { p, m, series, cur, diff, held } of list) {
       const released = isReleased(s, p);
-      const held = activeUnits(s).filter((u) => u.pid === p.id).length;
       body.append(
         h('div', { class: 'card row' },
           itemIcon(p.id),

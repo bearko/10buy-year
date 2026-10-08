@@ -3,7 +3,7 @@ import { CAST, portraitOf } from '../data/cast.js';
 import { fitPixel, pixelSrc } from './pixel.js';
 import { tierOf } from './battle.js';
 import { productImage, productOf } from '../data/products.js';
-import { marked, typeTarget } from './markup.js';
+import { marked, termsIn, typeTarget } from './markup.js';
 import { $, clear, h } from './dom.js';
 import { tr } from '../i18n/index.js';
 
@@ -195,7 +195,27 @@ function speakerLabel(who) {
 }
 
 // 画面のどこをタップしても進む。ボタン・選択肢・モーダル・ツリーなど、それ自体を操作する場所は除く
-const OWN_CONTROLS = 'button, a, input, select, textarea, #choices, #modal-root, .modal, .tree-screen, #hud [data-tip], .hud-tip';
+const OWN_CONTROLS = 'button, a, input, select, textarea, #choices, #modal-root, .modal, .tree-screen, #hud [data-tip], .hud-tip, #message .hl-term';
+
+// セリフの中の色つきの用語をタップしたら、その場で解説を出す（送りにはならない）
+let termTip = null;
+const closeTermTip = () => {
+  termTip?.remove();
+  termTip = null;
+};
+document.addEventListener('click', (e) => {
+  const t = e.target instanceof Element && e.target.closest('#message .hl-term');
+  closeTermTip();
+  if (!t) return;
+  const info = termsIn(t.textContent)[0];
+  if (!info) return;
+  const r = t.getBoundingClientRect();
+  termTip = h('div', { class: 'hud-tip term-tip', 'data-no-tr': '' }, h('b', {}, info.word), h('div', {}, info.desc));
+  termTip.style.left = `${Math.max(8, Math.min(window.innerWidth - 268, r.left))}px`;
+  termTip.style.top = `${r.top - 6}px`;
+  document.body.append(termTip);
+  setTimeout(closeTermTip, 6000);
+});
 const isAdvanceTap = (e) => !(e.target instanceof Element && e.target.closest(OWN_CONTROLS));
 
 // 文字送りの「AUTO」：タップしなくても、読み終わるくらいの時間で次へ進む（選択肢では止まる）。メッセージ欄の右上で切りかえる

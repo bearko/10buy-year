@@ -1855,3 +1855,34 @@ body.stage-xs #side-btns .side-btn.quest, body.stage-xs #side-btns .side-btn.tre
 .yc-card { max-width: 380px; }
 .yc-card .ch { margin: 8px 0 4px; text-align: left; }
 .yc-up { display: flex; flex-direction: column; gap: 2px; margin: 4px 0; color: var(--gold); font-size: calc(12px * var(--fs, 1)); }
+
+/* 相場画面のタブ（B6） */
+.mkt-tabs { margin-bottom: 8px; }
+.mkt-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.mkt-bar .note { margin: 0; }
+
+/* 用語集と遊び方（B8） */
+.gl-search { width: 100%; box-sizing: border-box; padding: 8px 10px; margin: 6px 0 8px; border-radius: 8px; border: 1px solid var(--line); background: #0006; color: var(--text); font: inherit; }
+.gl-list { display: flex; flex-direction: column; gap: 6px; }
+.gl-row { padding: 6px 10px; border-radius: 8px; background: #ffffff08; }
+.gl-row b { color: #9dffb0; }
+.gl-row p { margin: 2px 0 0; font-size: calc(13px * var(--fs, 1)); }
+.gd-sec { margin-bottom: 12px; }
+.gd-sec b { color: var(--gold); }
+.gd-sec ul { margin: 4px 0 0; padding-left: 18px; font-size: calc(13px * var(--fs, 1)); line-height: 1.55; }
+#message .hl-term { cursor: help; }
+.term-tip { position: fixed; transform: translateY(-100%); }
+.term-tip b { display: block; color: #9dffb0; }
+
+/* 10年の道のり（F3） */
+.road { margin-bottom: 10px; padding: 8px 10px 4px; border-radius: 10px; background: #ffffff08; }
+.road-h { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
+.road-h b { color: var(--gold); font-size: calc(13px * var(--fs, 1)); }
+.road-h small { color: var(--muted); }
+.road-track { position: relative; height: 8px; border-radius: 99px; background: #0007; }
+.road-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 99px; background: linear-gradient(90deg, #22b8a0, var(--gold)); }
+.road-tick { position: absolute; top: 0; bottom: 0; width: 1px; background: #ffffff30; }
+.road-st { position: absolute; top: 50%; transform: translate(-50%, -50%); width: 16px; height: 16px; border-radius: 50%; background: var(--gold); color: #221a00; font-size: calc(10px * var(--fs, 1)); font-weight: 700; display: grid; place-items: center; box-shadow: 0 0 0 2px #0b1020; }
+.road-me { position: absolute; top: -14px; transform: translateX(-50%); color: #fff; font-size: calc(10px * var(--fs, 1)); }
+.road-years { display: grid; grid-template-columns: repeat(10, 1fr); margin-top: 3px; }
+.road-years small { text-align: center; color: var(--muted); font-size: calc(10px * var(--fs, 1)); }
