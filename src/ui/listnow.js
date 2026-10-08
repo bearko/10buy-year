@@ -30,7 +30,7 @@ export async function listNowPrompt(s, before, onChange) {
   const api = openModal(
     'すぐ出品する？',
     (body) => {
-      body.append(
+      const parts = [
         h('p', { class: 'listnow-lead' }, `仕入れた${plans.length}点を、それぞれ合った売り先に相場の値段で出品できる。`),
         h('ul', { class: 'listnow-rows' }, ...[...rows.values()].map((r) => h('li', {}, h('span', {}, `${r.name}${r.qty > 1 ? ` ×${r.qty}` : ''}`), h('small', {}, r.pf), h('b', {}, yenFmt(r.price))))),
         h('p', { class: 'listnow-note' }, free < plans.length ? `出品枠のあきは${free}件。入りきらない${plans.length - free}点は在庫に残る` : `出品枠のあき ${free}件`),
@@ -40,7 +40,8 @@ export async function listNowPrompt(s, before, onChange) {
             h('ul', {}, ...staleRows(s, stale).map((r) => h('li', {}, h('span', {}, `${r.name}${r.qty > 1 ? ` ×${r.qty}` : ''}`), h('small', {}, `${r.weeks}週出品中`), h('b', {}, yenFmt(r.price))))),
           )
           : null,
-      );
+      ];
+      body.append(...parts.filter(Boolean)); // null を「null」と書かないように
     },
     {
       footer: (a) => [
