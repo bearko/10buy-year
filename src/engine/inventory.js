@@ -86,8 +86,14 @@ export const listingCap = (s) => 5 + Math.floor(s.abilities.list / 10) + nodeLv(
 export const capacity = (s) => ROOM_CAPACITY + (hasSkill(s, 'warehouse') ? 60 : 0) + (hasSkill(s, 'warehouse2') ? 300 : 0) + perk(s, 'capacityAdd') + ((s.lifestyle || 0) >= 2 ? 20 : 0) + (s.secrets?.includes('logistics') ? 40 : 0); // 車のトランク・ナポレオンの奥義
 export const activeUnits = (s) => s.inventory.filter((u) => u.arrive <= s.week);
 export const listedUnits = (s) => s.inventory.filter((u) => u.listing);
-export const spaceUsed = (s) => s.inventory.reduce((sum, u) => sum + SIZE_INFO[productOf(u.pid).size].space, 0);
-export const overCapacity = (s) => spaceUsed(s) > capacity(s);
+const spaceOf = (units) => units.reduce((sum, u) => sum + SIZE_INFO[productOf(u.pid).size].space, 0);
+// 届く予定の分も含めた置き場（仕入れの上限・自動仕入れの判断に使う。届いたら置く場所が要るので）
+export const spaceUsed = (s) => spaceOf(s.inventory);
+// いま部屋にある分だけ（予約中・輸送中の品はまだ部屋をふさいでいない）
+export const roomUsed = (s) => spaceOf(activeUnits(s));
+export const incomingSpace = (s) => spaceUsed(s) - roomUsed(s);
+// 部屋があふれている（睡眠の回復・家族の信頼・イベントに響く）。届いていない品は数えない
+export const overCapacity = (s) => roomUsed(s) > capacity(s);
 // 通路や玄関まで段ボールを積んでも、これ以上は物理的に置けない
 export const hardCapacity = (s) => Math.round(capacity(s) * 1.5);
 

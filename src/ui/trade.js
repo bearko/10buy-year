@@ -4,7 +4,7 @@ import { productImage, productOf, shipFor, shippingCost } from '../data/products
 import { weekLabel, yearOf } from '../engine/calendar.js';
 import { flag, hasSkill } from '../engine/effects.js';
 import {
-  abroadMult, activeUnits, buybackQuote, capacity, feeRate, groupInventory, platformMult, platformOpen, hardCapacity, listedUnits, listingCap, listUnits, platformFee, platformsFor, PLATFORMS, sellToBuyer, spaceUsed, unlistUnits,
+  abroadMult, activeUnits, buybackQuote, capacity, feeRate, groupInventory, platformMult, platformOpen, hardCapacity, listedUnits, listingCap, listUnits, platformFee, platformsFor, PLATFORMS, sellToBuyer, unlistUnits, overCapacity, roomUsed, incomingSpace,
 } from '../engine/inventory.js';
 import { sizeLabel, sizeMult } from '../engine/shoes.js';
 import { CLAIM_BUYERS, claimable, regOf, TAKEDOWN_RATE, unsellable } from '../engine/regulated.js';
@@ -200,7 +200,7 @@ export function inventoryModal(s, onChange) {
         : null,
       h('div', { class: 'wallet' },
         h('span', {}, `出品枠 ${listedUnits(s).length}/${cap}`),
-        h('span', { class: spaceUsed(s) > capacity(s) ? 'neg' : '' }, `置き場 ${spaceUsed(s)}/${capacity(s)}（限界${hardCapacity(s)}）`),
+        h('span', { class: overCapacity(s) ? 'neg' : '' }, `置き場 ${roomUsed(s)}/${capacity(s)}${incomingSpace(s) ? `（届く予定 +${incomingSpace(s)}）` : ''}（限界${hardCapacity(s)}）`),
         banned(s, market) ? h('span', { class: 'neg' }, `${pf.name}は停止中（あと${market === 'merc' ? s.banWeeks : s.amaBan}週）`) : null,
       ),
       h('div', { class: 'inv-opts' },

@@ -1615,6 +1615,42 @@ test('仕入れ後すぐ出品：新しく仕入れた品を相場で出品し�
   assert.ok(s.inventory.filter((u) => before.has(u.uid)).every((u) => !u.listing));
 });
 
+import { staleListings, swapList } from '../src/engine/automation.js';
+import { addUnits, capacity, overCapacity, roomUsed } from '../src/engine/inventory.js';
+test('出品枠がいっぱいでも、古い出品を取り下げて仕入れた品を優先して出品できる', () => {
+  const s = createGame(3);
+  s.cash = 1e7;
+  s.inventory = [];
+  const cap = listingCap(s);
+  addUnits(s, 'boots', cap, 3000);
+  const old = s.inventory.map((u) => u.uid);
+  assert.equal(quickList(s, old).listed, cap);
+  s.week += 3;
+  const before = new Set(s.inventory.map((u) => u.uid));
+  addUnits(s, 'boots', 2, 3000);
+  const fresh = s.inventory.filter((u) => !before.has(u.uid)).map((u) => u.uid);
+  assert.equal(quickList(s, fresh).listed, 0); // 枠がいっぱい
+  assert.equal(staleListings(s, 2).length, 2);
+  const r = swapList(s, fresh);
+  assert.equal(r.withdrawn, 2);
+  assert.equal(r.listed, 2);
+  assert.ok(fresh.every((uid) => s.inventory.find((u) => u.uid === uid).listing));
+  assert.equal(listedUnits(s).length, cap);
+  // 取り下げたのは古いほう。在庫に戻っている
+  assert.equal(s.inventory.filter((u) => before.has(u.uid) && !u.listing).length, 2);
+});
+
+test('予約・輸送中でまだ届いていない品は、部屋の置き場（容量オーバー）に数えない', () => {
+  const s = createGame(3);
+  s.inventory = [];
+  addUnits(s, 'boots', 200, 3000, { arrive: s.week + 3 });
+  assert.equal(roomUsed(s), 0);
+  assert.equal(overCapacity(s), false);
+  assert.ok(spaceUsed(s) > capacity(s)); // 仕入れの上限には、届く予定の分も数える
+  s.week += 3;
+  assert.equal(overCapacity(s), true);
+});
+
 test('コード・CSS・HTMLに書いたアセットのパスがすべて存在する', () => {
   const files = ['index.html', 'tools/og.html', 'styles/main.css'];
   const walk = (dir) => {

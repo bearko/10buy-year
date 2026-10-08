@@ -3,7 +3,7 @@ import { suspicion } from './listing.js';
 import { unsellable } from './regulated.js';
 import { productOf, shippingCost } from '../data/products.js';
 import { hasSkill } from './effects.js';
-import { abroadMult, activeUnits, buy, capacity, cardAvailable, feeRate, listUnits, platformMult, platformsFor, spaceUsed } from './inventory.js';
+import { abroadMult, activeUnits, buy, capacity, cardAvailable, feeRate, listedUnits, listingCap, listUnits, platformMult, platformsFor, spaceUsed, unlistUnits } from './inventory.js';
 import { SIZE_INFO } from '../data/products.js';
 import { estimateUnit } from './market.js';
 import { CORP_SOCIAL, LIVING_COST } from './career.js';
@@ -44,6 +44,25 @@ export function quickList(s, uids) {
     if (k) total += u.listing.price;
   }
   return { listed: n, total };
+}
+
+// 出品枠がいっぱいのとき、新しい品のために取り下げる出品（出品してから長いものから need 件）。
+// keep：取り下げない品の uid（いま出品しようとしている品）
+export function staleListings(s, need, keep = new Set()) {
+  if (need <= 0) return [];
+  return listedUnits(s)
+    .filter((u) => !keep.has(u.uid))
+    .sort((a, b) => a.listing.week - b.listing.week || a.uid - b.uid)
+    .slice(0, need);
+}
+
+// 古い出品を取り下げて、指定した在庫を優先して相場で出品する
+export function swapList(s, uids) {
+  const keep = new Set(uids);
+  const need = Math.max(0, uids.length - Math.max(0, listingCap(s) - listedUnits(s).length));
+  const out = staleListings(s, need, keep);
+  unlistUnits(s, out.map((u) => u.uid));
+  return { ...quickList(s, uids), withdrawn: out.length };
 }
 
 // 外注：撮影・出品 … 未出品の在庫を相場で出品する
