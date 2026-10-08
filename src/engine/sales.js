@@ -42,7 +42,7 @@ function fixedPriceMarket(s, units, buyers, platform, out, allowNego, mult = 1) 
     if (buyers > 0 && chance(s, Math.min(0.97, sellChance(s, ratio) * Math.min(1.15, rf * boost)))) {
       buyers--;
       out.sold.push(makeSale(u, u.listing.price, platform));
-    } else if (allowNego && ratio > 1.0 && ratio < 1.6 && out.negotiations.length < 2 && chance(s, 0.22)) {
+    } else if (allowNego && s.flags.tutorialDone && ratio > 1.0 && ratio < 1.6 && out.negotiations.length < 2 && chance(s, 0.22)) {
       out.negotiations.push({ uid: u.uid, pid: u.pid, price: u.listing.price, offer: roundPrice(u.listing.price * randRange(s, 0.78, 0.9)) });
     }
   }
@@ -193,6 +193,8 @@ export function finalizeSale(s, sale, out) {
   if (sale.price > product.retail * 2 && !product.used) addHate(s, 1, false);
   addRating(s, hasSkill(s, 'quick_reply') ? 0.9 : 0.6);
 
+  // チュートリアル中は、値下げ交渉もトラブルも起きない（覚えることを絞る）
+  if (!s.flags.tutorialDone) return;
   // 配送破損（倉庫出荷はプロの梱包なので起きない）
   const staffRate = staffDamageRate(s);
   const dmgRate = hasSkill(s, 'pack_master') || hasSkill(s, 'out_ship') || sale.platform === 'ama' ? 0 : (staffRate ?? 0.03 * (1 - s.abilities.pack / 120)) * (product.size === 'L' ? 2 : 1);
@@ -201,8 +203,7 @@ export function finalizeSale(s, sale, out) {
     return;
   }
   const kind = rollTrouble(s, sale);
-  // チュートリアル中は、取引トラブルを週に1件まで
-  if (kind && !(!s.flags.tutorialDone && out?.troubles.length)) out?.troubles.push({ kind, sale });
+  if (kind) out?.troubles.push({ kind, sale });
 }
 
 function rollTrouble(s, sale) {
@@ -219,7 +220,6 @@ function rollTrouble(s, sale) {
   if (authed) rate *= 0.5;
   rate *= perk(s, 'trouble');
   if (sale.delayed) rate += 0.15;
-  if (!s.flags.tutorialDone) rate *= 0.4; // 序盤は売る流れを覚えるのが先
   rate *= s.mods?.troubleMult ?? 1; // 年末商戦など
   if (!chance(s, rate)) return null;
   const expensive = sale.price >= 30000;

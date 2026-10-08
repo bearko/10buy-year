@@ -1775,3 +1775,26 @@ test('英語版：自動プレイで流れた文がすべて英語になる', ()
   assert.equal(trEn('150万円'), '¥1.5M');
   assert.equal(trEn('−6,300円'), '−¥6,300');
 });
+
+import { resolveSales } from '../src/engine/sales.js';
+test('チュートリアル中は、値下げ交渉・取引トラブル・偉人との出会いが起きない', () => {
+  const extra = new Set();
+  globalThis.__onStep = (st, s) => {
+    if (s.flags.tutorialDone) return;
+    if (st.t === 'talk' && !['mine', 'chris', 'narr', 'maycri'].includes(st.who)) extra.add(`talk:${st.who}`);
+    if (st.t === 'battle') extra.add('battle');
+  };
+  try {
+    for (let seed = 1; seed <= 8; seed++) runGame(seed, undefined, { weeks: 20 });
+  } finally {
+    globalThis.__onStep = undefined;
+  }
+  assert.deepEqual([...extra], []);
+  // 売れた週の結果にも、交渉とトラブルが入らない
+  const s = createGame(4);
+  s.inventory.forEach((u) => listUnits(s, [u.uid], 'merc', Math.round(priceOf(s, u.pid) * 1.25)));
+  for (let i = 0; i < 6; i++) {
+    const out = resolveSales(s);
+    assert.equal(out.negotiations.length + out.troubles.length, 0);
+  }
+});

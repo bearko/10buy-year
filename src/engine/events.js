@@ -20,9 +20,12 @@ function play(s, ev, ctx) {
   return ev.play(s, ctx);
 }
 
+// チュートリアル中に起きてよいイベント（最初の返済日の知らせだけ）。偉人との出会いや突発の出来事は、終わってから
+const TUTORIAL_OK = new Set(['month1_end']);
+
 // calendar は条件を満たすものを全部、それ以外は chance を通ったものから1つ
 export function drawEvents(s, trigger, ctx = {}) {
-  const cands = EVENTS.filter((ev) => eligible(s, ev, trigger, ctx));
+  const cands = EVENTS.filter((ev) => eligible(s, ev, trigger, ctx) && (s.flags.tutorialDone || TUTORIAL_OK.has(ev.id)));
   if (trigger === 'calendar') return cands.flatMap((ev) => play(s, ev, ctx));
   const passed = cands.filter((ev) => chance(s, ev.chance ?? 1));
   if (!passed.length) return [];
