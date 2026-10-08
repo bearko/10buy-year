@@ -622,22 +622,55 @@ function renderTabs() {
         onCrypto: () => after(cryptoModal(state, refresh)),
         onMap: () => after(storeMapModal(state)),
         onCompanions: () => after(companionsModal(state)),
+        fresh: uiFresh,
+        seen: (id) => { uiSeen(id); refresh(); },
       }),
     },
     { id: 'ab', label: '能力強化', open: () => openAbilities(state, refresh), lock: !treeOpen(state) && '最初の売上のあとに開ける', badge: abilityBadge() },
     { id: 'log', label: 'ログ', open: () => logModal(state) },
   ];
   const pointSide = tutorialGuide()?.side;
+  const menuFresh = MENU_UI.some((id) => uiFresh(id));
+  // まだ使えないボタンは出さない。開いたら NEW で光って現れる（押したら既読）
   for (const t of tabs) {
+    if (t.lock) continue;
+    const fresh = uiFresh(t.id) || (t.id === 'menu' && menuFresh);
     nav.append(h('button', {
-      class: `side-btn ${t.id} ${t.lock ? 'locked' : ''} ${!t.lock && pointSide === t.id ? 'tut-point' : ''}`,
+      class: `side-btn ${t.id} ${fresh ? 'fresh' : ''} ${pointSide === t.id ? 'tut-point' : ''}`,
       onclick: () => {
         if (busy) return;
-        if (t.lock) return toast(t.lock, 'bad');
+        uiSeen(t.id);
         after(t.open());
       },
-    }, t.lock ? `🔒${t.label}` : t.label, t.badge && !t.lock ? h('span', { class: 'badge' }, t.badge) : null));
+    }, t.label, fresh ? h('span', { class: 'new-tag' }, 'NEW') : t.badge ? h('span', { class: 'badge' }, t.badge) : null));
   }
+}
+
+// 段階的な開放：右のボタンとメニューの項目のうち、途中で開くもの。開いているかどうか
+const MENU_UI = ['market', 'shop', 'rivals', 'collection', 'careers', 'life', 'crypto', 'map'];
+function uiOpen(id) {
+  const s = state;
+  switch (id) {
+    case 'quest': return tutorialDone(s);
+    case 'tree': case 'ab': return treeOpen(s);
+    case 'market': return hasSkill(s, 'eye_market');
+    case 'shop': return !!s.shop;
+    case 'rivals': case 'careers': case 'life': return s.stage >= 2;
+    case 'collection': return s.stage >= 3 || !!s.collection?.length;
+    case 'crypto': return !!s.crypto?.open;
+    case 'map': return Object.keys(s.storeMap || {}).length > 0;
+    default: return true;
+  }
+}
+// 開いていて、まだ押していないもの。前の版のセーブは、いま開いているものを既読として始める
+const UI_TRACKED = ['quest', 'tree', 'ab', ...MENU_UI];
+function uiFresh(id) {
+  if (!state || !UI_TRACKED.includes(id) || !uiOpen(id)) return false;
+  if (!state.uiSeen) state.uiSeen = Object.fromEntries(UI_TRACKED.filter(uiOpen).map((x) => [x, true]));
+  return !state.uiSeen[id];
+}
+function uiSeen(id) {
+  if (state && UI_TRACKED.includes(id) && uiOpen(id)) (state.uiSeen ||= {})[id] = true;
 }
 
 function setSpeed(ms) {

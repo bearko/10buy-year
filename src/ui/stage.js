@@ -5,6 +5,7 @@ import { tierOf } from './battle.js';
 import { productImage, productOf } from '../data/products.js';
 import { marked, typeTarget } from './markup.js';
 import { $, clear, h } from './dom.js';
+import { tr } from '../i18n/index.js';
 
 const BG = (name) => `assets/backgrounds/${name}.jpg`;
 let textSpeed = 22; // ms / 文字
@@ -260,9 +261,89 @@ export async function say(who, text, pose) {
     showPartner(who, pose);
     if ($('#sprite-left').dataset.pose !== 'idle') showChris('idle');
   }
-  const stopMouth = who === 'chris' && CALM.includes(pose || 'talk') && textSpeed > 0 && !autoMode ? startMouth(pose || 'talk') : null;
-  await typewrite(text);
-  stopMouth?.();
+  // 枠に収まらない長さなら、文の切れ目で分けて1枚ずつ出す（メッセージ欄はスクロールさせない）
+  for (const part of pagesOf(text)) {
+    const stopMouth = who === 'chris' && CALM.includes(pose || 'talk') && textSpeed > 0 && !autoMode ? startMouth(pose || 'talk') : null;
+    await typewrite(part);
+    stopMouth?.();
+    box.classList.add('waiting');
+    await waitAdvance();
+    box.classList.remove('waiting');
+  }
+}
+
+// ---------- メッセージを枠に収める ----------
+// メッセージ欄は高さが決まっている（選択肢のないとき）。あふれたら次の1枚に送る
+const fits = () => {
+  const box = $('#message');
+  return box.scrollHeight <= box.clientHeight + 1;
+};
+
+// 文章を、枠に収まる分ずつに分ける（改行・句点の後で切る。1文でも入らないときは読点・空白でも切る）
+function pagesOf(text) {
+  const full = tr(text);
+  const el = $('#text');
+  $('#message').classList.remove('tight', 'tighter');
+  const fitsText = (s) => {
+    typeTarget(el, s).finish();
+    return fits();
+  };
+  if (fitsText(full)) return [full];
+  const pieces = (s, re) => s.split(re).filter((x) => x !== '');
+  let units = pieces(full, /(?<=[。！？!?」\n]|\. )/);
+  units = units.flatMap((u) => (fitsText(u) ? [u] : pieces(u, /(?<=[、，,]|\s)/)));
+  const pages = [];
+  let cur = '';
+  for (const u of units) {
+    const next = cur + u;
+    if (!cur || fitsText(next.replace(/^\s+/, ''))) cur = next;
+    else {
+      pages.push(cur.trim());
+      cur = u;
+    }
+  }
+  if (cur.trim()) pages.push(cur.trim());
+  el.textContent = '';
+  return pages;
+}
+
+// お知らせ（行の集まり）を、枠に収まる分ずつ見せる。blocks：[{ title, tone, lines }]
+// wrap：ひとまとまりを囲む要素を作る（まとめのお知らせは項目ごとに枠をつける）
+async function pagedLines(blocks, wrap) {
+  const el = clear($('#text'));
+  const box = $('#message');
+  box.classList.remove('tight', 'tighter');
+  const open = () => {
+    if (!wrap) return el;
+    const c = wrap(b0);
+    el.append(c);
+    return c;
+  };
+  let b0 = null;
+  let onPage = 0;
+  const breakPage = async () => {
+    box.classList.add('waiting');
+    await waitAdvance();
+    box.classList.remove('waiting');
+    clear(el);
+    onPage = 0;
+  };
+  for (const b of blocks) {
+    b0 = b;
+    let cont = open();
+    for (const l of b.lines.filter(Boolean)) {
+      const line = h('div', {}, ...marked(l));
+      cont.append(line);
+      if (!fits() && onPage > 0) {
+        line.remove();
+        if (wrap && cont.children.length <= 1) cont.remove(); // 見出しだけ残ったら、見出しごと次の1枚へ
+        await breakPage();
+        cont = open();
+        cont.append(line);
+      }
+      onPage++;
+    }
+  }
   box.classList.add('waiting');
   await waitAdvance();
   box.classList.remove('waiting');
@@ -296,15 +377,8 @@ export async function showInfos(list) {
   box.classList.remove('narr', 'good', 'bad');
   box.classList.add('info', 'digest');
   $('#speaker').textContent = `お知らせ ${list.length}件`;
-  const el = clear($('#text'));
-  for (const x of list) {
-    el.append(h('div', { class: `dg-item ${x.tone || ''}` },
-      h('b', {}, x.title),
-      ...x.lines.filter(Boolean).map((l) => h('div', {}, ...marked(l)))));
-  }
-  box.classList.add('waiting');
-  await waitAdvance();
-  box.classList.remove('waiting', 'info', 'digest');
+  await pagedLines(list, (x) => h('div', { class: `dg-item ${x.tone || ''}` }, h('b', {}, tr(x.title))));
+  box.classList.remove('info', 'digest');
 }
 
 export async function showInfo(title, lines, tone = 'normal') {
@@ -315,11 +389,8 @@ export async function showInfo(title, lines, tone = 'normal') {
   box.classList.toggle('good', tone === 'good');
   box.classList.toggle('bad', tone === 'bad');
   $('#speaker').textContent = `【${title}】`;
-  const el = clear($('#text'));
-  lines.filter(Boolean).forEach((l) => el.append(h('div', {}, ...marked(l))));
-  box.classList.add('waiting');
-  await waitAdvance();
-  box.classList.remove('waiting', 'info', 'good', 'bad');
+  await pagedLines([{ lines }], null);
+  box.classList.remove('info', 'good', 'bad');
 }
 
 export function choose(options, prompt) {
@@ -350,13 +421,21 @@ export async function hold(speaker, text) {
   const box = $('#message');
   box.classList.remove('info', 'good', 'bad', 'narr');
   $('#speaker').textContent = speaker;
-  $('#text').textContent = text;
-  box.classList.add('waiting');
-  await waitAdvance();
-  box.classList.remove('waiting');
+  for (const part of pagesOf(text)) {
+    $('#text').textContent = part;
+    box.classList.add('waiting');
+    await waitAdvance();
+    box.classList.remove('waiting');
+  }
 }
 
+// タップを待たない表示（行動の予告など）。枠からあふれるときは、文字を少し小さくして収める
 export function setMessage(speaker, text) {
+  const box = $('#message');
   $('#speaker').textContent = speaker;
   $('#text').textContent = text;
+  box.classList.remove('tight', 'tighter');
+  if (fits()) return;
+  box.classList.add('tight');
+  if (!fits()) box.classList.replace('tight', 'tighter');
 }

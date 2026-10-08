@@ -4,7 +4,7 @@ import { MOOD_LABELS } from '../engine/effects.js';
 import { minPayment } from '../engine/finance.js';
 import { ratingFactor } from '../engine/sales.js';
 import { goalOf, stageOf } from '../engine/career.js';
-import { currentMission } from '../engine/tutorial.js';
+import { currentMission, tutorialDone } from '../engine/tutorial.js';
 import { $, clear, h, yenFmt } from './dom.js';
 import { openModal } from './modal.js';
 import { isEn } from '../i18n/index.js';
@@ -215,7 +215,7 @@ export function renderTicker(s) {
     el.dataset.bound = '1';
     el.addEventListener('click', () => tickerState && timelineModal(tickerState));
   }
-  const items = tickerList(s);
+  const items = tutorialDone(s) ? tickerList(s) : []; // チュートリアル中はニュースの帯を止める（最初の画面を軽く）
   const key = items.map((x) => x.text).join('|');
   if (key === tickerKey) return;
   tickerKey = key;

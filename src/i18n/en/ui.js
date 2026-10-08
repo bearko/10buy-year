@@ -48,6 +48,7 @@ export default {
   "値付けする": "Set prices",
   "出品を変更": "Edit listings",
   "能力強化": "Abilities",
+  "自動で割り振る": "Auto-allocate",
   "{0}年目：純利益 {1}・売上 {2}・{3}個": "Year {0}: net profit {1} · sales {2} · {3} items",
   "いちばん稼いだ年": "Best year",
   "10年の純利益": "Net profit over 10 years",
