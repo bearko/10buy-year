@@ -34,6 +34,7 @@ import { celebrate, goalPopup } from './ui/goal.js';
 import { logModal, pushLog } from './ui/log.js';
 import { offersModal } from './ui/shop.js';
 import { initFontScale } from './ui/a11y.js';
+import { initPixelArt } from './ui/pixel.js';
 import { getLang, initLang, setLang, tr } from './i18n/index.js';
 import { listNowPrompt } from './ui/listnow.js';
 import { autoVisible } from './engine/sourcing.js';
@@ -970,5 +971,6 @@ async function shareResult(r) {
 }
 
 initFontScale();
+initPixelArt(); // ドット絵を端末の画素の整数倍で出す
 await initLang(); // 英語版なら訳を読みこんでから
 showTitle();
