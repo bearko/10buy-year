@@ -2,6 +2,7 @@ import { TOTAL_WEEKS, weekLabel } from '../engine/calendar.js';
 import { ABILITIES, ABILITY_MAX, abilityCost, canAfford, EXP_TYPES, rankOf } from '../engine/abilities.js';
 import { MOOD_LABELS } from '../engine/effects.js';
 import { minPayment } from '../engine/finance.js';
+import { ratingFactor } from '../engine/sales.js';
 import { goalOf, stageOf } from '../engine/career.js';
 import { currentMission } from '../engine/tutorial.js';
 import { $, clear, h, yenFmt } from './dom.js';
@@ -24,7 +25,7 @@ function staminaBar(s) {
   const pct = (v) => `${(v / max) * 100}%`;
   const low = Math.min(now, after);
   const risk = preview?.risk || 0;
-  return h('div', { class: 'stamina', title: '体力' },
+  return h('div', { class: 'stamina', 'data-tip': `体力 ${now}/${max}：行動ごとに減り、休むと戻る。少ないまま重い行動をすると体調を崩すことがある。30未満だと相場の見立てがぶれやすい。` },
     h('img', { src: 'assets/icons/hp.webp', alt: '' }),
     h('div', { class: `bar ${after / max < 0.3 ? 'low' : ''}` },
       h('i', { style: { width: pct(low) } }),
@@ -41,14 +42,86 @@ const man = (v) => (Math.abs(v) >= 10000 ? `${(Math.round(v / 1000) / 10).toLoca
 function goalBox(s) {
   const g = goalOf(s);
   const pct = Math.max(0, Math.min(100, (g.value / g.target) * 100));
-  return h('div', { class: `goal ${pct >= 100 && !g.warn ? 'done' : ''} ${g.warn ? 'warn' : ''}`, title: `${g.title}（${g.note}）` },
+  return h('div', { class: `goal ${pct >= 100 && !g.warn ? 'done' : ''} ${g.warn ? 'warn' : ''}`, 'data-tip': `${g.title}（${g.note}）` },
     h('div', { class: 'goal-top' }, h('small', {}, `目標 ${g.short}`), h('b', {}, `${man(g.value)}/${man(g.target)}`)),
     h('div', { class: 'goal-bar' }, h('i', { style: { width: `${pct}%` } })),
     h('small', { class: 'goal-note' }, g.note),
   );
 }
 
+// 所持金の増減：数字を0.5秒でカウントアップ・ダウンし、横に「+67,240」を浮かべる。借金が減ったら光らせる
+const reduceMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+let cashTarget = null; // いま目指している値
+let cashShown = 0; // 画面に出している値
+let cashRaf = 0;
+let debtTarget = null;
+let debtFlashUntil = 0;
+function trackMoney(s) {
+  if (cashTarget === null || reduceMotion()) {
+    cashTarget = s.cash;
+    cashShown = s.cash;
+  } else if (s.cash !== cashTarget) {
+    const from = cashShown;
+    const delta = s.cash - cashTarget;
+    cashTarget = s.cash;
+    const t0 = performance.now();
+    cancelAnimationFrame(cashRaf);
+    const step = (now) => {
+      const k = Math.min(1, (now - t0) / 500);
+      cashShown = from + (cashTarget - from) * (1 - (1 - k) ** 3);
+      const span = document.querySelector('#hud .cash-main span');
+      if (span) span.textContent = yenFmt(Math.round(cashShown));
+      if (k < 1) cashRaf = requestAnimationFrame(step);
+    };
+    cashRaf = requestAnimationFrame(step);
+    floatDelta(delta);
+  }
+  if (debtTarget !== null && s.debt < debtTarget && !reduceMotion()) debtFlashUntil = performance.now() + 1200;
+  debtTarget = s.debt;
+}
+function floatDelta(delta) {
+  if (!delta) return;
+  requestAnimationFrame(() => {
+    const at = document.querySelector('#hud .cash-main');
+    if (!at) return;
+    const r = at.getBoundingClientRect();
+    const el = h('div', { class: `money-float ${delta > 0 ? 'gain' : 'lose'}`, style: { left: `${r.right + 6}px`, top: `${r.top + 2}px` } }, `${delta > 0 ? '+' : '−'}${Math.abs(Math.round(delta)).toLocaleString('ja-JP')}`);
+    document.body.append(el);
+    setTimeout(() => el.remove(), 1000);
+  });
+}
+
+// HUD の項目をタップすると、説明の吹き出しを出す（スマホでは title が見られないので）
+let tipEl = null;
+function closeTip() {
+  tipEl?.remove();
+  tipEl = null;
+}
+function showTip(target) {
+  const same = tipEl?.dataset.for === target.dataset.tip;
+  closeTip();
+  if (same) return;
+  const r = target.getBoundingClientRect();
+  tipEl = h('div', { class: 'hud-tip', 'data-for': target.dataset.tip }, target.dataset.tip);
+  tipEl.style.top = `${r.bottom + 6}px`;
+  tipEl.style.left = `${Math.max(8, Math.min(window.innerWidth - 268, r.left))}px`;
+  document.body.append(tipEl);
+  setTimeout(closeTip, 6000);
+}
+let tipsReady = false;
+function initTips() {
+  if (tipsReady) return;
+  tipsReady = true;
+  document.addEventListener('click', (e) => {
+    const t = e.target instanceof Element && e.target.closest('#hud [data-tip]');
+    if (t) showTip(t);
+    else closeTip();
+  }, true);
+}
+
 export function renderHud(s) {
+  initTips();
+  trackMoney(s);
   const el = clear($('#hud'));
   const weeksLeft = TOTAL_WEEKS - s.week;
   const st = stageOf(s);
@@ -58,19 +131,19 @@ export function renderHud(s) {
       h('div', { class: 'date' },
         h('b', {}, weekLabel(Math.min(s.week, TOTAL_WEEKS - 1))),
         h('small', {}, ` 残り${weeksLeft}週`),
-        h('span', { class: 'chip stage', title: `${st.name}：${st.goal}` }, `Stage${st.id}`),
+        h('span', { class: 'chip stage', 'data-tip': `ステージ${st.id}「${st.name}」：${st.goal}` }, `Stage${st.id}`),
       ),
-      h('div', { class: `mood ${MOOD_CLASS[s.mood]}`, title: 'やる気' }, `やる気: ${MOOD_LABELS[s.mood]}`),
+      h('div', { class: `mood ${MOOD_CLASS[s.mood]}`, 'data-tip': `やる気：${MOOD_LABELS[s.mood]}。行動で得る経験点の量が変わる（高いほど多い）。休む・気晴らしで上がり、トラブルや赤字で下がる。` }, `やる気: ${MOOD_LABELS[s.mood]}`),
     ),
     h('div', { class: 'hud-row money' },
       // 出費の予告は所持金の下の行に出す（横に並べると行が折り返して、下の行動カードの位置がずれる）
       h('div', { class: 'cash' },
-        h('div', { class: 'cash-main' }, h('img', { src: 'assets/icons/gum.webp', alt: '' }), h('span', { class: s.cash < 0 ? 'neg' : '' }, yenFmt(s.cash))),
+        h('div', { class: 'cash-main' }, h('img', { src: 'assets/icons/gum.webp', alt: '' }), h('span', { class: s.cash < 0 ? 'neg' : '' }, yenFmt(Math.round(cashShown)))),
         // 借金は所持金の下に置き、右の目標欄と高さをそろえる
         // 出費の予告も同じ行に並べて、予告が出ても行の高さが変わらないようにする
         s.debt > 0 || preview?.cash
           ? h('div', { class: 'cash-sub' },
-            s.debt > 0 ? h('span', { class: 'debt-line' }, '借金 ', h('b', {}, yenFmt(s.debt))) : null,
+            s.debt > 0 ? h('span', { class: `debt-line ${performance.now() < debtFlashUntil ? 'down' : ''}` }, '借金 ', h('b', {}, yenFmt(s.debt))) : null,
             preview?.cash ? h('small', { class: `cash-d ${preview.cash < 0 ? 'lose' : 'gain'}` }, `${preview.cash > 0 ? '+' : '−'}${Math.abs(preview.cash).toLocaleString('ja-JP')}`) : null)
           : null),
       goalBox(s),
@@ -78,10 +151,10 @@ export function renderHud(s) {
     h('div', { class: 'hud-row bars' },
       staminaBar(s),
       h('div', { class: 'chips' },
-        h('span', { class: 'chip', title: 'セラー評価' }, `評価 ${Math.round(s.rating)}`),
+        h('span', { class: 'chip', 'data-tip': `セラー評価 ${Math.round(s.rating)}：高いほど売れやすい（売れやすさ ×${ratingFactor(s).toFixed(2)}）。発送の遅れやトラブルで下がり、30未満になるとトラブルが増える。` }, `評価 ${Math.round(s.rating)}`),
         s.underworld
-          ? h('span', { class: 'chip toku dark', title: '裏の人間（TOKU のゲージは消えた）' }, '裏')
-          : h('span', { class: `chip toku ${s.toku >= 120 ? 'high' : s.toku < 80 ? 'low' : ''}`, title: 'TOKU（徳）基準100。高いと正道、低いと魔道のパネルが開く' }, `TOKU ${Math.round(s.toku ?? 100)}`),
+          ? h('span', { class: 'chip toku dark', 'data-tip': '裏の人間（TOKU のゲージは消えた）' }, '裏')
+          : h('span', { class: `chip toku ${s.toku >= 120 ? 'high' : s.toku < 80 ? 'low' : ''}`, 'data-tip': `TOKU（徳）${Math.round(s.toku ?? 100)}：基準は100。高いとスキルツリーの正道、低いと魔道のパネルが開く。` }, `TOKU ${Math.round(s.toku ?? 100)}`),
       ),
     ),
     s.sick > 0 || s.banWeeks > 0 || s.delinquency > 0 || s.hate >= 50 || s.probation > 0

@@ -183,6 +183,7 @@ export function offersModal(s, step, onChange) {
       h('div', { class: 'it-head' },
         h('h2', { class: 'it-title' }, p.name, h('small', {}, p.genre)),
         mode.itemPrice?.(o) || h('div', { class: 'it-price' }, yen(o.price), h('small', {}, store ? '（税込）' : site.kind === 'mall' ? '（税込）送料無料' : '（税込）送料込み')),
+        judge(o),
         h('div', { class: 'it-badges' },
           store ? h('span', { class: 'it-deal' }, o.label) : null,
           o.points ? h('span', { class: 'it-pt' }, `ポイント${Math.round(o.points * 100)}%還元`) : null,
@@ -209,6 +210,20 @@ export function offersModal(s, step, onChange) {
       h('div', { class: 'it-tabs' }, ...tabs.map(([id, label]) => h('button', { class: tab === id ? 'on' : '', onclick: () => { tab = id; render(); } }, label))),
       pane);
     return [head, body, mode.itemBar?.(o) || buyBar(o)];
+  }
+
+  // 判断の帯：見立て（売れた値段を調べたらその値）・値段は見立ての何%か・見込み利益（利益計算のスキルがないうちは「？」）
+  function judge(o) {
+    const sold = !!o.soldHist;
+    const ref = sold ? soldMedian(o.soldHist) : o.est;
+    if (!ref) return null;
+    const ratio = Math.round((o.price / ref) * 100);
+    const profit = expectedProfit(s, o.pid, ref, o.price) + Math.round(o.price * (o.points || 0));
+    return h('div', { class: `it-judge ${ratio <= 70 ? 'cheap' : ratio >= 95 ? 'dear' : ''}` },
+      h('span', {}, h('small', {}, sold ? '売れた値段' : hasSkill(s, 'eye_market') ? '推定相場' : '見立て'), h('b', {}, yen(ref))),
+      h('span', {}, h('small', {}, '値段は'), h('b', {}, `${ratio}%`)),
+      h('span', {}, h('small', {}, '見込み利益'), canCalc(s) ? h('b', { class: profit >= 0 ? 'pos' : 'neg' }, signYen(profit)) : h('b', { class: 'unk' }, '？')),
+    );
   }
 
   function section(title, content, cls = '') {

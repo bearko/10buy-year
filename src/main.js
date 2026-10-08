@@ -380,28 +380,7 @@ function waitForCommand(mode) {
       setPreview(null);
       refresh();
     };
-    let listWarned = false;
     const pickCmd = async (id) => {
-      // この行動で週の作業が終わるのに、在庫を出せる出品枠が空いていたら知らせる（売れるのは週末なので）
-      const lastOfWeek = night || (state.actionsLeft <= 1 && !(state.nightLeft > 0 && state.sick <= 0));
-      const idle = idleListing(state);
-      if (lastOfWeek && idle.n > 0 && !listWarned && state.settings.warnIdleListing !== false) {
-        listWarned = true;
-        const r = await confirmBox({
-          title: '出品枠が空いています',
-          lines: [`出品していない在庫が${idle.unlisted}点、出品枠が${idle.free}件あいている。`, '売れるのは週末。このまま週を終えると、今週は売れない。'],
-          okLabel: '在庫を出品する',
-          cancelLabel: 'このまま進む',
-          dontAsk: true,
-        });
-        if (r.dontAsk) state.settings.warnIdleListing = false;
-        if (r.ok) {
-          await inventoryModal(state, refresh);
-          refresh();
-          draw();
-          return;
-        }
-      }
       redrawCommands = null;
       resumeCommands = null;
       drawIdleCommands();
@@ -459,6 +438,20 @@ function waitForCommand(mode) {
         }, '⟳ ルーティン'));
       }
       nav.append(head);
+      // 出品できる在庫と出品枠のあきがあれば、カードの上に帯で知らせる（売れるのは週末。止めずに知らせるだけ）
+      const idle = idleListing(state);
+      if (idle.n > 0 && !group && !guide() && state.settings.warnIdleListing !== false) {
+        nav.append(h('button', {
+          class: 'cmd-idle',
+          onclick: async () => {
+            if (busy) return;
+            await inventoryModal(state, refresh);
+            await tutorialStep();
+            resumeCommands?.();
+            refresh();
+          },
+        }, h('span', {}, `出品枠あき${idle.free}・未出品${idle.unlisted}点`), h('b', {}, '先に出品する ▶')));
+      }
 
       if (night) {
         cmds.forEach((c) => nav.append(cmdCard(c)));
@@ -801,8 +794,27 @@ async function newGame({ daily = null, weekly = null } = {}) {
   showScreen('game-screen');
   refresh();
   showChris('idle');
-  await playSteps(prologue(state));
+  await playSteps(await prologueSteps());
   await loop();
+}
+
+// 一度見たプロローグは飛ばせる（会話だけを省き、目標の案内と師匠の知らせは残す）
+const PROLOGUE_KEY = '10buy-year:prologueSeen';
+async function prologueSteps() {
+  const steps = prologue(state);
+  let seen = false;
+  try {
+    seen = window.localStorage.getItem(PROLOGUE_KEY) === '1';
+    window.localStorage.setItem(PROLOGUE_KEY, '1');
+  } catch {
+    /* noop */
+  }
+  if (!seen) return steps;
+  setBackground('danger');
+  const k = await choose([{ label: 'スキップして始める' }, { label: 'プロローグを見る', sub: '借金を背負うまでの話' }], 'プロローグは前に見ている');
+  if (k === 1) return steps;
+  setBackground('home');
+  return steps.filter((st) => !['talk', 'bg', 'bgm'].includes(st.t));
 }
 
 function continueGame() {

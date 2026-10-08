@@ -193,7 +193,7 @@ function speakerLabel(who) {
 }
 
 // 画面のどこをタップしても進む。ボタン・選択肢・モーダル・ツリーなど、それ自体を操作する場所は除く
-const OWN_CONTROLS = 'button, a, input, select, textarea, #choices, #modal-root, .modal, .tree-screen';
+const OWN_CONTROLS = 'button, a, input, select, textarea, #choices, #modal-root, .modal, .tree-screen, #hud [data-tip], .hud-tip';
 const isAdvanceTap = (e) => !(e.target instanceof Element && e.target.closest(OWN_CONTROLS));
 
 // タップ／キーで進むまで待つ（オート中は少しだけ見せて進む）
