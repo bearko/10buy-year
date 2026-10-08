@@ -70,6 +70,7 @@ export function storeMode(ctx) {
     body.append(bar(), ctx.wallet());
     const cands = next();
     const first = !visited.length;
+    if (receipt) body.append(receiptView());
     body.append(h('div', { class: 'sr-say' },
       h('img', { src: portraitOf('chris', 'idle'), alt: '' }),
       h('p', {}, first
@@ -104,6 +105,7 @@ export function storeMode(ctx) {
   }
 
   async function go(st) {
+    receipt = null;
     const t = travelOf(st);
     busy = { kind: 'travel', st, t };
     ctx.render();
@@ -129,7 +131,14 @@ export function storeMode(ctx) {
     body.append(bar(), floor(st));
     if (receipt) body.append(receiptView());
     const found = st.sections.map((sec, i) => [sec, i]).filter(([, i]) => searched.has(`${st.id}:${i}`));
-    if (found.length) body.append(h('div', { class: 'sr-found-h' }, '見つけた品（タップで商品を見る）'), ...found.map(([sec, i]) => sectionView(st, sec, i)));
+    // 残りの売り場が2つ以上あれば、まとめて見るボタン
+    const rest = unsearched(st);
+    const restOk = rest.filter((_, k) => now + clock.search * (k + 1) <= clock.close).length;
+    if (rest.length >= 2 && restOk) {
+      body.append(h('button', { class: 'btn sr-all', disabled: !!busy, onclick: () => searchAll() },
+        restOk === rest.length ? `残りの売り場を全部見る（${rest.length}か所・${clock.search * rest.length}分）` : `時間の許すかぎり見る（${restOk}か所・${clock.search * restOk}分）`));
+    }
+    if (found.length) body.append(h('div', { class: 'sr-found-h' }, '見つけた品（タップで商品を見る・＋カゴでそのままカゴへ）'), ...found.map(([sec, i]) => sectionView(st, sec, i)));
     else body.append(h('p', { class: 'sr-hint' }, st.enter, h('br'), '見たい売り場をタップしよう。'));
     return [head(st.name, st.label, st.color), body, storeFooter()];
   }
@@ -213,10 +222,33 @@ export function storeMode(ctx) {
         ? h('div', { class: 'shop-grid sr-grid' }, ...items.map((o) => {
           const el = ctx.gridItem(o);
           if (cart.has(o.oid)) el.classList.add('in-cart');
-          return el;
+          // 商品ページを開かずに、そのままカゴへ（個数は最小の数。あとでカゴの中で変えられる）
+          const minQ = o.minQty || 1;
+          const quick = !o.unknown && !cart.has(o.oid) && o.maxQty >= minQ
+            ? h('button', { class: 'sr-quick', 'aria-label': `${productOf(o.pid).name}をカゴに入れる`, onclick: (e) => { e.stopPropagation(); cart.set(o.oid, minQ); playSe('buy'); ctx.render(); } }, '＋カゴ')
+            : null;
+          return h('div', { class: 'sr-cell' }, el, quick);
         }))
         : h('p', { class: 'sr-none' }, '目ぼしい物はなかった…'),
     );
+  }
+
+  // 残りの売り場をまとめて見る（閉店までに見られる分だけ。ガサゴソは1回にまとめて短く）
+  const unsearched = (st) => st.sections.map((_, i) => i).filter((i) => !searched.has(`${st.id}:${i}`));
+  async function searchAll() {
+    const st = at;
+    const todo = unsearched(st).filter((_, k) => now + clock.search * (k + 1) <= clock.close);
+    if (!todo.length) return toast('閉店まで時間がない', 'bad');
+    for (const i of todo) {
+      me = i;
+      busy = { kind: 'search', key: `${st.id}:${i}`, all: true };
+      ctx.render();
+      await wait(380);
+      now += clock.search;
+      searched.add(`${st.id}:${i}`);
+    }
+    busy = null;
+    ctx.render();
   }
 
   async function search(key, i) {
@@ -287,8 +319,8 @@ export function storeMode(ctx) {
           h('b', {}, yen(total)),
           h('button', { class: 'btn small', onclick: () => { cart.clear(); cartOpen = false; ctx.render(); } }, '全部棚に戻す')),
         h('div', { class: 'sr-pay' },
-          h('button', { class: 'btn bb-card', disabled: total > cardAvailable(s) + s.points, onclick: () => checkout('card') }, 'カードで払う'),
-          h('button', { class: 'btn bb-cash', disabled: total > s.cash + s.points, onclick: () => checkout('cash') }, `レジで現金払い（${clock.checkout}分）`)),
+          h('button', { class: 'btn bb-card', disabled: total > cardAvailable(s) + s.points, onclick: () => checkout('card') }, unsearched(at).length ? 'カードで払う' : 'カードで払って次へ'),
+          h('button', { class: 'btn bb-cash', disabled: total > s.cash + s.points, onclick: () => checkout('cash') }, unsearched(at).length ? 'レジで現金払い' : '現金で払って次へ', `（${clock.checkout}分）`)),
       );
     }
     return h('div', { class: 'shop-footer sr-foot' },
@@ -315,6 +347,8 @@ export function storeMode(ctx) {
     now += clock.checkout;
     receipt = { store: at.name, method, lines };
     playSe(lines.some((x) => x.ok) ? 'coin' : 'lose');
+    // 売り場を全部見たあとなら、レジを通ったらそのまま次の店選びへ（レシートは次の画面の上に出す）
+    if (!unsearched(at).length) phase = 'route';
     ctx.render();
   }
 
@@ -362,7 +396,8 @@ export function storeMode(ctx) {
         h('b', {}, `${busy.st.label}へ移動中…`),
         h('small', {}, `${busy.t}分（${hhmm(now)} → ${hhmm(now + busy.t)}）`));
     }
-    return h('div', { class: 'sr-busy search' }, h('b', {}, 'ガサゴソ…'), h('small', {}, '値札と棚の奥を見ていく'));
+    const sec = busy.all ? at?.sections[me] : null;
+    return h('div', { class: 'sr-busy search' }, h('b', {}, 'ガサゴソ…'), h('small', {}, sec ? `${sec.name}を見ていく` : '値札と棚の奥を見ていく'));
   }
 
   return {
