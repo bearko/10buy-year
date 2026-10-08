@@ -1501,7 +1501,7 @@ body.partner-on #side { display: none !important; }
 /* 仕入れ後の「すぐ出品する？」 */
 .listnow-lead { margin: 0 0 8px; }
 .listnow-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
-.listnow-rows li { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: baseline; padding: 6px 8px; background: #ffffff0d; border-radius: 6px; }
+.listnow-rows li { display: grid; grid-template-columns: 26px 1fr auto auto; gap: 8px; align-items: center; padding: 6px 8px; background: #ffffff0d; border-radius: 6px; }
 .listnow-rows small { color: #9ab; }
 .listnow-rows b { color: #ffd76a; }
 .listnow-note { margin: 8px 0 0; font-size: calc(12px * var(--fs, 1)); color: #9ab; }
@@ -1833,3 +1833,25 @@ body.stage-xs #side-btns .side-btn.quest, body.stage-xs #side-btns .side-btn.tre
 .title-buttons .btn.big { min-width: min(340px, 100%); }
 .title-foot { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 18px; }
 .title-foot .btn { min-width: 0; padding: 5px 10px; font-size: calc(12px * var(--fs, 1)); border-radius: 99px; background: #ffffff10; }
+
+/* 仕入れ直後を1画面に（A7）：手に入れた品の絵を「すぐ出品する？」の上に並べる */
+.listnow-rows .ln-ic { width: 26px; height: 26px; object-fit: contain; image-rendering: pixelated; }
+.listnow-got { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; margin: 0 0 10px; padding: 10px; border-radius: 10px; background: radial-gradient(circle, #f5c54233, transparent 70%); }
+.listnow-got b { font-family: 'Orbitron', var(--font); color: var(--gold); letter-spacing: 0.1em; text-shadow: 0 0 10px #f5c54288; }
+.lg-item { position: relative; animation: cel-pop 0.4s cubic-bezier(0.2, 1.6, 0.4, 1) both; }
+.lg-item:nth-child(3) { animation-delay: 0.08s; } .lg-item:nth-child(4) { animation-delay: 0.16s; } .lg-item:nth-child(5) { animation-delay: 0.24s; } .lg-item:nth-child(6) { animation-delay: 0.32s; } .lg-item:nth-child(7) { animation-delay: 0.4s; }
+.lg-item img { width: 56px; height: 56px; object-fit: contain; image-rendering: pixelated; }
+.lg-item small { position: absolute; right: -4px; bottom: -2px; font-size: calc(11px * var(--fs, 1)); background: #000a; padding: 0 4px; border-radius: 4px; }
+
+/* ステージ到達で増えたもの（C5） */
+.unlock-card .ul-list { display: flex; flex-direction: column; gap: 4px; margin: 6px 0 8px; text-align: left; }
+.ul-item { display: grid; grid-template-columns: 30px 1fr auto; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 8px; background: #ffffff10; animation: cel-pop 0.35s cubic-bezier(0.2, 1.6, 0.4, 1) both; }
+.ul-item img { width: 28px; height: 28px; object-fit: contain; image-rendering: pixelated; }
+.ul-item .ul-dot { color: var(--gold); text-align: center; }
+.ul-item small { color: var(--muted); font-size: calc(11px * var(--fs, 1)); }
+.ul-tree { margin: 4px 0 10px; font-size: calc(12px * var(--fs, 1)); color: var(--gold); }
+
+/* 1年のまとめカード（D3） */
+.yc-card { max-width: 380px; }
+.yc-card .ch { margin: 8px 0 4px; text-align: left; }
+.yc-up { display: flex; flex-direction: column; gap: 2px; margin: 4px 0; color: var(--gold); font-size: calc(12px * var(--fs, 1)); }

@@ -31,7 +31,7 @@ import { choose, hidePartner, holdRoom, isAuto, say, setAuto, setBackground, set
 import { bizModal, menuModal } from './ui/status.js';
 import { openTree } from './ui/tree.js';
 import { groupItems, showItems } from './ui/loot.js';
-import { celebrate, goalPopup } from './ui/goal.js';
+import { celebrate, goalPopup, unlockedPopup } from './ui/goal.js';
 import { logModal, pushLog } from './ui/log.js';
 import { offersModal } from './ui/shop.js';
 import { initFontScale } from './ui/a11y.js';
@@ -39,7 +39,7 @@ import { initPixelArt } from './ui/pixel.js';
 import { initLayout } from './ui/layout.js';
 import { initBackNav } from './ui/backnav.js';
 import { getLang, initLang, setLang, tr } from './i18n/index.js';
-import { listNowPrompt } from './ui/listnow.js';
+import { listNowCovers, listNowPrompt } from './ui/listnow.js';
 import { autoVisible } from './engine/sourcing.js';
 import { mailbox, salesMails } from './ui/mail.js';
 import { checkQuests } from './engine/quests.js';
@@ -54,6 +54,7 @@ import { photoModal } from './ui/worklife.js';
 import { shipScene } from './ui/room.js';
 import { battleEnd, battleResult, battleSkill, battleStart, inBattle } from './ui/battle.js';
 import { monthCard } from './ui/monthcard.js';
+import { yearCard } from './ui/yearcard.js';
 import { resumeCard } from './ui/resume.js';
 import { setNight, setSeason, weekFlip } from './ui/calendar.js';
 import { decadeChart, highlightList, resultImage, revealSequence } from './ui/finale.js';
@@ -132,11 +133,22 @@ async function playSteps(steps) {
       case 'info': {
         if (inBattle()) {
           await battleResult(st.tone); // 交渉バトルの勝敗（ui/battle.js）
+          moodPose(st.tone === 'good' ? 'smile' : st.tone === 'bad' ? 'sad' : null);
           await showInfo(st.title, st.lines, st.tone);
+          moodPose(null);
+          break;
+        }
+        if (st.card === 'year') {
+          moodPose(st.net < 0 ? 'sad' : 'cheer');
+          await yearCard(state, st);
+          moodPose(null);
           break;
         }
         if (st.card === 'month') {
+          // 月末：黒字ならにっこり（大きく稼いだらガッツポーズ）、赤字ならしょんぼり
+          moodPose(st.net < 0 ? 'sad' : st.prevNet != null && st.net > st.prevNet * 1.3 && st.net > 0 ? 'guts' : 'smile');
           await monthCard(state, st);
+          moodPose(null);
           break;
         }
         // 続けて届くお知らせは1枚にまとめる（間の効果音はその場で鳴らす）
@@ -184,8 +196,10 @@ async function playSteps(steps) {
           const before = new Set(state.inventory.map((u) => u.uid));
           const got = await offersModal(state, st, refresh);
           refresh();
-          await showItems(state, '仕入れた商品', groupItems(got || []), { se: false });
-          await listNowPrompt(state, before, refresh); // 仕入れたその場で出品もできる
+          // 仕入れた品が全部すぐ出品できるなら、手に入れたカードは省いて「すぐ出品する？」に絵を並べる（1画面で済ませる）
+          const merged = listNowCovers(state, before);
+          if (!merged) await showItems(state, '仕入れた商品', groupItems(got || []), { se: false });
+          await listNowPrompt(state, before, refresh, { got: merged }); // 仕入れたその場で出品もできる
         }
         break;
       }
@@ -205,7 +219,11 @@ async function playSteps(steps) {
           if (st.sold.length) await showInfo('今週の取引', [`${st.sold.length}件売れた（売上金 ${yenFmt(st.sold.reduce((a, x) => a + x.net, 0))}）`], 'good');
         } else if (st.sold.length || st.auctionsUnsold.length || st.authFailed?.length || st.takedowns?.length) {
           // 売れた知らせはメールで届く。受信トレイのいちばん上に今週の取引のまとめを出し、そのまま発送へ
+          // よく売れた週はガッツポーズ、損の週はしょんぼり（受信トレイを見ているあいだだけ）
+          const weekProfit = st.sold.reduce((a, x) => a + x.profit, 0);
+          moodPose(st.weekBest ? 'cheer' : !st.sold.length ? null : weekProfit > 0 ? 'guts' : weekProfit < 0 ? 'sad' : null);
           await mailbox(salesMails(st), { summary: salesSummary(state, st), button: st.sold.length ? '発送する ▶' : '閉じる' });
+          moodPose(null);
           // 発送：部屋にあった売れた品を箱に詰めて送り出す（演出だけ。部屋から品が減っていく）
           await shipScene(st.sold);
         } else if (listedUnits(state).length) await showInfo('今週の取引', ['1つも売れなかった…'], 'bad');
@@ -249,6 +267,9 @@ async function playSteps(steps) {
         await celebrate(st.text, { quick: isAuto() });
         break;
       case 'goal':
+        // ステージが上がったら、新しい目標の前に「できるようになったこと」を並べる
+        if (!isAuto() && unlockSnap && state.stage > unlockSnap.stage) await unlockedPopup(state.stage, unlockDiff(unlockSnap));
+        unlockSnap = snapUnlocks();
         await goalPopup(state, { quick: isAuto() });
         break;
       case 'bgm':
@@ -654,6 +675,33 @@ function renderTabs() {
   }
 }
 
+// ステージ到達のときに見せる「できるようになったこと」：週のはじめの時点と比べて、増えた行動・夜の行動・メニュー
+let unlockSnap = null;
+function snapUnlocks() {
+  if (!state) return null;
+  return {
+    stage: state.stage,
+    cmds: new Set(availableCommands(state).map((c) => c.id)),
+    night: new Set(availableNightCommands(state).map((c) => c.id)),
+    menu: new Set(['quest', 'tree', 'ab', ...MENU_UI].filter(uiOpen)),
+  };
+}
+const UI_NAMES = { quest: 'ミッション', tree: 'スキルツリー', ab: '能力強化', market: '相場', shop: '自分の店', rivals: '業界の動き', collection: 'コレクション', careers: 'キャリア', life: '暮らし', crypto: '仮想通貨', map: '店の地図' };
+function unlockDiff(snap) {
+  const now = snapUnlocks();
+  return [
+    ...availableCommands(state).filter((c) => !snap.cmds.has(c.id)).map((c) => ({ icon: c.icon, label: c.name, kind: '行動' })),
+    ...availableNightCommands(state).filter((c) => !snap.night.has(c.id)).map((c) => ({ icon: c.icon, label: c.name, kind: '夜の行動' })),
+    ...[...now.menu].filter((id) => !snap.menu.has(id)).map((id) => ({ label: UI_NAMES[id], kind: 'メニュー' })),
+  ];
+}
+
+// 結果に合わせて、クリスの表情を少しのあいだだけ切りかえる（null で元に戻す）
+function moodPose(pose) {
+  if (isAuto()) return;
+  showChris(pose || 'idle');
+}
+
 // 段階的な開放：右のボタンとメニューの項目のうち、途中で開くもの。開いているかどうか
 const MENU_UI = ['market', 'shop', 'rivals', 'collection', 'careers', 'life', 'crypto', 'map'];
 function uiOpen(id) {
@@ -729,6 +777,7 @@ async function loop() {
   refresh();
   while (!state.over) {
     if (state.phase === 'weekStart') {
+      unlockSnap = snapUnlocks();
       drawIdleCommands();
       await weekFlip(state.week, { quick: isAuto() }); // 日めくり
       if (routineRun) routineRun.week = { ...emptyRoutineWeek(), ...routineStale(state, routineRun.cfg) };
@@ -765,6 +814,7 @@ async function loop() {
       persist();
     }
     holdRoom(true); // 売れた品は、発送の演出まで部屋に残す
+    unlockSnap = snapUnlocks(); // ステージが上がる前の状態（週のあいだにスキルで開いた分は数えない）
     await playSteps(endWeek(state));
     holdRoom(false);
     await tutorialStep();

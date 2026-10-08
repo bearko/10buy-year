@@ -196,6 +196,12 @@ function yearReport(s) {
   const revenue = months.reduce((a, m) => a + m.revenue, 0);
   const sold = months.reduce((a, m) => a + m.sold, 0);
   const st = stageOf(s);
+  const prev = s.monthly.filter((m) => m.year === y - 1);
+  // 画面では1年のまとめカード（ui/yearcard.js）。文はログと自動進行のときに使う
+  return { ...yearInfo(s, y, months, revenue, sold, st), card: 'year', year: y, net: sumNet(months), prevNet: prev.length ? sumNet(prev) : null, revenue, sold, stage: st.id, stagesUp: Object.entries(s.stageWeeks || {}).filter(([, w]) => yearOf(w) === y).map(([to]) => Number(to)) };
+}
+
+function yearInfo(s, y, months, revenue, sold, st) {
   return info(`${y}年目のまとめ`, [
     `年間の純利益 ${yen(sumNet(months))}`,
     `売上 ${yen(revenue)}・販売 ${sold}個`,
