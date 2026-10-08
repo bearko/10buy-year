@@ -1363,8 +1363,14 @@ body.partner-on #side { display: none !important; }
 .ship-box.closed { box-shadow: 0 4px 0 #0005; }
 .ship-box .tape { position: absolute; left: 50%; top: -3px; width: 0; height: 18px; transform: translateX(-50%); background: #e8d9a8e6; border-left: 1px dashed #b9a46a; border-right: 1px dashed #b9a46a; transition: width 0.22s ease-out; z-index: 1; }
 .ship-box.taped .tape { width: 100%; height: 26px; }
-.ship-stamp { position: absolute; left: 50%; top: 34px; transform: translateX(-50%) rotate(-12deg) scale(1.6); padding: 1px 8px; border: 3px solid #d33; border-radius: 6px; color: #d33; font-size: calc(18px * var(--fs, 1)); opacity: 0; transition: transform 0.15s, opacity 0.15s; }
+.ship-stamp { position: absolute; left: 50%; top: 30px; white-space: nowrap; line-height: 1.2; transform: translateX(-50%) rotate(-12deg) scale(1.6); padding: 1px 8px; border: 3px solid #d33; border-radius: 6px; color: #d33; font-size: calc(18px * var(--fs, 1)); opacity: 0; transition: transform 0.15s, opacity 0.15s; }
 .ship-box.sent .ship-stamp { opacity: 1; transform: translateX(-50%) rotate(-12deg) scale(1); }
+.ship.lanes-3 .ship-box { width: 96px; height: 62px; }
+.ship.lanes-3 .ship-box .flap { height: 22px; }
+.ship.lanes-3 .ship-box .flap.l { transform: rotate(-125deg); }
+.ship.lanes-3 .ship-box .flap.r { transform: rotate(125deg); }
+.ship.lanes-3 .ship-box.closed .flap { transform: rotateX(0deg); }
+.ship.lanes-3 .ship-stamp { top: 24px; font-size: calc(15px * var(--fs, 1)); }
 .ship-fly { position: absolute; width: 64px; height: 64px; image-rendering: pixelated; z-index: 2; pointer-events: none; }
 .ship-yen { position: absolute; z-index: 3; font: 700 15px/1 'Orbitron', sans-serif; color: #7dffa8; text-shadow: 0 2px 0 #000; white-space: nowrap; pointer-events: none; }
 .ship-yen.neg { color: #ff8a8a; }
@@ -1431,27 +1437,21 @@ body.partner-on #side { display: none !important; }
 .bt-foe small { font-size: calc(9px * var(--fs, 1)); color: #fff9; }
 .bt-gauge { height: 8px; margin-top: 2px; border-radius: 4px; background: #401; overflow: hidden; }
 .bt-gauge i { display: block; width: 100%; height: 100%; margin-left: auto; background: linear-gradient(90deg, #ff6b6b, #ffb36b); transition: width 0.5s ease-out; }
-.mch-cutin { position: absolute; left: 0; top: 50%; width: 100%; display: flex; align-items: center; justify-content: center; gap: 12px; padding: 18px 0; transform: translateY(-50%) skewY(-10deg); color: #fff; box-shadow: 0 1px 2px #0008; overflow: hidden; animation: mch-cutin-in 0.25s ease-out; }
-.mch-cutin.ally { background: linear-gradient(to right bottom, #609da8 0, #609da8 50%, #282b33 0, #282b33); }
-.mch-cutin.foe { background: linear-gradient(to left top, #be6c65 0, #be6c65 50%, #282b33 0, #282b33); }
-.mch-cutin-shine { position: absolute; inset: 0; mix-blend-mode: color-dodge; animation: mch-cutin-shine 0.6s linear infinite alternate; }
-.mch-cutin.ally .mch-cutin-shine { background: linear-gradient(180deg, #024, #059 20%, #059 80%, #024); }
-.mch-cutin.foe .mch-cutin-shine { background: linear-gradient(180deg, #402, #903 20%, #903 80%, #402); }
-.mch-cutin img { position: relative; flex: none; width: auto; height: auto; image-rendering: pixelated; transform: skewY(10deg); }
 /* クリス（72×140）は縮めず、等倍のまま胸から上を切り出す */
-.mch-cutin.foe img { width: 64px; height: 64px; object-fit: contain; }
-.mch-cutin.ally img { width: 72px; height: 92px; object-fit: cover; object-position: 50% 0; }
-.mch-cutin div { position: relative; display: flex; flex-direction: column; transform: skewY(10deg); text-shadow: 0 2px 0 #0008; }
-.mch-cutin small { font-size: calc(11px * var(--fs, 1)); opacity: 0.85; }
-.mch-cutin b { font-size: calc(18px * var(--fs, 1)); max-width: 230px; }
-@keyframes mch-cutin-in { from { transform: translate(100%, -50%) skewY(-10deg); opacity: 0; } to { transform: translateY(-50%) skewY(-10deg); opacity: 1; } }
-@keyframes mch-cutin-shine { from { opacity: 0; } to { opacity: 0.8; } }
 .bt-fx { position: absolute; right: 8%; bottom: 18%; width: 100px; height: 100px; background: url('../assets/effects/hit.webp') 0 0 no-repeat; transform: scale(1.6); image-rendering: pixelated; }
-.mch-result { position: absolute; inset: 0; display: flex; align-items: center; z-index: 10; }
-.mch-result p { position: absolute; left: 50%; top: 50%; width: 150%; margin: 0; padding: 12px; background: #282b33; opacity: 0.9; color: #fff; font-size: calc(34px * var(--fs, 1)); font-weight: 700; text-align: center; transform: translate(-50%, -50%) rotate(-10deg); animation: mch-result-in 0.75s both; }
-.mch-result.win p { color: #ffd76a; }
-.mch-result.lose p { color: #9aa3b5; }
-@keyframes mch-result-in { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.1) rotate(30deg); } 50% { transform: translate(-50%, -50%) rotate(-10deg); } 100% { opacity: 0.9; transform: translate(-50%, -50%) rotate(-10deg); } }
+.bt-hud { animation: bt-in 0.2s ease-out; }
+@keyframes bt-in { from { opacity: 0; transform: translateY(-6px); } }
+.bt-foe > span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* スキル名：クリスの頭上に出す */
+.bt-skill { position: absolute; left: 30%; top: 70px; z-index: 5; display: flex; flex-direction: column; align-items: center; max-width: 60%; padding: 3px 10px 4px; border: 1px solid #8fd3ff; border-radius: 8px; background: #0b1d33e6; color: #fff; transform: translateX(-50%); white-space: nowrap; pointer-events: none; animation: bt-skill-in 0.18s ease-out; }
+.bt-skill::after { content: ''; position: absolute; left: 50%; bottom: -6px; border: 6px solid transparent; border-bottom: 0; border-top-color: #8fd3ff; transform: translateX(-50%); }
+.bt-skill small { font-size: calc(9px * var(--fs, 1)); color: #8fd3ff; letter-spacing: 0.1em; }
+.bt-skill b { font-size: calc(14px * var(--fs, 1)); max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+@keyframes bt-skill-in { from { opacity: 0; transform: translate(-50%, 6px); } }
+/* 交渉の結果：上のバーに小さく */
+.bt-res { flex: none; padding: 1px 8px; border-radius: 99px; font-style: normal; font-weight: 700; font-size: calc(11px * var(--fs, 1)); animation: bt-in 0.2s ease-out; }
+.bt-res.win { background: #ffd76a; color: #2a1d00; }
+.bt-res.lose { background: #4a5163; color: #d6dbe6; }
 /* セリフの色分け（ui/markup.js）。色だけに頼らないよう、金額は太字・用語は下線もつける */
 .hl-money { color: #ffd76a; font-weight: 700; }
 .hl-game { color: #7fd8ff; }

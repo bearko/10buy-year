@@ -221,7 +221,6 @@ async function playSteps(steps) {
         break;
       case 'sfx':
         playSe(st.name);
-        if (st.name === 'trouble') playBgm('pvp'); // トラブル・督促の間は緊迫した曲に
         break;
       case 'celebrate':
         await celebrate(st.text, { quick: isAuto() });
