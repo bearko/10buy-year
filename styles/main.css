@@ -101,7 +101,9 @@ h1 small { display: block; font-size: calc(16px * var(--fs, 1)); text-shadow: no
 .hud-alert { margin-top: 3px; background: #5a1f28; color: #ffd9d9; font-size: calc(12px * var(--fs, 1)); padding: 2px 8px; border-radius: 6px; text-align: center; }
 
 /* ---------- ステージ ---------- */
-#stage { position: relative; height: clamp(204px, calc(34dvh + 34px), 324px); overflow: hidden; background: #000; }
+/* 縦長のスマホでは、ステージを画面の高さに合わせて大きくし（選択肢が出ても高さは変えない）、行動カードを画面の下（親指の届く場所）に置く */
+#game-screen:not([hidden]) { display: flex; flex-direction: column; min-height: 100dvh; }
+#stage { position: relative; flex: none; height: clamp(204px, max(calc(34dvh + 34px), calc(100dvh - 400px)), 440px); overflow: hidden; background: #000; }
 #stage-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: brightness(0.62); }
 #news-ticker { position: absolute; top: 0; left: 0; right: 0; padding: 4px 8px; background: #000b; font-size: calc(12px * var(--fs, 1)); z-index: 2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #news-ticker:empty { display: none; }
@@ -116,7 +118,7 @@ h1 small { display: block; font-size: calc(16px * var(--fs, 1)); text-shadow: no
 .sprite[hidden] { display: none; }
 
 /* ---------- メッセージ ---------- */
-#message { position: relative; min-height: 112px; margin: 6px 8px 0; padding: 8px 12px 10px; background: #0b1020ee; border: 2px solid #c8cff5; border-radius: var(--radius); cursor: pointer; user-select: none; }
+#message { position: relative; flex: none; min-height: clamp(112px, calc(100dvh - 690px), 180px); margin: 6px 8px 0; padding: 8px 12px 10px; background: #0b1020ee; border: 2px solid #c8cff5; border-radius: var(--radius); cursor: pointer; user-select: none; }
 #speaker { color: var(--gold); font-size: calc(13px * var(--fs, 1)); min-height: 18px; }
 #text { white-space: pre-wrap; min-height: 48px; }
 #message.narr #text { color: #cfd6ff; font-style: italic; }
@@ -135,7 +137,7 @@ h1 small { display: block; font-size: calc(16px * var(--fs, 1)); text-shadow: no
 .choice small { margin-left: 8px; color: var(--warn); font-size: calc(12px * var(--fs, 1)); }
 
 /* ---------- コマンド ---------- */
-#commands { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 8px 8px 16px; }
+#commands { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: auto; padding: 8px 8px calc(16px + env(safe-area-inset-bottom)); }
 #commands.groups { grid-template-columns: repeat(4, 1fr); }
 #commands:empty { display: none; }
 .cmd { position: relative; display: flex; align-items: center; gap: 6px; padding: 6px 8px; background: var(--panel); border: 2px solid var(--line); border-radius: 8px; cursor: pointer; text-align: left; min-height: 54px; color: var(--text); font: inherit; }
