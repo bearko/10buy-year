@@ -36,6 +36,7 @@ import { logModal, pushLog } from './ui/log.js';
 import { offersModal } from './ui/shop.js';
 import { initFontScale } from './ui/a11y.js';
 import { initPixelArt } from './ui/pixel.js';
+import { initBackNav } from './ui/backnav.js';
 import { getLang, initLang, setLang, tr } from './i18n/index.js';
 import { listNowPrompt } from './ui/listnow.js';
 import { autoVisible } from './engine/sourcing.js';
@@ -634,8 +635,39 @@ function setSpeed(ms) {
   }
 }
 
+// ---------------- セーブと「戻る」 ----------------
+// 週のはじめに加えて、行動が終わるごとと、アプリを切り替えたとき（演出の途中でなければ）にセーブする
+function persist() {
+  if (state && !state.over) saveGame(state);
+}
+const saveIfIdle = () => {
+  if (!busy) persist();
+};
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') saveIfIdle();
+});
+window.addEventListener('pagehide', saveIfIdle);
+
+// 何も開いていないときの「戻る」：行動の分類の中なら一覧へ、それ以外は「タイトルに戻る？」
+function onBackIdle() {
+  if (!state || state.over) return;
+  if (busy) {
+    toast('画面をタップすると話が進む');
+    return;
+  }
+  const back = document.querySelector('#commands .cmd-back');
+  if (back) {
+    back.click();
+    return;
+  }
+  confirmBox({ title: 'タイトルに戻りますか？', lines: ['ここまでの進み具合はセーブされる。'], okLabel: 'タイトルへ', cancelLabel: 'つづける' }).then((r) => {
+    if (r.ok) toTitle();
+  });
+}
+
 // ---------------- ゲームループ ----------------
 async function loop() {
+  initBackNav({ onIdle: onBackIdle });
   showScreen('game-screen');
   playBgm('pve');
   refresh();
@@ -662,6 +694,7 @@ async function loop() {
         if (n) addStamina(state, -routineListStamina(state, n));
         refresh();
       }
+      persist(); // 行動ごとにセーブ（週の途中でアプリを閉じても、終わった行動は残る）
     }
     if (state.nightLeft > 0 && state.sick <= 0 && !state.over) {
       const cmd = await nextCommand('night');
@@ -670,11 +703,13 @@ async function loop() {
         await playSteps(performCommand(state, cmd, { night: true }));
         await tutorialStep();
       }
+      persist();
     }
     holdRoom(true); // 売れた品は、発送の演出まで部屋に残す
     await playSteps(endWeek(state));
     holdRoom(false);
     await tutorialStep();
+    persist();
     if (routineRun) logRoutineWeek();
     if (routineRun && routineRun.dry >= 3) {
       // 相場や仕入れ先が変わって、決めたルールでは仕入れられなくなった
