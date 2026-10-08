@@ -5,7 +5,7 @@
 import { productImage, productOf, SIZE_INFO } from '../data/products.js';
 import { weekLabel } from '../engine/calendar.js';
 import { flag, hasSkill, tired } from '../engine/effects.js';
-import { buy, capacity, cardAvailable, spaceUsed } from '../engine/inventory.js';
+import { buy, capacity, cardAvailable, incomingSpace, overCapacity, roomUsed } from '../engine/inventory.js';
 import { askSeller, catInfo, siteOf, visibleChecks } from '../engine/listing.js';
 import { confidenceLabel } from '../engine/market.js';
 import { soldMedian } from '../engine/sourcing.js';
@@ -92,7 +92,7 @@ export function offersModal(s, step, onChange) {
       h('span', {}, `現金 ${yenFmt(s.cash)}`),
       h('span', {}, `カード残枠 ${yenFmt(cardAvailable(s))}`),
       s.points ? h('span', {}, `${s.points.toLocaleString()}pt`) : null,
-      h('span', { class: spaceUsed(s) > capacity(s) ? 'neg' : '' }, `置き場 ${spaceUsed(s)}/${capacity(s)}`),
+      h('span', { class: overCapacity(s) ? 'neg' : '' }, `置き場 ${roomUsed(s)}/${capacity(s)}${incomingSpace(s) ? `（届く予定 +${incomingSpace(s)}）` : ''}`),
     );
   }
 

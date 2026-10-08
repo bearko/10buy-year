@@ -6,7 +6,7 @@ import { availableCommands, availableNightCommands, COMMAND_MAP, commandPreview,
 import { claimableNodes } from './engine/abilities.js';
 import { hasSkill, MOOD_MULT } from './engine/effects.js';
 import { finalResult } from './engine/ending.js';
-import { activeUnits, capacity, idleListing, listedUnits, spaceUsed } from './engine/inventory.js';
+import { activeUnits, idleListing, listedUnits, overCapacity } from './engine/inventory.js';
 import { autoBuy } from './engine/automation.js';
 import { clearSave, loadDaily, loadGame, loadLegacy, loadMentors, loadRanking, loadRecords, pushDaily, pushLegacy, pushMentor, pushRanking, pushRecords, saveGame } from './engine/save.js';
 import { mentorRecord } from './engine/mentor.js';
@@ -275,7 +275,7 @@ function refresh() {
   renderTicker(state);
   renderTabs();
   // 部屋に積んである在庫（届いている品。アマクリに預けた品は倉庫にあるので除く）
-  setClutter(activeUnits(state).filter((u) => u.listing?.platform !== 'ama').sort((a, b) => a.uid - b.uid).map((u) => ({ uid: u.uid, pid: u.pid })), { over: spaceUsed(state) > capacity(state) });
+  setClutter(activeUnits(state).filter((u) => u.listing?.platform !== 'ama').sort((a, b) => a.uid - b.uid).map((u) => ({ uid: u.uid, pid: u.pid })), { over: overCapacity(state) });
 }
 
 // ---------------- ルーティン ----------------
