@@ -142,36 +142,57 @@ export function menuModal({ s, onTitle, onSpeed, speed, onRestart, onChange, onM
     ? h('button', { class: `btn big ${id}-btn ${fresh(id) ? 'fresh' : ''}`, onclick: () => { seen(id); api.close(); go?.(); } }, label, fresh(id) ? h('span', { class: 'new-tag' }, 'NEW') : extra)
     : null);
   let api;
+  let view = 'main'; // main：機能 / settings：設定
+  const big = (label, go) => h('button', { class: 'btn big', onclick: () => { api.close(); go?.(); } }, label);
+  const group = (title, ...btns) => {
+    const list = btns.filter(Boolean);
+    return list.length ? [h('div', { class: 'menu-h' }, title), h('div', { class: 'menu-main' }, ...list)] : [];
+  };
   return openModal('メニュー', (body, a) => {
     api = a;
+    if (view === 'settings') {
+      body.append(
+        h('button', { class: 'menu-back', onclick: () => { view = 'main'; api.refresh(); } }, '◀ メニューに戻る'),
+        h('div', { class: 'menu-h' }, '画面と音'),
+        h('div', { class: 'menu-list' },
+          h('button', { class: 'btn', onclick: () => { setSound(!soundOn()); api.refresh(); } }, `サウンド: ${soundOn() ? 'ON' : 'OFF'}`),
+          h('button', { class: 'btn', 'data-no-tr': '', onclick: () => { if (window.confirm(getLang() === 'en' ? 'Switch to Japanese? (The game reloads. Your save is kept.)' : '英語に切りかえますか？（ゲームを読みこみ直します。セーブはそのまま）')) setLang(getLang() === 'en' ? 'ja' : 'en'); } }, getLang() === 'en' ? '日本語 / Japanese' : 'English / 英語'),
+          h('div', { class: 'seg' }, h('span', {}, '文字の大きさ '), ...FONT_SCALES.map(([label, v]) => h('button', { class: `btn small ${fontScale() === v ? 'on' : ''}`, 'aria-pressed': String(fontScale() === v), onclick: () => { setFontScale(v); api.refresh(); } }, label))),
+          h('div', { class: 'seg' }, h('span', {}, '文字送り '), ...[['はやい', 8], ['ふつう', 22], ['おそい', 40], ['一瞬', 0]].map(([label, ms]) => h('button', { class: `btn small ${speed() === ms ? 'on' : ''}`, onclick: () => { onSpeed(ms); api.refresh(); } }, label))),
+        ),
+        s ? h('div', { class: 'menu-h' }, '遊び方') : null,
+        s ? h('div', { class: 'menu-list' },
+          h('button', { class: 'btn', onclick: () => { api.close(); onDeal?.(); } }, '取引の対応（値下げ交渉・トラブル）'),
+          h('button', { class: 'btn', onclick: () => { s.settings.warnIdleListing = s.settings.warnIdleListing === false; api.refresh(); } }, `出品枠の空きを知らせる: ${s.settings.warnIdleListing === false ? 'OFF' : 'ON'}`),
+          h('button', { class: 'btn', onclick: () => { s.settings.listNow = s.settings.listNow === false; api.refresh(); } }, `仕入れ後に「すぐ出品する？」を聞く: ${s.settings.listNow === false ? 'OFF' : 'ON'}`),
+          s.skills.includes('out_buy')
+            ? h('button', { class: 'btn', onclick: () => { s.settings.autoBuy = !s.settings.autoBuy; api.refresh(); onChange?.(); } }, `外注の自動仕入れ: ${s.settings.autoBuy ? 'ON' : 'OFF'}`)
+            : null,
+        ) : null,
+        h('div', { class: 'menu-h' }, 'データ'),
+        h('div', { class: 'menu-list' },
+          h('p', { class: 'note' }, 'ゲームは行動が終わるたびと、アプリを切り替えたときに自動でセーブされる。'),
+          h('button', { class: 'btn', onclick: () => { api.close(); onTitle(); } }, 'タイトルへ戻る'),
+          h('button', { class: 'btn danger', onclick: () => { if (window.confirm('セーブデータを消して最初からやり直しますか？')) { api.close(); onRestart(); } } }, '最初からやり直す'),
+        ),
+      );
+      return;
+    }
+    // 機能を「お金と事業」「人と世界」に分けて並べる。設定は別の画面に
     body.append(
-      h('div', { class: 'menu-main' },
+      ...group('お金と事業',
         item('market', s && !marketLock, '相場', onMarket, newsCount ? h('span', { class: 'badge' }, newsCount) : null),
-        h('button', { class: 'btn big', onclick: () => { api.close(); onBiz?.(); } }, '経営'),
+        big('経営', onBiz),
         item('shop', !!s?.shop, '自分の店', onShop),
-        item('rivals', s && s.stage >= 2, '業界の動き', onRivals),
-        item('collection', s && (s.stage >= 3 || s.collection?.length), 'コレクション', onCollection),
-        item('careers', s && s.stage >= 2, 'キャリア', onCareers),
-        item('life', s && s.stage >= 2, '暮らし', onLife),
         item('crypto', !!s?.crypto?.open, '仮想通貨', onCrypto),
-        s ? h('button', { class: 'btn big', onclick: () => { api.close(); onCompanions?.(); } }, '仲間') : null,
-        item('map', s && Object.keys(s.storeMap || {}).length, '店の地図', onMap),
-      ),
-      h('div', { class: 'menu-list' },
-        h('button', { class: 'btn', onclick: () => { setSound(!soundOn()); api.refresh(); } }, `サウンド: ${soundOn() ? 'ON' : 'OFF'}`),
-        h('button', { class: 'btn', 'data-no-tr': '', onclick: () => { if (window.confirm(getLang() === 'en' ? 'Switch to Japanese? (The game reloads. Your save is kept.)' : '英語に切りかえますか？（ゲームを読みこみ直します。セーブはそのまま）')) setLang(getLang() === 'en' ? 'ja' : 'en'); } }, getLang() === 'en' ? '日本語 / Japanese' : 'English / 英語'),
-        h('div', { class: 'seg' }, h('span', {}, '文字の大きさ '), ...FONT_SCALES.map(([label, v]) => h('button', { class: `btn small ${fontScale() === v ? 'on' : ''}`, 'aria-pressed': String(fontScale() === v), onclick: () => { setFontScale(v); api.refresh(); } }, label))),
-        h('div', { class: 'seg' }, h('span', {}, '文字送り '), ...[['はやい', 8], ['ふつう', 22], ['おそい', 40], ['一瞬', 0]].map(([label, ms]) => h('button', { class: `btn small ${speed() === ms ? 'on' : ''}`, onclick: () => { onSpeed(ms); api.refresh(); } }, label))),
-        s ? h('button', { class: 'btn', onclick: () => { api.close(); onDeal?.(); } }, '取引の対応（値下げ交渉・トラブル）') : null,
-        s ? h('button', { class: 'btn', onclick: () => { s.settings.warnIdleListing = s.settings.warnIdleListing === false; api.refresh(); } }, `出品枠の空きを知らせる: ${s.settings.warnIdleListing === false ? 'OFF' : 'ON'}`) : null,
-        s ? h('button', { class: 'btn', onclick: () => { s.settings.listNow = s.settings.listNow === false; api.refresh(); } }, `仕入れ後に「すぐ出品する？」を聞く: ${s.settings.listNow === false ? 'OFF' : 'ON'}`) : null,
-        s?.skills.includes('out_buy')
-          ? h('button', { class: 'btn', onclick: () => { s.settings.autoBuy = !s.settings.autoBuy; api.refresh(); onChange?.(); } }, `外注の自動仕入れ: ${s.settings.autoBuy ? 'ON' : 'OFF'}`)
-          : null,
-        h('p', { class: 'note' }, 'ゲームは行動が終わるたびと、アプリを切り替えたときに自動でセーブされる。'),
-        h('button', { class: 'btn', onclick: () => { api.close(); onTitle(); } }, 'タイトルへ戻る'),
-        h('button', { class: 'btn danger', onclick: () => { if (window.confirm('セーブデータを消して最初からやり直しますか？')) { api.close(); onRestart(); } } }, '最初からやり直す'),
-      ),
+        item('careers', s && s.stage >= 2, 'キャリア', onCareers)),
+      ...group('人と世界',
+        s ? big('仲間', onCompanions) : null,
+        item('rivals', s && s.stage >= 2, '業界の動き', onRivals),
+        item('life', s && s.stage >= 2, '暮らし', onLife),
+        item('collection', s && (s.stage >= 3 || s.collection?.length), 'コレクション', onCollection),
+        item('map', s && Object.keys(s.storeMap || {}).length, '店の地図', onMap)),
+      h('button', { class: 'btn menu-settings', onclick: () => { view = 'settings'; api.refresh(); } }, '⚙ 設定（音・文字・取引の対応・データ）'),
     );
   }).closed;
 }
