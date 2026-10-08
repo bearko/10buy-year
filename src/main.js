@@ -877,6 +877,7 @@ function showTitle() {
         h('button', { class: 'btn', onclick: () => rankingModal() }, 'ランキング'),
         h('button', { class: 'btn', onclick: () => recordsModal() }, '実績'),
         h('button', { class: 'btn', onclick: () => aboutModal() }, 'このゲームについて'),
+        installButton(),
         langButton(),
         h('button', {
           class: 'btn sound-toggle',
@@ -891,6 +892,38 @@ function showTitle() {
   );
   showScreen('title-screen');
   playBgm('land');
+}
+
+// ホーム画面に追加（PWA）。Android は端末の追加の画面を出し、iPhone は手順を案内する。すでに追加して開いているときは出さない
+let installEvt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  installEvt = e;
+  const b = document.getElementById('install-btn');
+  if (b) b.hidden = false;
+});
+const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+const isIOS = () => /iPhone|iPad|iPod/.test(window.navigator.userAgent);
+function installButton() {
+  if (isStandalone()) return null;
+  return h('button', {
+    id: 'install-btn',
+    class: 'btn install-btn',
+    hidden: !installEvt && !isIOS(),
+    onclick: async () => {
+      if (installEvt) {
+        installEvt.prompt();
+        await installEvt.userChoice.catch(() => null);
+        installEvt = null;
+        document.getElementById('install-btn')?.remove();
+        return;
+      }
+      openModal('ホーム画面に追加', (body) => body.append(
+        h('p', {}, 'Safari の共有ボタン（□に↑）から「ホーム画面に追加」を選ぶと、アドレスバーのない全画面で遊べる。'),
+        h('p', { class: 'note' }, 'セーブデータはこのブラウザのものを引き継がないことがある。追加したほうで、はじめから遊ぶのがおすすめ。'),
+      ));
+    },
+  }, '📲 ホーム画面に追加（全画面で遊べる）');
 }
 
 // 言語の切りかえ（表示はそれぞれの言語で書いておき、訳さない）

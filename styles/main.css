@@ -1666,3 +1666,4 @@ body.partner-on #side { display: none !important; }
 /* 文字送りの AUTO（メッセージ欄の右上） */
 .auto-read { position: absolute; top: 4px; right: 6px; z-index: 1; padding: 1px 7px; border: 1px solid #c8cff566; border-radius: 99px; background: transparent; color: #c8cff599; font: 700 10px/1.4 'Orbitron', sans-serif; letter-spacing: 0.05em; cursor: pointer; }
 .auto-read.on { border-color: var(--gold); color: var(--gold); background: #f5c54222; }
+.install-btn { border-color: var(--gold); color: var(--gold); }
