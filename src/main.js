@@ -421,14 +421,22 @@ function waitForCommand(mode) {
       draw();
     };
 
-    const card = (props, icon, label, extra) => h('button', props, h('img', { class: 'cmd-ic', src: icon, alt: '' }), h('b', {}, label), extra);
+    const card = (props, icon, label, ...extra) => h('button', props, h('img', { class: 'cmd-ic', src: icon, alt: '' }), h('b', {}, label), ...extra);
+    // カードの下に、体力と費用の目安（足りないときは赤）
+    const costLine = (c) => {
+      const p = commandPreview(state, c, { night });
+      const parts = [];
+      if (p.stamina) parts.push(h('span', { class: p.stamina > 0 ? 'heal' : state.stamina + p.stamina < 0 ? 'low' : '' }, `体力${p.stamina > 0 ? '+' : ''}${p.stamina}`));
+      if (p.cash < 0) parts.push(h('span', { class: state.cash + p.cash < 0 ? 'low' : 'yen' }, yenFmt(-p.cash)));
+      return parts.length ? h('span', { class: 'cmd-cost' }, ...parts) : null;
+    };
     const cmdCard = (c) => {
       const risk = sickRisk(state, c);
       const sel = selected === c.id;
       return card({
         class: `cmd ${sel ? 'sel' : ''} ${risk >= 0.3 ? 'danger' : risk > 0 ? 'risky' : ''}${point(!sel && guide()?.cmd === c.id)}`,
         onclick: () => { if (!busy) select(c); },
-      }, c.icon, c.name, sel ? h('span', { class: 'go' }, '決定') : isNew(c) ? newTag() : null, risk > 0 && !sel ? h('span', { class: 'risk' }, '⚠') : null);
+      }, c.icon, c.name, costLine(c), sel ? h('span', { class: 'go' }, '決定') : isNew(c) ? newTag() : null, risk > 0 && !sel ? h('span', { class: 'risk' }, '⚠') : null);
     };
 
     function draw() {
@@ -912,12 +920,17 @@ function showTitle() {
       h('div', { class: 'title-buttons' },
         hasSave ? h('button', { class: 'btn primary big', onclick: () => continueGame() }, 'つづきから') : null,
         h('button', { class: `btn big ${hasSave ? '' : 'primary'}`, onclick: () => { if (!hasSave || window.confirm('セーブデータを消して最初から始めますか？')) newGame(); } }, 'はじめから'),
-        h('button', { class: 'btn', onclick: () => { if (!hasSave || window.confirm('セーブデータを消して、今週のチャレンジを始めますか？')) newGame({ weekly: weekKey() }); } }, '今週のチャレンジ', h('small', { class: 'btn-sub' }, `${weekRange()}・オンラインランキング`)),
-        h('button', { class: 'btn', onclick: () => { if (!hasSave || window.confirm('セーブデータを消して、今日のチャレンジを始めますか？')) newGame({ daily: todayKey() }); } }, `今日のチャレンジ（${dailyLabel(todayKey())}）`),
-        h('button', { class: 'btn', onclick: () => rankingModal() }, 'ランキング'),
-        h('button', { class: 'btn', onclick: () => recordsModal() }, '実績'),
-        h('button', { class: 'btn', onclick: () => aboutModal() }, 'このゲームについて'),
+        // チャレンジは2つを横並び
+        h('div', { class: 'title-row' },
+          h('button', { class: 'btn', onclick: () => { if (!hasSave || window.confirm('セーブデータを消して、今週のチャレンジを始めますか？')) newGame({ weekly: weekKey() }); } }, '今週のチャレンジ', h('small', { class: 'btn-sub' }, `${weekRange()}・オンライン`)),
+          h('button', { class: 'btn', onclick: () => { if (!hasSave || window.confirm('セーブデータを消して、今日のチャレンジを始めますか？')) newGame({ daily: todayKey() }); } }, '今日のチャレンジ', h('small', { class: 'btn-sub' }, dailyLabel(todayKey())))),
         installButton(),
+      ),
+      // ランキング・実績・このゲームについて・言語・サウンドは、下に小さく
+      h('div', { class: 'title-foot' },
+        h('button', { class: 'btn', onclick: () => rankingModal() }, '🏆 ランキング'),
+        h('button', { class: 'btn', onclick: () => recordsModal() }, '🎖 実績'),
+        h('button', { class: 'btn', onclick: () => aboutModal() }, 'ⓘ このゲームについて'),
         langButton(),
         h('button', {
           class: 'btn sound-toggle',

@@ -305,8 +305,9 @@ body.busy #commands { opacity: 0.45; pointer-events: none; }
 .menu-list { display: flex; flex-direction: column; gap: 10px; }
 
 /* トースト */
-.toast { position: fixed; left: 50%; bottom: 90px; transform: translate(-50%, 20px); background: #000d; border: 1px solid var(--line); padding: 8px 14px; border-radius: 8px; opacity: 0; transition: 0.25s; z-index: 80; font-size: calc(14px * var(--fs, 1)); max-width: 90vw; }
-.toast.show { opacity: 1; transform: translate(-50%, 0); }
+.toast-stack { position: fixed; left: 50%; top: calc(10px + env(safe-area-inset-top)); transform: translateX(-50%); z-index: 90; display: flex; flex-direction: column; align-items: center; gap: 6px; width: max-content; max-width: 92vw; pointer-events: none; }
+.toast { background: #000e; border: 1px solid var(--line); padding: 8px 14px; border-radius: 8px; opacity: 0; transform: translateY(-10px); transition: 0.25s; font-size: calc(14px * var(--fs, 1)); max-width: 92vw; box-shadow: 0 4px 14px #0008; }
+.toast.show { opacity: 1; transform: none; }
 .toast.good { border-color: var(--good); }
 .toast.bad { border-color: var(--bad); }
 
@@ -1809,3 +1810,26 @@ body.stage-xs #side-btns .side-btn.quest, body.stage-xs #side-btns .side-btn.tre
 .wk-stamp small { font-size: calc(10px * var(--fs, 1)); color: #b33; }
 @keyframes wk-stamp { 0% { opacity: 0; scale: 2; } 100% { opacity: 1; scale: 1; } }
 @media (prefers-reduced-motion: reduce) { .wk-stamp { animation: none; } }
+
+/* 行動カードの体力・費用の目安（B3） */
+.cmd-cost { display: flex; flex-wrap: wrap; column-gap: 5px; justify-content: center; font-size: calc(10px * var(--fs, 1)); color: var(--muted); line-height: 1.1; }
+.cmd-cost .heal { color: var(--good); }
+.cmd-cost .yen { color: #ffd76a; }
+.cmd-cost .low { color: var(--bad); font-weight: 700; }
+#commands:has(> .cmd:nth-child(7 of .cmd)) .cmd:not(.grp) { display: grid; grid-template-columns: 24px minmax(0, 1fr); column-gap: 5px; row-gap: 1px; align-content: center; }
+#commands:has(> .cmd:nth-child(7 of .cmd)) .cmd:not(.grp) .cmd-ic { grid-row: span 2; align-self: center; }
+#commands:has(> .cmd:nth-child(7 of .cmd)) .cmd-cost { justify-content: flex-start; }
+.cmd-cost span { white-space: nowrap; }
+
+/* メニューの整理（B7）：機能を見出しで分け、設定は別の画面に */
+.menu-h { margin: 4px 0 6px; font-size: calc(12px * var(--fs, 1)); color: var(--gold); letter-spacing: 0.08em; border-bottom: 1px solid #ffffff14; padding-bottom: 3px; }
+.menu-settings { width: 100%; margin-top: 4px; }
+.menu-back { font: inherit; font-size: calc(13px * var(--fs, 1)); background: none; border: 1px solid var(--line); color: var(--gold); border-radius: 99px; padding: 3px 12px; margin-bottom: 10px; cursor: pointer; }
+.menu-list + .menu-h { margin-top: 14px; }
+
+/* タイトル画面の整理（E5）：つづきから／はじめからを大きく、チャレンジは横並び、そのほかは下に小さく */
+.title-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: min(340px, 100%); }
+.title-row .btn { min-width: 0; padding: 8px 6px; font-size: calc(13px * var(--fs, 1)); }
+.title-buttons .btn.big { min-width: min(340px, 100%); }
+.title-foot { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-top: 18px; }
+.title-foot .btn { min-width: 0; padding: 5px 10px; font-size: calc(12px * var(--fs, 1)); border-radius: 99px; background: #ffffff10; }

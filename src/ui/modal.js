@@ -39,9 +39,16 @@ export function openModal(title, render, { closeLabel = '閉じる', onRefresh, 
   return api;
 }
 
+// トーストは画面の上に縦に積む（下のボタンと重ならないように。いちどに見せるのは3つまで）
+let stack = null;
 export function toast(text, tone = '') {
+  if (!stack || !stack.isConnected) {
+    stack = h('div', { class: 'toast-stack', 'aria-live': 'polite' });
+    document.body.append(stack);
+  }
   const el = h('div', { class: `toast ${tone}` }, text);
-  $('#modal-root').append(el);
+  stack.append(el);
+  while (stack.children.length > 3) stack.firstChild.remove();
   setTimeout(() => el.classList.add('show'), 10);
   setTimeout(() => {
     el.classList.remove('show');
