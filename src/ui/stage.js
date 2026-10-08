@@ -17,6 +17,7 @@ export function setLogger(fn) {
   logger = fn;
 }
 const log = (entry) => logger?.(entry);
+export const logEntry = log; // 画面の外で見せたお知らせもログに残す
 
 export function setAuto(v) {
   autoMode = v;
@@ -196,9 +197,43 @@ function speakerLabel(who) {
 const OWN_CONTROLS = 'button, a, input, select, textarea, #choices, #modal-root, .modal, .tree-screen, #hud [data-tip], .hud-tip';
 const isAdvanceTap = (e) => !(e.target instanceof Element && e.target.closest(OWN_CONTROLS));
 
+// 文字送りの「AUTO」：タップしなくても、読み終わるくらいの時間で次へ進む（選択肢では止まる）。メッセージ欄の右上で切りかえる
+const AUTO_KEY = '10buy-year:autoRead';
+let autoRead = false;
+try {
+  autoRead = window.localStorage.getItem(AUTO_KEY) === '1';
+} catch {
+  /* noop */
+}
+const autoBtn = h('button', { class: 'auto-read', 'aria-pressed': String(autoRead), title: 'タップしなくても話を進める' }, 'AUTO');
+autoBtn.classList.toggle('on', autoRead);
+autoBtn.onclick = (e) => {
+  e.stopPropagation();
+  autoRead = !autoRead;
+  autoBtn.classList.toggle('on', autoRead);
+  autoBtn.setAttribute('aria-pressed', String(autoRead));
+  try {
+    window.localStorage.setItem(AUTO_KEY, autoRead ? '1' : '0');
+  } catch {
+    /* noop */
+  }
+  autoNudge?.();
+};
+$('#message')?.append(autoBtn);
+let autoNudge = null; // AUTO に切りかえたとき、いま待っているぶんを進める
+
 // タップ／キーで進むまで待つ（オート中は少しだけ見せて進む）
 function waitAdvance() {
   if (autoMode) return new Promise((r) => setTimeout(r, 180));
+  if (autoRead) {
+    // 文字数に合わせて待つ（1.2秒＋1文字40ms、最長5秒）。タップすればすぐ進む
+    const len = ($('#text')?.textContent || '').length;
+    return Promise.race([tapAdvance(), new Promise((r) => setTimeout(r, Math.min(5000, 1200 + len * 40)))]);
+  }
+  return Promise.race([tapAdvance(), new Promise((r) => { autoNudge = () => { autoNudge = null; if (autoRead) setTimeout(r, 600); }; })]);
+}
+
+function tapAdvance() {
   const since = performance.now();
   return new Promise((resolve) => {
     const done = (e) => {
@@ -251,6 +286,25 @@ async function typewrite(text) {
   document.removeEventListener('click', onSkip);
   target.finish();
   await new Promise((r) => setTimeout(r, 60));
+}
+
+// 続けて届いたお知らせを1枚にまとめて見せる（タップ1回）。1件ならいつものお知らせ
+export async function showInfos(list) {
+  if (list.length === 1) return showInfo(list[0].title, list[0].lines, list[0].tone);
+  for (const x of list) log({ who: x.title, text: x.lines.filter(Boolean).join('\n'), kind: 'info', tone: x.tone });
+  const box = $('#message');
+  box.classList.remove('narr', 'good', 'bad');
+  box.classList.add('info', 'digest');
+  $('#speaker').textContent = `お知らせ ${list.length}件`;
+  const el = clear($('#text'));
+  for (const x of list) {
+    el.append(h('div', { class: `dg-item ${x.tone || ''}` },
+      h('b', {}, x.title),
+      ...x.lines.filter(Boolean).map((l) => h('div', {}, ...marked(l)))));
+  }
+  box.classList.add('waiting');
+  await waitAdvance();
+  box.classList.remove('waiting', 'info', 'digest');
 }
 
 export async function showInfo(title, lines, tone = 'normal') {

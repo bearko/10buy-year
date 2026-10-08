@@ -59,7 +59,8 @@ export function salesMails(st) {
   return mails;
 }
 
-export function mailbox(mails, { title = '受信トレイ', button = 'まとめて確認する', quick = false } = {}) {
+// summary：一覧の上に固定して出すまとめ（週末の取引）
+export function mailbox(mails, { title = '受信トレイ', button = 'まとめて確認する', quick = false, summary = null } = {}) {
   return new Promise((resolve) => {
     const start = 6 * 60 + 40 + Math.floor(Math.random() * 30);
     let m = start;
@@ -98,7 +99,7 @@ export function mailbox(mails, { title = '受信トレイ', button = 'まとめ�
     root.append(h('div', { class: 'mb-win' },
       h('header', { class: 'mb-head' }, h('b', {}, title), count),
       h('div', { class: 'mb-new' }, h('i', { class: 'mb-env' }, '✉'), `新着メール ${mails.length}件`),
-      h('div', { class: 'mb-list' }, ...rows),
+      h('div', { class: 'mb-list' }, summary, ...rows),
       h('div', { class: 'mb-foot' }, h('button', { class: 'btn primary', onclick: done }, button))));
     window.addEventListener('keydown', onKey);
     $('#modal-root').append(root);

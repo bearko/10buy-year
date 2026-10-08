@@ -27,7 +27,7 @@ import { $, clear, h, wait, yenFmt } from './ui/dom.js';
 import { renderHud, renderParams, renderTicker, setParamsOpen, setPreview } from './ui/hud.js';
 import { openAbilities } from './ui/abilities.js';
 import { confirmBox, openModal, toast } from './ui/modal.js';
-import { choose, hidePartner, holdRoom, isAuto, say, setAuto, setBackground, setClutter, setLogger, setMessage, setTextSpeed, showChris, showInfo } from './ui/stage.js';
+import { choose, hidePartner, holdRoom, isAuto, say, setAuto, setBackground, setClutter, setLogger, setMessage, setTextSpeed, showChris, showInfo, showInfos } from './ui/stage.js';
 import { bizModal, menuModal } from './ui/status.js';
 import { openTree } from './ui/tree.js';
 import { groupItems, showItems } from './ui/loot.js';
@@ -52,6 +52,8 @@ import { companionsModal } from './ui/companions.js';
 import { photoModal } from './ui/worklife.js';
 import { shipScene } from './ui/room.js';
 import { battleEnd, battleResult, battleSkill, battleStart, inBattle } from './ui/battle.js';
+import { monthCard } from './ui/monthcard.js';
+import { resumeCard } from './ui/resume.js';
 import { quoteModal, seriModal } from './ui/pro.js';
 import { kujiModal } from './ui/kuji.js';
 import { autoPick } from './engine/dealpolicy.js';
@@ -65,7 +67,7 @@ import { cryptoModal } from './ui/crypto.js';
 import { dealPolicyModal } from './ui/dealpolicy.js';
 import { routineBuy, routineList, routineListStamina, routineStale } from './engine/routine.js';
 import { addStamina } from './engine/effects.js';
-import { inventoryModal, marketModal, salesModal } from './ui/trade.js';
+import { inventoryModal, marketModal, salesSummary } from './ui/trade.js';
 
 let state = null;
 let busy = false;
@@ -124,10 +126,27 @@ async function playSteps(steps) {
       case 'talk':
         await say(st.who, st.text, st.pose);
         break;
-      case 'info':
-        if (inBattle()) await battleResult(st.tone); // 交渉バトルの勝敗（ui/battle.js）
-        await showInfo(st.title, st.lines, st.tone);
+      case 'info': {
+        if (inBattle()) {
+          await battleResult(st.tone); // 交渉バトルの勝敗（ui/battle.js）
+          await showInfo(st.title, st.lines, st.tone);
+          break;
+        }
+        if (st.card === 'month') {
+          await monthCard(state, st);
+          break;
+        }
+        // 続けて届くお知らせは1枚にまとめる（間の効果音はその場で鳴らす）
+        const list = [st];
+        const plain = (x) => x?.t === 'info' && !x.card;
+        for (;;) {
+          if (plain(queue[0])) list.push(queue.shift());
+          else if (queue[0]?.t === 'sfx' && plain(queue[1])) playSe(queue.shift().name);
+          else break;
+        }
+        await showInfos(list);
         break;
+      }
       case 'battle':
         if (st.on && !isAuto() && !routineRun) await battleStart(st.enemy, st.title, st.start);
         else battleEnd();
@@ -182,9 +201,8 @@ async function playSteps(steps) {
         if (isAuto()) {
           if (st.sold.length) await showInfo('今週の取引', [`${st.sold.length}件売れた（売上金 ${yenFmt(st.sold.reduce((a, x) => a + x.net, 0))}）`], 'good');
         } else if (st.sold.length || st.auctionsUnsold.length || st.authFailed?.length || st.takedowns?.length) {
-          // 売れた知らせはメールで届く。メールアプリを開いてから、まとめて取引結果を見る
-          await mailbox(salesMails(st));
-          await salesModal(state, st);
+          // 売れた知らせはメールで届く。受信トレイのいちばん上に今週の取引のまとめを出し、そのまま発送へ
+          await mailbox(salesMails(st), { summary: salesSummary(state, st), button: st.sold.length ? '発送する ▶' : '閉じる' });
           // 発送：部屋にあった売れた品を箱に詰めて送り出す（演出だけ。部屋から品が減っていく）
           await shipScene(st.sold);
         } else if (listedUnits(state).length) await showInfo('今週の取引', ['1つも売れなかった…'], 'bad');
@@ -821,7 +839,9 @@ function continueGame() {
   const loaded = loadGame();
   if (!loaded) return newGame();
   state = loaded;
-  return loop();
+  showScreen('game-screen');
+  refresh();
+  return resumeCard(state).then(() => loop());
 }
 
 function restart() {
