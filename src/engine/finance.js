@@ -235,7 +235,9 @@ function monthReport(s, rec, fees, passive) {
   if (feeTotal) lines.push(`固定費 ${yen(feeTotal)}`);
   if (passive.total) lines.push(`事業収入 ${yen(passive.total)}`);
   if (s.fulltime) lines.push(`生活費 ${yen(livingCost(s))}`);
-  return info(`${rec.month}月の締め`, lines, rec.net >= 0 ? 'good' : 'bad');
+  // 画面では決算カードで見せる（ui/monthcard.js）。先月の純利益とくらべる
+  const prev = s.monthly.length >= 2 ? s.monthly[s.monthly.length - 2].net : null;
+  return { ...info(`${rec.month}月の締め`, lines, rec.net >= 0 ? 'good' : 'bad'), card: 'month', net: rec.net, revenue: rec.revenue, sold: rec.sold, prevNet: prev, stage: s.stage };
 }
 
 // ---------------- 税金 ----------------

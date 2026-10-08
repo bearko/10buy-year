@@ -43,50 +43,26 @@ function editionTag(s, u) {
 }
 
 // ---------------- 今週の売上 ----------------
-export function salesModal(s, step) {
+// 週末レポートの見出し：受信トレイのいちばん上に、今週の取引をまとめて出す（メールと取引結果を1つの画面に）
+export function salesSummary(s, step) {
+  if (!step.sold.length) return null;
   const totalNet = step.sold.reduce((a, x) => a + x.net, 0);
   const totalProfit = step.sold.reduce((a, x) => a + x.profit, 0);
-  const modal = openModal(`${step.week}の取引結果`, (body) => {
-    if (!step.sold.length) body.append(h('p', { class: 'empty' }, '今週は1つも売れなかった…'));
-    for (const x of step.sold) {
-      const p = productOf(x.pid);
-      body.append(
-        h('div', { class: 'card row' },
-          itemIcon(x.pid),
-          h('div', { class: 'grow' },
-            h('div', { class: 'name' }, p.name, h('small', {}, ` ${PLATFORMS[x.platform].name}`)),
-            h('div', { class: 'nums' },
-              h('span', {}, `売値 ${yenFmt(x.price)}`),
-              h('span', {}, `入金予定 ${yenFmt(x.net)}`),
-              canCalc(s) ? h('span', { class: x.profit >= 0 ? 'pos' : 'neg' }, `利益 ${signYen(x.profit)}`) : null,
-            ),
-            x.delayed ? h('div', { class: 'warn' }, '体力が足りず発送が遅れた（評価ダウン）') : null,
-          ),
-        ),
-      );
-    }
-    for (const x of step.takedowns || []) {
-      body.append(h('div', { class: 'card row muted' }, itemIcon(x.pid), h('div', { class: 'grow' }, `${productOf(x.pid).name}（プンシー）…効能をうたった説明文が薬機法に触れるとして、出品が削除された`)));
-    }
-    for (const x of step.authFailed || []) {
-      body.append(h('div', { class: 'card row muted' }, itemIcon(x.pid), h('div', { class: 'grow' }, `${productOf(x.pid).name}（ホンモノ堂）…鑑定で偽物と判定され、送り返されてきた`)));
-    }
-    for (const x of step.auctionsUnsold) {
-      body.append(h('div', { class: 'card row muted' }, itemIcon(x.pid), h('div', { class: 'grow' }, `${productOf(x.pid).name}（ミィーム）…${x.bidders ? '最低落札価格に届かず' : '入札なし'}で流札`)));
-    }
-    if (step.sold.length) {
-      body.append(
-        h('div', { class: 'summary' },
-          h('span', {}, `${step.sold.length > 1 ? '合計の' : ''}売上金 ${yenFmt(totalNet)}（週明けに入金）`),
-          canCalc(s) && step.sold.length > 1 ? h('span', { class: totalProfit >= 0 ? 'pos' : 'neg' }, `合計の利益 ${signYen(totalProfit)}`) : null,
-          step.staminaUsed ? h('span', {}, `梱包・発送で体力 -${step.staminaUsed}`) : null,
-          step.outsourced ? h('span', {}, `外注が${step.outsourced}件発送`) : null,
-          step.staffShipped ? h('span', {}, `スタッフが${step.staffShipped}件発送`) : null,
-        ),
-      );
-    }
-  }, { closeLabel: 'OK' });
-  return modal.closed;
+  const calc = canCalc(s);
+  const best = [...step.sold].sort((a, b) => (calc ? b.profit - a.profit : b.price - a.price))[0];
+  const late = step.sold.filter((x) => x.delayed).length;
+  return h('div', { class: 'wk-sum' },
+    h('div', { class: 'wk-head' }, h('small', {}, `${step.week}の取引`), h('span', {}, `${step.sold.length}件 売れた`)),
+    h('div', { class: 'wk-main' },
+      h('div', {}, h('small', {}, '売上金（週明けに入金）'), h('b', {}, yenFmt(totalNet))),
+      calc ? h('div', {}, h('small', {}, '利益'), h('b', { class: totalProfit >= 0 ? 'pos' : 'neg' }, signYen(totalProfit))) : null),
+    h('div', { class: 'wk-best' }, itemIcon(best.pid), h('span', {}, !calc ? 'いちばん高く売れた：' : best.profit > 0 ? 'いちばん儲かった：' : 'いちばん損が小さかった：', h('b', {}, productOf(best.pid).name)), h('em', { class: calc && best.profit <= 0 ? 'neg' : '' }, calc ? signYen(best.profit) : yenFmt(best.price))),
+    h('div', { class: 'wk-notes' },
+      step.staminaUsed ? h('span', {}, `梱包・発送で体力 -${step.staminaUsed}`) : null,
+      step.outsourced ? h('span', {}, `外注が${step.outsourced}件発送`) : null,
+      step.staffShipped ? h('span', {}, `スタッフが${step.staffShipped}件発送`) : null,
+      late ? h('span', { class: 'neg' }, `体力が足りず${late}件の発送が遅れた（評価ダウン）`) : null),
+  );
 }
 
 // ---------------- 在庫と出品 ----------------
