@@ -18,7 +18,7 @@ export function openModal(title, render, { closeLabel = '閉じる', onRefresh, 
       body.scrollTop = y;
       if (renderFooter) {
         clear(footer);
-        footer.append(...renderFooter(api));
+        footer.append(...renderFooter(api).filter((x) => x != null && x !== false)); // null を「null」と書かないように
       }
       onRefresh?.();
     },
