@@ -123,10 +123,15 @@ const TROUBLE_TITLE = { ghost: '音信不通', swap: 'すり替え疑惑', claim
 export function endWeek(s) {
   const steps = [];
   const sales = resolveSales(s);
+  // 週の売上金の自己ベスト（はじめて記録する週はスタンプなし）
+  const weekNet = sales.sold.reduce((a, x) => a + x.net, 0);
+  const weekBest = sales.sold.length > 0 && s.stats.bestWeekNet !== undefined && weekNet > s.stats.bestWeekNet;
+  if (sales.sold.length && (s.stats.bestWeekNet === undefined || weekNet > s.stats.bestWeekNet)) s.stats.bestWeekNet = weekNet;
   steps.push({
     t: 'sales',
     week: weekLabel(s.week),
-    sold: sales.sold.map((x) => ({ uid: x.uid, pid: x.pid, price: x.price, platform: x.platform, net: x.net, profit: x.profit, delayed: !!x.delayed })),
+    sold: sales.sold.map((x) => ({ uid: x.uid, pid: x.pid, price: x.price, platform: x.platform, net: x.net, profit: x.profit, delayed: !!x.delayed, stamps: x.stamps || [] })),
+    weekBest,
     auctionsUnsold: sales.auctionsUnsold.map((x) => ({ pid: x.pid, bidders: x.bidders })),
     authFailed: sales.authFailed,
     takedowns: sales.takedowns,
