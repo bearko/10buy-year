@@ -64,7 +64,7 @@ export function storeFolk(s, store) {
   folk.push({ who: pick(s, CUSTOMERS.filter((x) => x !== staff)), role: 'customer' });
   if (chance(s, 0.6)) folk.push({ who: pick(s, s.stage >= 3 && Object.keys(s.rivals || {}).length ? [...RIVALS, ...RIVAL_BOSS] : RIVALS), role: 'rival' });
   for (const f of folk) f.line = lineOf(s, f.who, f.role);
-  if (chance(s, 0.4)) pick(s, folk).bang = true;
+  if (s.flags.tutorialDone && chance(s, 0.4)) pick(s, folk).bang = true; // 「！」の話はチュートリアルのあとから
   return folk;
 }
 
