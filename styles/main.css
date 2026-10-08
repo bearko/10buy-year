@@ -1798,3 +1798,14 @@ body.stage-xs #side-btns .side-btn.quest, body.stage-xs #side-btns .side-btn.tre
 .sr-cell { position: relative; display: flex; }
 .sr-cell > .sh-item { flex: 1; min-width: 0; }
 .sr-quick { position: absolute; right: 6px; top: 6px; z-index: 1; padding: 4px 9px; border-radius: 99px; border: 1px solid #fff8; background: #e8413c; color: #fff; font: inherit; font-size: calc(12px * var(--fs, 1)); font-weight: 700; box-shadow: 0 2px 6px #0006; cursor: pointer; }
+
+/* 自己ベスト・初めての達成のスタンプ（C3） */
+.wk-stamps { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 2px; }
+.wk-stamp { display: flex; flex-direction: column; align-items: center; padding: 3px 9px; border: 2px solid #e8413c; border-radius: 6px; color: #e8413c; background: #fff4f2; transform: rotate(-3deg); line-height: 1.2; animation: wk-stamp 0.4s cubic-bezier(0.3, 1.5, 0.5, 1) both; }
+.wk-stamp:nth-child(2) { animation-delay: 0.15s; transform: rotate(2deg); }
+.wk-stamp:nth-child(3) { animation-delay: 0.3s; }
+.wk-stamp:nth-child(4) { animation-delay: 0.45s; transform: rotate(2deg); }
+.wk-stamp b { font-size: calc(12px * var(--fs, 1)); }
+.wk-stamp small { font-size: calc(10px * var(--fs, 1)); color: #b33; }
+@keyframes wk-stamp { 0% { opacity: 0; scale: 2; } 100% { opacity: 1; scale: 1; } }
+@media (prefers-reduced-motion: reduce) { .wk-stamp { animation: none; } }

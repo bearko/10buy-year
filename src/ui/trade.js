@@ -51,12 +51,18 @@ export function salesSummary(s, step) {
   const calc = canCalc(s);
   const best = [...step.sold].sort((a, b) => (calc ? b.profit - a.profit : b.price - a.price))[0];
   const late = step.sold.filter((x) => x.delayed).length;
+  // 自己ベスト・初めての達成のスタンプ（利益が見えないうちは、利益のスタンプは出さない）
+  const stamps = [
+    ...(step.weekBest ? [{ label: '週の売上 自己ベスト' }] : []),
+    ...step.sold.flatMap((x) => (x.stamps || []).filter((l) => calc || l !== '過去最高益').map((l) => ({ label: l, pid: x.pid }))),
+  ].slice(0, 4);
   return h('div', { class: 'wk-sum' },
     h('div', { class: 'wk-head' }, h('small', {}, `${step.week}の取引`), h('span', {}, `${step.sold.length}件 売れた`)),
     h('div', { class: 'wk-main' },
       h('div', {}, h('small', {}, '売上金（週明けに入金）'), h('b', {}, yenFmt(totalNet))),
       calc ? h('div', {}, h('small', {}, '利益'), h('b', { class: totalProfit >= 0 ? 'pos' : 'neg' }, signYen(totalProfit))) : null),
     h('div', { class: 'wk-best' }, itemIcon(best.pid), h('span', {}, !calc ? 'いちばん高く売れた：' : best.profit > 0 ? 'いちばん儲かった：' : 'いちばん損が小さかった：', h('b', {}, productOf(best.pid).name)), h('em', { class: calc && best.profit <= 0 ? 'neg' : '' }, calc ? signYen(best.profit) : yenFmt(best.price))),
+    stamps.length ? h('div', { class: 'wk-stamps' }, ...stamps.map((x) => h('div', { class: 'wk-stamp' }, h('b', {}, x.label), x.pid ? h('small', {}, productOf(x.pid).name) : null))) : null,
     h('div', { class: 'wk-notes' },
       step.staminaUsed ? h('span', {}, `梱包・発送で体力 -${step.staminaUsed}`) : null,
       step.outsourced ? h('span', {}, `外注が${step.outsourced}件発送`) : null,

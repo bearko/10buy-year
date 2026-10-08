@@ -8,7 +8,7 @@ import { platformFee, platformMult, removeUnit } from './inventory.js';
 import { heatFromSale } from './regimes.js';
 import { onSaleDept } from './collection.js';
 import { audienceFromSale, consignPayout } from './careers.js';
-import { addExpense, addHours, recordSale } from './kpi.js';
+import { addExpense, addHours, heldDays, recordSale } from './kpi.js';
 import { perk } from './perks.js';
 import { listBoostOf } from './worklife.js';
 import { sizeReturnWeight } from './shoes.js';
@@ -156,6 +156,28 @@ export function shipAll(s, out) {
   out.outsourced = outsourced;
 }
 
+// 自己ベスト・初めての達成のスタンプ（週末レポートで見せる）。記録を更新する前に呼ぶ
+const PRICE_MARKS = [[1000000, '100万円'], [100000, '10万円'], [50000, '5万円'], [10000, '1万円']];
+function saleStamps(s, sale, u) {
+  const st = s.stats;
+  const out = [];
+  if (st.bestSale && sale.profit > st.bestSale.profit && sale.profit > 0) out.push('過去最高益');
+  // 前の版のセーブは、いちばん儲かった取引の値段までを達成済みとして始める
+  st.priceMarks ||= Object.fromEntries(PRICE_MARKS.filter(([v]) => (st.bestSale?.price || 0) >= v).map(([v]) => [v, true]));
+  const mark = PRICE_MARKS.find(([v]) => sale.price >= v && !st.priceMarks[v]);
+  if (mark) {
+    for (const [v] of PRICE_MARKS) if (sale.price >= v) st.priceMarks[v] = true;
+    out.push(`初めて${mark[1]}以上で売れた`);
+  }
+  // 仕入れてから売れるまでの日数（家の不用品は数えない）
+  if (!u.home) {
+    const days = heldDays(s, u);
+    if (st.fastest !== undefined && days < st.fastest) out.push('最短で売れた');
+    if (st.fastest === undefined || days < st.fastest) st.fastest = days;
+  }
+  return out;
+}
+
 export function finalizeSale(s, sale, out) {
   const u = sale.unit;
   const product = productOf(sale.pid);
@@ -173,6 +195,7 @@ export function finalizeSale(s, sale, out) {
   onSaleDept(s, u); // 外商の優先案内の品は、転売するとバレることがある
   audienceFromSale(s, sale); // 顧客層が育つ
 
+  sale.stamps = saleStamps(s, sale, u);
   const st = s.stats;
   st.revenue += sale.price;
   st.fees += sale.fee;
