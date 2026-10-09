@@ -8,7 +8,7 @@ import { estimateUnit } from './market.js';
 import { suspicion } from './listing.js';
 import { bestPlatform, reserveNeeded } from './automation.js';
 
-export const ROUTINE_CMDS = ['store', 'online', 'auction', 'wholesale'];
+export const ROUTINE_CMDS = ['store', 'online', 'wholesale']; // 業者オークションは月に一度なので、毎週のルーティンには入れない
 
 export const DEFAULT_ROUTINE = {
   cmd: 'store', // 仕入れに行く行動

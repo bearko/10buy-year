@@ -12,7 +12,7 @@ export default {
   "抽選に応募": "Enter a lottery",
   "限定品の抽選。結果は翌週": "Lotteries for limited items. Results next week",
   "発売日に始発で並ぶ": "Line up on launch day on the first train",
-  "古物商だけの市場。相場の5〜7割": "A market only for licensed dealers. 50–70% of market price",
+  "古物商だけの市場。相場の5〜7割。開催は毎月第3週だけ": "A market only for licensed dealers. 50–70% of market price. Held only in the 3rd week of each month",
   "問屋と商談": "Meet a wholesaler",
   "定番品をロットで卸値仕入れ": "Buy staple goods in lots at wholesale",
   "中国輸入": "Import from China",

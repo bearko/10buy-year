@@ -468,7 +468,8 @@ function waitForCommand(mode) {
           if (quick) pickCmd(c.id);
           else select(c);
         },
-      }, c.icon, c.name, costLine(c), sel ? h('span', { class: 'go' }, '決定') : isNew(c) ? newTag() : null, risk > 0 && !sel ? h('span', { class: 'risk' }, '⚠') : null);
+      }, c.icon, c.name, costLine(c), sel ? h('span', { class: 'go' }, '決定') : c.id === 'auction' ? h('span', { class: 'event-tag' }, '今週開催') : isNew(c) ? newTag() : null, risk > 0 && !sel ? h('span', { class: 'risk' }, '⚠') : null);
+      if (c.id === 'auction') el.classList.add('featured'); // 月に一度の業者オークションは目立たせる
       if (quick) {
         el.addEventListener('pointerdown', () => { pressed = false; timer = setTimeout(() => { pressed = true; select(c); }, 450); });
         for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) el.addEventListener(ev, () => clearTimeout(timer));
@@ -539,7 +540,8 @@ function waitForCommand(mode) {
             },
           }, 'assets/extensions/1059.webp', '在庫を出品', h('span', { class: 'free-tag' }, '週は進まない')));
         }
-        const inGroup = cmds.filter((c) => c.group === group);
+        // 開催中の業者オークションは、分類のいちばん上に
+        const inGroup = cmds.filter((c) => c.group === group).sort((a, b) => (b.id === 'auction') - (a.id === 'auction'));
         markSeen(inGroup);
         inGroup.forEach((c) => nav.append(cmdCard(c)));
         return;
@@ -557,7 +559,8 @@ function waitForCommand(mode) {
             idleMessage();
             draw();
           },
-        }, g.icon, g.name, sel ? h('span', { class: 'go' }, '決定') : list.some((c) => !state.seenCmds.includes(c.id)) ? newTag() : list.length > 1 ? h('span', { class: 'n' }, list.length) : null));
+        }, g.icon, g.name, sel ? h('span', { class: 'go' }, '決定') : list.some((c) => !state.seenCmds.includes(c.id)) ? newTag() : list.length > 1 ? h('span', { class: 'n' }, list.length) : null,
+        list.some((c) => c.id === 'auction') ? h('span', { class: 'grp-event' }, 'オークション開催') : null));
       }
     }
 

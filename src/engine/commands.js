@@ -14,7 +14,7 @@ export const EXPEDITION_AFTER = 10; // 店舗せどりを何回したら遠征�
 import { buildPhoneRun, buildStoreRun, phoneFillers, storeClock, totalOffersFor } from './sourcing.js';
 import { addExpense, addHours } from './kpi.js';
 import { perk } from './perks.js';
-import { woy } from './calendar.js';
+import { weekOfMonth, woy } from './calendar.js';
 import { inBoom, priceOf } from './market.js';
 import { addUnits, overCapacity } from './inventory.js';
 import { drawEvents } from './events.js';
@@ -48,7 +48,7 @@ export const COMMANDS = [
   { id: 'online', group: 'buy', icon: E(5075), node: 'src_online', name: '電脳せどり', desc: 'ポイント還元・予約・フリマの安値', stamina: 8, exp: { info: 13, tech: 4, mind: 2 }, hours: 5, bg: 'online' },
   { id: 'lottery', group: 'buy', icon: E(1016), node: 'src_lottery', name: '抽選に応募', desc: '限定品の抽選。結果は翌週', stamina: 5, exp: { info: 6, mind: 6 }, hours: 2, bg: 'online' },
   { id: 'queue', group: 'buy', icon: E(5531), node: 'src_queue', name: '行列に並ぶ', desc: '発売日に始発で並ぶ', stamina: 28, exp: { act: 15, mind: 10 }, hours: 8, bg: 'queue' },
-  { id: 'auction', group: 'buy', icon: E(5509), node: 'src_auction', name: '業者オークション', desc: '古物商だけの市場。相場の5〜7割', stamina: 10, exp: { info: 10, social: 8 }, hours: 6, bg: 'event' },
+  { id: 'auction', group: 'buy', icon: E(5509), node: 'src_auction', name: '業者オークション', desc: '古物商だけの市場。相場の5〜7割。開催は毎月第3週だけ', stamina: 10, exp: { info: 10, social: 8 }, hours: 6, bg: 'event' },
   { id: 'wholesale', group: 'buy', icon: E(1058), node: 'src_wholesale', name: '問屋と商談', desc: '定番品をロットで卸値仕入れ', stamina: 8, exp: { social: 14, info: 6 }, hours: 5, bg: 'event' },
   { id: 'import', group: 'buy', icon: E(1009), name: '中国輸入', desc: '海外の卸サイトからノーブランド品をロットで輸入。届くのは3週後（ステージ2から）', stamina: 6, exp: { info: 8, tech: 5, social: 2 }, hours: 4, bg: 'online' },
   { id: 'kuji', group: 'buy', icon: E(5046), node: 'src_store', name: 'くじを引く', desc: '等級つきのキャラクターくじ（1回750円）。A賞とラストワン賞が狙い目、下位賞はダブつきやすい', stamina: 3, exp: { mind: 4, info: 2 }, hours: 1, bg: 'store' },
@@ -86,6 +86,10 @@ export function availableNightCommands(s) {
   return availableCommands(s).filter((c) => NIGHT_COMMANDS.includes(c.id));
 }
 
+// 業者オークションは月に一度、毎月第3週だけ開かれる（利幅が大きいので、いつでも行けないように）
+export const AUCTION_WEEK = 3;
+export const auctionWeek = (s) => weekOfMonth(s.week) === AUCTION_WEEK;
+
 export function availableCommands(s) {
   if (s.sick > 0) return [COMMAND_MAP.rest, COMMAND_MAP.clinic];
   return COMMANDS.filter((c) => {
@@ -104,6 +108,7 @@ export function availableCommands(s) {
     if (c.id === 'kuji') return kujiOpen(s);
     if (c.id === 'oem') return !!s.secrets?.includes('menlo') && !s.underworld;
     if (c.id === 'expedition') return (s.stats.storeTrips || 0) >= EXPEDITION_AFTER;
+    if (c.id === 'auction') return auctionWeek(s);
     if (c.id === 'card_up') return nextCardTier(s) !== null && s.week >= (flag(s, 'cardApplied') ?? -99) + 8;
     return true;
   });
