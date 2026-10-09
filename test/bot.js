@@ -239,11 +239,14 @@ function chooseCommand(s) {
   return (s.week + (s.actionsLeft || 0)) % 2 ? 'store' : 'online';
 }
 
-export function runGame(seed, policy = smartPolicy, { weeks = Infinity, route = process.env.BOT_ROUTE, difficulty = process.env.BOT_DIFF || 'normal', style = process.env.BOT_STYLE } = {}) {
+// tid を渡すと、プレイログ（engine/telemetry.js）の記録の対象になる（tools/analytics/simulate.mjs）
+export function runGame(seed, policy = smartPolicy, { weeks = Infinity, route = process.env.BOT_ROUTE, difficulty = process.env.BOT_DIFF || 'normal', style = process.env.BOT_STYLE, tid = null, onStart = null, onWeek = null } = {}) {
   const s = createGame(seed, difficulty);
+  if (tid) s.tid = tid;
   // キャリアの型（例：BOT_STYLE=spec:tcg）
   if (style) { const [type, cat] = style.split(':'); s.style = { type, cat }; }
   if (route) s.botRoute = route;
+  onStart?.(s);
   while (!s.over && s.week < weeks) {
     play(s, startWeek(s), policy);
     play(s, checkTutorial(s), policy);
@@ -280,6 +283,7 @@ export function runGame(seed, policy = smartPolicy, { weeks = Infinity, route = 
     if (s.cash > keep && s.debt > 0) repay(s, s.cash - keep);
     play(s, endWeek(s), policy);
     play(s, checkTutorial(s), policy);
+    onWeek?.(s);
   }
   return { s, result: finalResult(s) };
 }

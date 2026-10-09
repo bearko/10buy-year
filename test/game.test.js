@@ -1957,3 +1957,88 @@ test('チュートリアル中は、値下げ交渉・取引トラブル・偉�
     assert.equal(out.negotiations.length + out.troubles.length, 0);
   }
 });
+
+// ---------------- プレイログ ----------------
+import { setTelemetrySink, setTelemetryContext, track } from '../src/engine/telemetry.js';
+import { createTelemetryHandler, dayKey, memoryTelemetryStore, validateBatch } from '../api/_telemetry.js';
+
+test('プレイログ：行動・仕入れ・販売・ツリー・月末の集計が記録される（プレイIDのないゲームは記録しない）', () => {
+  const evs = [];
+  setTelemetrySink((ev) => evs.push(ev));
+  try {
+    const clone = { exp: { info: 99 }, abilities: {}, week: 3 };
+    track(clone, 'cmd', { id: 'x' });
+    assert.equal(evs.length, 0, '試しの計算（プレイIDなし）は記録しない');
+    runGame(4242, undefined, { weeks: 40, tid: 'testgame01' });
+  } finally {
+    setTelemetrySink(null);
+    setTelemetryContext({ cmd: null, auto: false });
+  }
+  const kinds = new Set(evs.map((e) => e.e));
+  for (const k of ['cmd', 'mon', 'sk', 'tut']) assert.ok(kinds.has(k), `${k} が記録される`);
+  const cmds = evs.filter((e) => e.e === 'cmd').map((e) => e.id);
+  assert.ok(cmds.includes('store'), '店舗せどりの行動');
+  const mons = evs.filter((e) => e.e === 'mon');
+  assert.ok(mons.length >= 8, '月ごとの締め');
+  const buys = Object.assign({}, ...mons.map((m) => m.t.buy || {}));
+  assert.ok(Object.keys(buys).some((k) => k.startsWith('store:')), '店舗せどりでの仕入れが、行動と仕入れ先つきで集計される');
+  assert.ok(mons.some((m) => m.t.sell && Object.keys(m.t.sell).length), '販路ごとの販売');
+  assert.ok(evs.filter((e) => e.e === 'sk').every((e) => typeof e.id === 'string'));
+  assert.ok(evs.every((e) => Number.isInteger(e.w)), 'すべてに週が付く');
+});
+
+function tcall(handler, { method = 'GET', url = '/api/telemetry', body, ip = '1.2.3.4', auth } = {}) {
+  return new Promise((resolve) => {
+    const headers = {};
+    const res = {
+      statusCode: 200,
+      setHeader: (k, v) => { headers[k.toLowerCase()] = v; },
+      end: (s) => resolve({ status: res.statusCode, body: s ? JSON.parse(s) : null }),
+    };
+    handler({ method, url, headers: { 'x-forwarded-for': ip, ...(auth ? { authorization: auth } : {}) }, body }, res);
+  });
+}
+
+test('プレイログの受け取り：形を確かめて日ごとに保存し、読み出しはトークンが要る', async () => {
+  const now = Date.parse('2026-10-09T23:30:00+09:00');
+  assert.equal(dayKey(now), '2026-10-09', '日本時間の日付');
+  const store = memoryTelemetryStore();
+  const handler = createTelemetryHandler(() => store, { now: () => now, readToken: () => 'secret' });
+  const batch = { v: 1, pid: 'abcdef123456', sid: 'sess01', dev: 'm-web', lang: 'ja', ev: [{ g: 'game0001', e: 'cmd', w: 3, id: 'store' }, { e: 'ui', id: 'メニュー' }] };
+  assert.equal((await tcall(handler, { method: 'POST', body: JSON.stringify(batch) })).status, 204);
+  assert.equal((await tcall(handler, { method: 'POST', body: batch })).status, 204, 'Vercel が先に JSON を読んでいても受け取れる');
+  assert.equal(validateBatch({ ...batch, v: 2 }).error, 'version');
+  assert.equal(validateBatch({ ...batch, pid: 'x' }).error, 'id');
+  assert.equal(validateBatch({ ...batch, ev: [] }).error, 'events');
+  assert.equal(validateBatch({ ...batch, ev: [{ e: 'DROP TABLE' }] }).error, 'event');
+  assert.equal(validateBatch({ ...batch, ev: [{ e: 'cmd', w: -1 }] }).error, 'week');
+  assert.equal((await tcall(handler, { method: 'POST', body: 'x'.repeat(70 * 1024) })).status, 413, '大きすぎる束');
+  assert.equal((await tcall(handler, { url: '/api/telemetry?day=2026-10-09' })).status, 401, 'トークンなしでは読めない');
+  assert.equal((await tcall(handler, { url: '/api/telemetry?day=2026-10-09', auth: 'Bearer nope' })).status, 401);
+  const got = await tcall(handler, { url: '/api/telemetry?day=2026-10-09', auth: 'Bearer secret' });
+  assert.equal(got.status, 200);
+  assert.equal(got.body.total, 2);
+  assert.equal(got.body.items[0].ev[0].id, 'store');
+  assert.equal(got.body.items[0].rt, Math.round(now / 1000), '受け取った時刻を付ける');
+  assert.ok(!('ip' in got.body.items[0]), 'IPアドレスは保存しない');
+  for (let i = 0; i < 240; i++) await tcall(handler, { method: 'POST', body: batch, ip: '9.9.9.9' });
+  assert.equal((await tcall(handler, { method: 'POST', body: batch, ip: '9.9.9.9' })).status, 429, '回数制限');
+  assert.equal((await tcall(createTelemetryHandler(() => null))).status, 503);
+});
+
+test('プレイログの分析：使える人のうち使った割合・離脱・能力の上げ方', async () => {
+  const { analyze } = await import('../tools/analytics/lib.mjs');
+  const ev = (g, list) => list.map(([e, w, x = {}], i) => ({ g, e, w, at: 1000 + w * 60 + i, ...x }));
+  const batches = [
+    { v: 1, pid: 'player0001', sid: 'sessa1', ev: ev('game000001', [['new', 0, { diff: 'normal' }], ['unl', 0, { ids: ['store', 'online'] }], ['cmd', 1, { id: 'store' }], ['unl', 10, { ids: ['ui:ab'] }], ['ab', 12, { how: 'auto', d: { eye: 3 } }], ['mon', 3, { t: { buy: { 'store:store': [3, 9000] } }, ab: [20, 20, 20, 20, 20], ex: [0, 0, 0, 0, 0], nw: 0 }], ['cmd', 30, { id: 'store' }]]) },
+    { v: 1, pid: 'player0002', sid: 'sessb1', ev: ev('game000002', [['new', 0, { diff: 'easy' }], ['unl', 0, { ids: ['store', 'online'] }], ['tut', 1, { i: 1 }], ['cmd', 2, { id: 'online' }], ['cmd', 9, { id: 'online' }]]) },
+  ];
+  const r = analyze(batches, { idleDays: 0 });
+  const store = r.features.rows.find((x) => x.id === 'store');
+  assert.equal(store.exposed, 2);
+  assert.equal(store.users, 1, '店舗せどりは2人のうち1人');
+  assert.equal(r.abilities.raisedAuto, 1, '能力強化が使える1プレイが自動で上げた');
+  assert.equal(r.churn.funnel.find((f) => f.label === '8週目').n, 2);
+  assert.equal(r.churn.funnel.find((f) => f.label === '12週目').n, 1);
+  assert.equal(r.sourcing.cmds[0].id, 'store');
+});

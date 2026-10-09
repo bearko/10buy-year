@@ -18,6 +18,7 @@ export const livingCost = (s) => Math.round(LIVING_COST * (s.secrets?.includes('
 import { yearOf } from './calendar.js';
 import { ORG_WAGE } from './style.js';
 import { chance } from './rng.js';
+import { track } from './telemetry.js';
 
 // 難易度：借金の額・毎月の最低返済・金利
 export const DIFFICULTIES = {
@@ -152,6 +153,7 @@ export function repay(s, amount) {
   s.stats.repaid += amount;
   s.stats.prepaid = (s.stats.prepaid || 0) + amount; // 繰上げ返済（ミッション）
   if (s.debt <= 0) s.delinquency = 0; // 完済したら、滞納の記録もなくなる
+  track(s, 'repay', { a: amount, ...(s.debt <= 0 ? { all: 1 } : {}) }); // プレイログ
   return amount;
 }
 

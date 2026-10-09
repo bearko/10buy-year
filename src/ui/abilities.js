@@ -5,6 +5,7 @@ import { ABILITIES, ABILITY_MAX, abilityCost, autoRaise, canAfford, CONVERT_RATE
 import { abilityEffects } from '../engine/abilityfx.js';
 import { playSe } from './audio.js';
 import { $, clear, h } from './dom.js';
+import { logGame } from './telemetry.js';
 
 const costText = (cost) => Object.entries(cost).map(([k, v]) => h('span', { class: `cost-chip x ${k}` }, `${EXP_NAME[k]} ${v}`));
 
@@ -66,7 +67,9 @@ export function openAbilities(s, onChange) {
       const next = abilityEffects(s, a.id, Math.min(ABILITY_MAX, lv + 5));
       const raise = (n) => {
         const before = rankOf(s.abilities[a.id]);
-        if (!raiseAbility(s, a.id, n)) return;
+        const up = raiseAbility(s, a.id, n);
+        if (!up) return;
+        logGame(s, 'ab', { how: 'manual', d: { [a.id]: up } }); // プレイログ：基礎能力の上げ方
         playSe('levelup');
         const after = rankOf(s.abilities[a.id]);
         if (after !== before) rankUp(a.name, after);
@@ -100,6 +103,7 @@ export function openAbilities(s, onChange) {
       const done = autoRaise(s);
       const ups = ABILITIES.filter((a) => done[a.id]);
       if (!ups.length) return;
+      logGame(s, 'ab', { how: 'auto', d: done });
       playSe('levelup');
       changed();
       const ranked = ups.find((a) => rankOf(s.abilities[a.id]) !== before[a.id]);

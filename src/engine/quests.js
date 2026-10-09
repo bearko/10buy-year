@@ -5,6 +5,7 @@ import { addExp, flag } from './effects.js';
 import { nextSpot, PIONEER_ROUTES, SPOT_MAP } from './pioneer.js';
 import { hasLicense } from './offers.js';
 import { info, sfx, talk } from './steps.js';
+import { track } from './telemetry.js';
 
 export const MAX_ACTIVE = 3;
 export const QUEST_WEEKS = 24; // この週数で期限切れ（できないミッションで詰まらないように）
@@ -121,6 +122,7 @@ export function checkQuests(s) {
     const d = QUESTS[q.id];
     qs.active = qs.active.filter((x) => x !== q);
     qs.done.push(q.id);
+    track(s, 'quest', { id: q.id });
     if (d.from === 'mine') qs.nextMine = s.week + 1;
     const lines = [d.title];
     let spot = null;

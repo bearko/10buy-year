@@ -5,6 +5,7 @@ import { celebrate, choice, goal, info, sfx, talk } from './steps.js';
 import { netWorth, rankOf } from './ending.js';
 import { monthEndForecast } from './finance.js';
 import { visionGoal } from './visions.js';
+import { track } from './telemetry.js';
 
 export const STAGES = [
   { id: 1, name: '副業スタート', period: '0〜1年目', goal: '家の不用品を売って、仕入れ→販売の流れをつかむ', next: '月の純利益5万円を2か月連続' },
@@ -106,6 +107,7 @@ export function checkPromotion(s) {
 function setStage(s, to) {
   s.stage = to;
   (s.stageWeeks ||= {})[to] = s.week;
+  track(s, 'stage', { to });
 }
 
 function promote(s, to) {

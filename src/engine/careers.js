@@ -9,6 +9,7 @@ import { priceOf, roundPrice, unitPrice } from './market.js';
 import { sellInShop } from './mystore.js';
 import { specialOffer } from './offers.js';
 import { choice, info, narr, offers, sfx, talk } from './steps.js';
+import { tally } from './telemetry.js';
 
 export const audOf = (pid) => AUD_OF[pid] || null;
 export const audience = (s, aud) => s.audience?.[aud] || 0;
@@ -83,6 +84,8 @@ export function liveSteps(s) {
     const price = u.listing.price;
     removeUnit(s, u.uid);
     addCash(s, Math.round(price * 0.92), `ライブ配信で販売: ${productOf(u.pid).name}`); // 配信アプリの手数料8%
+    tally(s, 'sell', 'live', 1, price); // プレイログ
+    tally(s, 'prof', 'live', 0, Math.round(price * 0.92) - u.cost);
     s.stats.revenue += price;
     s.stats.cogs += u.cost;
     s.stats.soldUnits++;

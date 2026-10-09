@@ -9,7 +9,10 @@
     "test": "node --test test/game.test.js",
     "balance": "node test/balance.mjs 20",
     "assets": "python3 tools/import_assets.py ../mycryptoheroes",
-    "guide": "node tools/guide/build.mjs"
+    "guide": "node tools/guide/build.mjs",
+    "analytics:fetch": "node tools/analytics/fetch.mjs",
+    "analytics:report": "node tools/analytics/report.mjs",
+    "analytics:sim": "node tools/analytics/simulate.mjs"
   },
   "engines": {
     "node": ">=20"

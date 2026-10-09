@@ -9,6 +9,7 @@ import { woy } from './calendar.js';
 import { choice, info, sfx, talk } from './steps.js';
 import { knowsGenre } from './courses.js';
 import { audienceFromSale } from './careers.js';
+import { tally } from './telemetry.js';
 
 export const LOCATIONS = {
   station: { name: '駅前', rent: 400000, traffic: 60, tolerance: 1.03, likes: ['staple', 'hype', 'boom'], know: ['fashion'], desc: '客足が多い。通勤客は新品の定番・話題の品を買う' },
@@ -85,6 +86,8 @@ export function shopWeek(s) {
 export function sellInShop(s, u, price, platform = 'shop') {
   removeUnit(s, u.uid);
   addCash(s, price, `店頭販売: ${productOf(u.pid).name}`);
+  tally(s, 'sell', platform, 1, price); // プレイログ
+  tally(s, 'prof', platform, 0, price - u.cost);
   s.stats.revenue += price;
   s.stats.cogs += u.cost;
   s.stats.soldUnits++;
