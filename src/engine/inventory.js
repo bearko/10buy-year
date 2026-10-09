@@ -98,7 +98,15 @@ export const overCapacity = (s) => roomUsed(s) > capacity(s);
 export const hardCapacity = (s) => Math.round(capacity(s) * 1.5);
 
 export function cardAvailable(s) {
-  return Math.max(0, s.card.limit + perk(s, 'cardLimitAdd') - s.card.current - s.card.due);
+  return Math.max(0, s.card.limit + perk(s, 'cardLimitAdd') - s.card.current - s.card.due - (s.card.next || 0));
+}
+
+// カードで払う。締め日は月の第3週の終わり：月の最終週（第4週）の利用は翌月分の請求に回す
+// （月末にカードで仕入れても、引き落としまで最低5週はある。engine/finance.js の monthEnd）
+export function chargeCard(s, amount) {
+  if (amount <= 0) return;
+  if (s.week % 4 === 3) s.card.next = (s.card.next || 0) + amount;
+  else s.card.current += amount;
 }
 
 function newUnit(s, pid, cost, extra) {
@@ -138,7 +146,7 @@ export function buy(s, offer, qty, method = 'cash') {
   }
   s.points -= pointsUsed;
   if (method === 'card') {
-    s.card.current += rest;
+    chargeCard(s, rest);
     record(s, `${product.name} ×${qty}（カード払い）`, 0);
     s.cardPoints += Math.floor(rest * (hasSkill(s, 'poikatsu') ? 0.02 : 0.01));
   } else {

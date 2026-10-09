@@ -5,7 +5,7 @@ import { TOTAL_WEEKS, isMonthEnd, isYearEnd, monthOf, weekLabel, weekOfMonth, wo
 import { addHate, addStamina, flag, hasSkill, record, setFlag, yen } from './effects.js';
 import { updateMarket } from './market.js';
 import { drawEvents } from './events.js';
-import { monthEnd } from './finance.js';
+import { cardBillNotice, monthEnd } from './finance.js';
 import { resolveLotteries } from './commands.js';
 import { checkQuests, questWeek } from './quests.js';
 import { lotteryOffer } from './offers.js';
@@ -112,6 +112,7 @@ export function startWeek(s) {
   if (flag(s, 'arrest')) s.over = 'arrested';
   // ミッション：達成の報酬と、マインからの新しいミッション（engine/quests.js）
   steps.push(...checkQuests(s), ...questWeek(s));
+  steps.push(...cardBillNotice(s)); // カードの請求は、引き落としの2週前に知らせる
   s.phase = 'command';
   return steps;
 }

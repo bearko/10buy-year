@@ -1352,7 +1352,7 @@ test('店のクセ：3回通うと覚える。クセは周ごとに決まって�
   assert.equal(s.cash, 94000, '交通費');
 });
 
-test('撮影の出来で売れ行きが変わり、発送の演出は部屋にある品だけ。カードの利用代金は確定メールが届く', async () => {
+test('撮影の出来で売れ行きが変わり、発送の演出は部屋にある品だけ。カードの請求は引き落としの2週前にメールが届く', async () => {
   const { applyPhoto, listBoostOf, shipTargets } = await import('../src/engine/worklife.js');
   const s = createGame(41);
   s.listBoost = true;
@@ -1364,8 +1364,59 @@ test('撮影の出来で売れ行きが変わり、発送の演出は部屋に�
   assert.equal(shipTargets([{ pid: 'boots', platform: 'ama' }, { pid: 'boots', platform: 'merc' }]).length, 1, 'アマクリは倉庫から出荷');
   s.card.current = 30000;
   s.cash = 1000000;
+  s.week = 3;
   const steps = monthEnd(s);
-  assert.ok(steps.some((x) => x.t === 'mail' && x.mails[0].subject.includes('ご利用代金確定')));
+  assert.ok(!steps.some((x) => x.t === 'mail'), '締めた時点ではメールは来ない');
+  assert.equal(s.card.due, 30000);
+  const { cardBillNotice } = await import('../src/engine/finance.js');
+  s.week = 5; // 翌月の第2週のはじめ
+  const mail = cardBillNotice(s);
+  assert.ok(mail[0]?.mails[0].subject.includes('ご請求金額'));
+  s.week = 4;
+  assert.equal(cardBillNotice(s).length, 0, '請求のお知らせは第2週のはじめだけ');
+});
+
+test('カード：月の最終週の利用は翌月分に回り、引き落としまで最低5週ある', () => {
+  const s = createGame(5);
+  s.cash = 1000000;
+  s.points = 0;
+  const offer = { oid: 1, pid: 'boots', price: 9000, maxQty: 9, points: 0, fakeRate: 0 };
+  s.week = 3; // 4月第4週（締め日のあと）
+  buy(s, { ...offer }, 1, 'card');
+  assert.equal(s.card.current, 0);
+  assert.equal(s.card.next, 9000);
+  assert.equal(cardAvailable(s), 100000 - 9000, '翌月分も利用枠を使う');
+  monthEnd(s); // 4月末：最終週の分は持ち越し
+  assert.equal(s.card.due, 0);
+  assert.equal(s.card.current, 9000);
+  s.week = 7;
+  const cash = s.cash;
+  monthEnd(s); // 5月末：まだ引き落とさない（請求が確定）
+  assert.equal(s.card.due, 9000);
+  assert.ok(s.cash >= cash - 200000, '5月末にはカードの9,000円は引かれない');
+  s.week = 11;
+  const before = s.cash;
+  monthEnd(s); // 6月末に引き落とし
+  assert.equal(s.card.due, 0);
+  assert.ok(before - s.cash >= 9000);
+  // 第1〜3週の利用は、翌月末に引き落とし
+  s.week = 12;
+  s.points = 0; // カードのポイントが付いているので使わないように
+  buy(s, { ...offer }, 1, 'card');
+  assert.equal(s.card.current, 9000);
+});
+
+test('借金を繰上げ返済で完済すると、滞納の記録もリセットされる', () => {
+  const s = createGame(6);
+  s.delinquency = 1;
+  s.debt = 50000;
+  s.cash = 30000;
+  assert.equal(repay(s, s.cash), 30000);
+  assert.equal(s.delinquency, 1, '一部の返済では消えない');
+  s.cash = 100000;
+  assert.equal(repay(s, s.debt), 20000);
+  assert.equal(s.debt, 0);
+  assert.equal(s.delinquency, 0);
 });
 
 test('業者オークションの競りのロットと、問屋の見積書の交渉', async () => {

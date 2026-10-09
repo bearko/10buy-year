@@ -87,16 +87,10 @@ export function monthEnd(s) {
       );
     }
   }
+  // 締め：今月の利用分（第1〜3週）を来月末の請求に。最終週の利用分は、来月の利用分として持ち越す
   s.card.due = s.card.current;
-  s.card.current = 0;
-  // 利用代金の確定メール（引き落としは来月末）。残高が足りなそうなら、リボの勧誘も届く
-  if (s.card.due > 0) {
-    const short = s.cash < s.card.due;
-    steps.push({ t: 'mail', mails: [
-      { from: 'マイクリカード', subject: '【マイクリカード】ご利用代金確定のお知らせ', body: `今月のご利用代金は ${yen(s.card.due)} です。来月末に、ご指定の口座から引き落とします。（現在の口座残高 ${yen(Math.max(0, s.cash))}）`, tone: short ? 'bad' : '' },
-      ...(short ? [{ from: 'マイクリカード', subject: '【ご案内】毎月のお支払いを一定に「あとからリボ」', body: 'お支払いが厳しい月も安心！ 毎月の支払額を一定にできます。※手数料は年15%です。残高不足の分は、自動でリボ払いになります。', tone: 'spam' }] : []),
-    ] });
-  }
+  s.card.current = s.card.next || 0;
+  s.card.next = 0;
   if (s.cardPoints > 0) {
     s.points += s.cardPoints;
     steps.push(info('カードポイント', [`${s.cardPoints.toLocaleString()}pt が付与された`], 'good'));
@@ -157,11 +151,23 @@ export function repay(s, amount) {
   s.debt -= amount;
   s.stats.repaid += amount;
   s.stats.prepaid = (s.stats.prepaid || 0) + amount; // 繰上げ返済（ミッション）
+  if (s.debt <= 0) s.delinquency = 0; // 完済したら、滞納の記録もなくなる
   return amount;
+}
+
+// カードの請求のお知らせ：引き落とし（月末）の2週前、月の第2週のはじめに届く。残高が足りなそうなら、リボの勧誘も
+export function cardBillNotice(s) {
+  if (s.week % 4 !== 1 || !(s.card.due > 0)) return [];
+  const short = s.cash < s.card.due;
+  return [{ t: 'mail', mails: [
+    { from: 'マイクリカード', subject: '【マイクリカード】ご請求金額のお知らせ', body: `今月のご請求金額は ${yen(s.card.due)} です。今月末（2週間後）に、ご指定の口座から引き落とします。（現在の口座残高 ${yen(Math.max(0, s.cash))}）`, tone: short ? 'bad' : '' },
+    ...(short ? [{ from: 'マイクリカード', subject: '【ご案内】毎月のお支払いを一定に「あとからリボ」', body: 'お支払いが厳しい月も安心！ 毎月の支払額を一定にできます。※手数料は年15%です。残高不足の分は、自動でリボ払いになります。', tone: 'spam' }] : []),
+  ] }];
 }
 
 export function debtFreeSteps(s) {
   s.debt = 0;
+  s.delinquency = 0;
   setFlag(s, 'debtFree', s.week);
   return [
     celebrate('借金完済！'),
