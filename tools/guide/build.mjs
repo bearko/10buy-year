@@ -782,7 +782,7 @@ const html = `<!doctype html>
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>10 buy year！ 完全攻略ガイド</title>
 <meta name="description" content="『10 buy year！』の完全攻略ガイドブック。ゲームの流れ、仕入れと販売、スキルツリー全パネル、全エンディングの条件、実績、商品図鑑まで。">
 <meta property="og:title" content="10 buy year！ 完全攻略ガイド">
