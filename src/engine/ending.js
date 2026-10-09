@@ -22,7 +22,7 @@ export function inventoryValue(s) {
 export function netWorth(s) {
   const pending = s.pending.reduce((sum, p) => sum + p.amount, 0);
   // コレクション（私設美術館）は評価額で入る
-  return Math.round(s.cash + pending + s.points + inventoryValue(s) + collectionValue(s) + holdingValue(s) - s.debt - s.card.current - s.card.due); // 仮想通貨は時価
+  return Math.round(s.cash + pending + s.points + inventoryValue(s) + collectionValue(s) + holdingValue(s) - s.debt - s.card.current - s.card.due - (s.card.next || 0)); // 仮想通貨は時価
 }
 
 const RANKS = [

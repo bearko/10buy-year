@@ -81,37 +81,42 @@ export function bizModal(s, onChange, playSteps) {
         row('毎月の最低返済', s.debt ? `${yenFmt(Math.min(minPayment(s), s.debt))}（毎月第4週末）` : 'なし'),
         row('難易度', `${difficultyOf(s).name}（年利${Math.round(difficultyOf(s).rate * 100)}%）${s.daily ? `・${s.daily} のチャレンジ` : ''}`),
         styleOf(s) !== 'normal' ? row('キャリアの型', styleLabel(s)) : null,
-        row('カード 今月の利用', `${yenFmt(s.card.current)}（来月末に引き落とし）`),
         row('カード 今月末の引き落とし', yenFmt(s.card.due)),
+        row('カード 今月の利用', `${yenFmt(s.card.current)}（来月末に引き落とし）`),
+        s.card.next ? row('カード 締め日のあとの利用', `${yenFmt(s.card.next)}（再来月末に引き落とし）`) : null,
         row('連続滞納', `${s.delinquency} / 3 か月`, s.delinquency ? 'neg' : ''),
       ),
     );
     if (s.debt > 0) {
+      const pay = async (want) => {
+        const paid = repay(s, want);
+        if (paid > 0) {
+          playSe('coin');
+          toast(`${yenFmt(paid)}を返済した`, 'good');
+          if (s.debt <= 0 && !s.flags.debtFree) {
+            api.close();
+            await playSteps(debtFreeSteps(s));
+            onChange?.();
+            return;
+          }
+        } else toast('返済できる現金がない', 'bad');
+        amount = 0;
+        api.refresh();
+        onChange?.();
+      };
+      const cash = Math.max(0, Math.floor(s.cash));
+      const half = Math.min(s.debt, Math.floor(cash / 2));
       body.append(
         h('div', { class: 'sub' }, '繰上げ返済'),
         h('p', { class: 'note' }, `早く返すほど利息（年${Math.round(difficultyOf(s).rate * 100)}%）が減る。ただし手元資金が減ると仕入れができなくなる。`),
+        // ワンタップで返す：全額（現金が足りるとき）・手持ちの50%
+        h('div', { class: 'repay-quick' },
+          h('button', { class: 'btn primary', disabled: cash < s.debt, onclick: () => pay(s.debt) }, '全額返済', h('small', {}, cash >= s.debt ? yenFmt(s.debt) : `あと${yenFmt(s.debt - cash)}足りない`)),
+          h('button', { class: 'btn', disabled: half <= 0, onclick: () => pay(half) }, '手持ちの50%', h('small', {}, yenFmt(half)))),
         h('div', { class: 'price-row' },
-          h('input', { type: 'number', min: '0', step: '10000', value: String(amount), onchange: (e) => { amount = Math.max(0, Number(e.target.value) || 0); } }),
+          h('input', { type: 'number', min: '0', step: '10000', value: String(amount), 'aria-label': '返済する金額', onchange: (e) => { amount = Math.max(0, Number(e.target.value) || 0); } }),
           h('span', {}, '円'),
-          h('button', {
-            class: 'btn primary',
-            onclick: async () => {
-              const paid = repay(s, amount);
-              if (paid > 0) {
-                playSe('coin');
-                toast(`${yenFmt(paid)}を返済した`, 'good');
-                if (s.debt <= 0 && !s.flags.debtFree) {
-                  api.close();
-                  await playSteps(debtFreeSteps(s));
-                  onChange?.();
-                  return;
-                }
-              } else toast('返済できる現金がない', 'bad');
-              amount = 0;
-              api.refresh();
-              onChange?.();
-            },
-          }, '返済する'),
+          h('button', { class: 'btn', onclick: () => pay(amount) }, '金額を決めて返済'),
         ),
       );
     }

@@ -16,6 +16,7 @@ export function washHands(s) {
   s.nodeLv = {};
   s.card.current = 0;
   s.card.due = 0;
+  s.card.next = 0;
   s.card.limit = 100000;
   // 事業もすべて手放す：法人・専業の暮らし・店・通っていた講座・抽選の応募
   s.fulltime = false;

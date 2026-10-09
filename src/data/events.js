@@ -14,7 +14,7 @@ import {
   addAffinity, addCash, addExp, addHate, addToku, fallUnderworld, addMood, addRating, addStamina, affinity, flag, giveHint, giveSkill, hasSkill, setFlag, yen,
 } from '../engine/effects.js';
 import { applyShock, inBoom, isReleased, priceOf } from '../engine/market.js';
-import { abroadMult, addUnits, overCapacity } from '../engine/inventory.js';
+import { abroadMult, addUnits, chargeCard, overCapacity } from '../engine/inventory.js';
 import { addFamily } from '../engine/family.js';
 import { fiscalIncome, minPayment, taxFor } from '../engine/finance.js';
 import { bgm, choice, gain, info, items, narr, sfx, talk } from '../engine/steps.js';
@@ -647,7 +647,7 @@ export const EVENTS = [
             run: () => {
               const pay = Math.min(price, Math.max(0, s.cash));
               addCash(s, -pay, `駅前で購入: ${p.name}`);
-              if (pay < price) s.card.current += price - pay;
+              if (pay < price) chargeCard(s, price - pay);
               addUnits(s, 'jewel', 1, price, { fake: true });
               setFlag(s, 'fakeJewel', s.week);
               return [
