@@ -1419,6 +1419,25 @@ test('借金を繰上げ返済で完済すると、滞納の記録もリセッ�
   assert.equal(s.delinquency, 0);
 });
 
+test('業者オークションは毎月第3週だけ開かれ、その週はクリスが知らせる', async () => {
+  const { startWeek } = await import('../src/engine/turn.js');
+  const s = createGame(8);
+  s.skills.push('src_auction');
+  s.tutorial = 99;
+  s.flags.tutorialDone = true;
+  const open = [];
+  for (let w = 40; w < 48; w++) {
+    s.week = w;
+    if (availableCommands(s).some((c) => c.id === 'auction')) open.push(w % 4);
+  }
+  assert.deepEqual(open, [2, 2], '月に一度（第3週）');
+  s.week = 42;
+  const steps = startWeek(s);
+  assert.ok(steps.some((x) => x.t === 'talk' && x.who === 'chris' && x.text.includes('業者オークション')));
+  s.week = 44;
+  assert.ok(!startWeek(s).some((x) => x.t === 'talk' && x.text?.includes('業者オークション')));
+});
+
 test('業者オークション：競りにかかった品は、出品物の一覧に二重に並ばない', () => {
   for (let seed = 1; seed <= 40; seed++) {
     const s = createGame(seed);

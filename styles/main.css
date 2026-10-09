@@ -1891,3 +1891,9 @@ body.stage-xs #side-btns .side-btn.quest, body.stage-xs #side-btns .side-btn.tre
 .repay-quick { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 6px 0 8px; }
 .repay-quick .btn { display: flex; flex-direction: column; align-items: center; padding: 10px 6px; }
 .repay-quick .btn small { font-size: calc(11px * var(--fs, 1)); opacity: 0.85; font-weight: normal; }
+
+/* 月に一度の業者オークション：仕入れの中で目立たせる */
+.cmd.featured { border-color: #d4a017; background: linear-gradient(160deg, #3a2f10, var(--panel) 70%); box-shadow: 0 0 0 1px #f5c54255, 0 0 12px #f5c54233; }
+.cmd .event-tag { position: absolute; top: -8px; right: -4px; z-index: 1; font-size: calc(10px * var(--fs, 1)); font-weight: 700; padding: 1px 7px; border-radius: 99px; background: linear-gradient(135deg, #f5c542, #e3a81f); color: #221a00; box-shadow: 0 0 10px #f5c54288; animation: new-pulse 1.4s ease-in-out infinite; white-space: nowrap; }
+.cmd.grp .grp-event { position: absolute; left: 50%; bottom: -7px; transform: translateX(-50%); font-size: calc(9px * var(--fs, 1)); font-weight: 700; padding: 0 6px; border-radius: 99px; background: #f5c542; color: #221a00; white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { .cmd .event-tag { animation: none; } }

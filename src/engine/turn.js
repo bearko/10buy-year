@@ -6,7 +6,7 @@ import { addHate, addStamina, flag, hasSkill, record, setFlag, yen } from './eff
 import { updateMarket } from './market.js';
 import { drawEvents } from './events.js';
 import { cardBillNotice, monthEnd } from './finance.js';
-import { resolveLotteries } from './commands.js';
+import { auctionWeek, resolveLotteries } from './commands.js';
 import { checkQuests, questWeek } from './quests.js';
 import { lotteryOffer } from './offers.js';
 import { resolveSales } from './sales.js';
@@ -113,6 +113,11 @@ export function startWeek(s) {
   // ミッション：達成の報酬と、マインからの新しいミッション（engine/quests.js）
   steps.push(...checkQuests(s), ...questWeek(s));
   steps.push(...cardBillNotice(s)); // カードの請求は、引き落としの2週前に知らせる
+  // 業者オークションの開催週（毎月第3週）：クリスがつぶやいて知らせる
+  if (auctionWeek(s) && hasSkill(s, 'src_auction') && !s.sick) {
+    (s.news ||= []).push({ text: '【業者オークション】今週開催。古物商だけの市場で、相場の5〜7割で仕入れられる', kind: 'info' });
+    steps.push(talk('chris', '今週は業者オークションだ。資金に余裕があったら参加しよう。', 'smile'));
+  }
   s.phase = 'command';
   return steps;
 }
