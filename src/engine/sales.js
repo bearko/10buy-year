@@ -14,6 +14,7 @@ import { listBoostOf } from './worklife.js';
 import { sizeReturnWeight } from './shoes.js';
 import { CLAIM_BUYERS, claimTakedowns } from './regulated.js';
 import { staffDamageRate } from './staff.js';
+import { tally } from './telemetry.js';
 
 export const OUTSOURCE_SHIP_FEE = 400;
 
@@ -186,6 +187,8 @@ export function finalizeSale(s, sale, out) {
   sale.net = sale.price - sale.fee - sale.ship;
   sale.cost = u.cost;
   sale.profit = sale.net - u.cost;
+  tally(s, 'sell', sale.platform, 1, sale.price); // プレイログ：販路ごとの販売
+  tally(s, 'prof', sale.platform, 0, sale.profit);
   consignPayout(s, sale); // 委託販売：売上金の8割は持ち主へ
   sale.id = `${s.week}-${u.uid}`;
   s.pending.push({ id: sale.id, amount: sale.net, week: s.week + 1, label: `売上金: ${product.name}` });

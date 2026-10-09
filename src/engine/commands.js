@@ -1,6 +1,7 @@
 // 週に1〜2回選ぶ「行動」。育成シミュレーションの「練習メニュー」にあたる。
 import { productOf } from '../data/products.js';
 import { chance, pick, randInt } from './rng.js';
+import { trackCommand } from './telemetry.js';
 import { addCash, addExp, addHate, addMood, addStamina, addToku, clamp, flag, hasSkill, removeSkill, setFlag, yen } from './effects.js';
 import { auctionOffers, lotteryEntries, lotteryWinRate, onlineOffers, openLotteries, queueOffer, queueSuccessRate, queueTargets, storeOfferCount, storeOffers, wholesaleOffers, importOffers, oemOffers } from './offers.js';
 import { importOpen, INSPECT_FEE } from './importer.js';
@@ -176,6 +177,7 @@ export function performCommand(s, cmdId, { night = false } = {}) {
   const cmd = COMMAND_MAP[cmdId];
   const steps = [bg(cmd.bg)];
   if (cmd.cost && s.cash < cmd.cost) return [talk('chris', `お金が足りない…（${yen(cmd.cost)}必要）`, 'sad')];
+  trackCommand(s, cmdId, night); // プレイログ
   if (night) {
     steps.push(narr('夜。家族が寝静まったあと、もうひと仕事。'));
     s.flags.nightWork = (s.flags.nightWork || 0) + 1;

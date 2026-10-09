@@ -74,6 +74,9 @@ import { dealPolicyModal } from './ui/dealpolicy.js';
 import { routineBuy, routineList, routineListStamina, routineStale } from './engine/routine.js';
 import { addStamina } from './engine/effects.js';
 import { inventoryModal, marketModal, salesSummary } from './ui/trade.js';
+import { flush as flushPlaylog, initTelemetry, logGame, logUi, startPlaylog } from './ui/telemetry.js';
+import { setTelemetryContext } from './engine/telemetry.js';
+import { endingData } from './engine/playlog.js';
 
 let state = null;
 let busy = false;
@@ -497,6 +500,7 @@ function waitForCommand(mode) {
             const cfg = await routineModal(state);
             if (!cfg) return;
             state.routine = cfg;
+            logGame(state, 'routine', { cmd: cfg.cmd, weeks: cfg.weeks });
             autoWeeks = cfg.weeks;
             autoCmd = cfg.cmd;
             startRoutine(cfg);
@@ -690,6 +694,7 @@ function renderTabs() {
       onclick: () => {
         if (busy) return;
         uiSeen(t.id);
+        logUi(`tab:${t.id}`);
         after(t.open());
       },
     }, t.label, fresh ? h('span', { class: 'new-tag' }, 'NEW') : t.badge ? h('span', { class: 'badge' }, t.badge) : null));
@@ -750,6 +755,20 @@ function uiSeen(id) {
   if (state && UI_TRACKED.includes(id) && uiOpen(id)) (state.uiSeen ||= {})[id] = true;
 }
 
+// プレイログ：行動・夜の行動・メニューが初めて使えるようになったら記録する（「使われていない機能」を、使える人のうち何人が使ったかで見るため）
+function trackUnlocks() {
+  const now = [
+    ...availableCommands(state).map((c) => c.id),
+    ...(state.stage >= 2 ? availableNightCommands(state).map((c) => `night:${c.id}`) : []), // 夜の行動はステージ2から
+    ...UI_TRACKED.filter(uiOpen).map((id) => `ui:${id}`),
+  ];
+  const seen = new Set(state.tlmSeen || []);
+  const fresh = now.filter((id) => !seen.has(id));
+  if (!fresh.length) return;
+  state.tlmSeen = [...seen, ...fresh];
+  logGame(state, 'unl', { ids: fresh });
+}
+
 function setSpeed(ms) {
   speed = ms;
   setTextSpeed(ms);
@@ -806,6 +825,7 @@ async function loop() {
       await playSteps(syncLive(state, tutorialDone(state) ? liveEventOn()?.id : null));
       await playSteps(startWeek(state));
       await tutorialStep();
+      trackUnlocks();
       saveGame(state);
       if (state.over) break;
     }
@@ -813,7 +833,9 @@ async function loop() {
     while (state.actionsLeft > 0 && !state.over) {
       const cmd = await nextCommand('day');
       state.actionsLeft--;
+      setTelemetryContext({ auto: !!routineRun || autoWeeks > 0 }); // ルーティン・おまかせで選ばれた行動か
       await playSteps(performCommand(state, cmd));
+      setTelemetryContext({ cmd: null });
       await tutorialStep();
       if (routineRun) {
         const n = routineList(state, routineRun.cfg);
@@ -828,9 +850,11 @@ async function loop() {
       const cmd = await nextCommand('night');
       state.nightLeft = 0;
       if (cmd !== 'sleep') {
+        setTelemetryContext({ auto: !!routineRun || autoWeeks > 0 });
         await playSteps(performCommand(state, cmd, { night: true }));
+        setTelemetryContext({ cmd: null });
         await tutorialStep();
-      }
+      } else logGame(state, 'cmd', { id: 'sleep', n: 1 }); // 夜に何もしなかった
       setNight(false);
       persist();
     }
@@ -928,6 +952,7 @@ async function newGame({ daily = null, weekly = null } = {}) {
     state.legacy = legacy;
   }
   clearSave();
+  startPlaylog(state, { resumed: false });
   showScreen('game-screen');
   refresh();
   showChris('idle');
@@ -958,6 +983,7 @@ function continueGame() {
   const loaded = loadGame();
   if (!loaded) return newGame();
   state = loaded;
+  startPlaylog(state, { resumed: true });
   showScreen('game-screen');
   refresh();
   return resumeCard(state).then(() => loop());
@@ -1118,6 +1144,8 @@ function aboutModal() {
 // ---------------- エンディング ----------------
 function showEnding() {
   const r = finalResult(state);
+  logGame(state, 'end', endingData(state, r));
+  flushPlaylog();
   const entry = {
     netWorth: r.netWorth, rank: r.rank, title: r.title, ending: r.ending.title, stage: r.stage, revenue: r.revenue, difficulty: difficultyOf(state).name, style: styleOf(state) === 'normal' ? null : styleLabel(state), daily: state.daily || null, weekly: state.weekly || null, date: new Date().toLocaleDateString('ja-JP'),
   };
@@ -1264,5 +1292,6 @@ setParamsOpen(() => {
   openAbilities(state, refresh).then(() => refresh());
 });
 await initLang(); // 英語版なら訳を読みこんでから
+initTelemetry(); // プレイログ（設定で止められる）
 showTitle();
 if (takeAgain()) newGame();

@@ -14,6 +14,7 @@ import { addSaturation, markSatUsed, SAT_PER_SPOT_BUY } from './rivals.js';
 import { exportBlocked, feeRegime, heatFromBuy, priceCap } from './regimes.js';
 import { deptSpend } from './collection.js';
 import { investSatMult } from './lifestyle.js';
+import { currentCommand, tally } from './telemetry.js';
 
 export const ROOM_CAPACITY = 30;
 export const PLATFORMS = {
@@ -174,6 +175,8 @@ export function buy(s, offer, qty, method = 'cash') {
   s.stats.boughtUnits += qty;
   s.stats.purchases += qty;
   s.stats.spent += total;
+  tally(s, 'buy', `${currentCommand() || '-'}:${offer.source || '-'}`, qty, total); // プレイログ：どの行動・どの仕入れ先で買ったか
+  tally(s, 'pay', method, qty, total);
   s.cur.bought += qty;
   s.cur.spent += total;
   if (offer.scarce) s.stats.scarceBought += qty;
@@ -261,6 +264,7 @@ export function sellToBuyer(s, uids) {
     total += price;
     n++;
     const profit = price - u.cost;
+    tally(s, 'sell', 'buyback', 1, price);
     s.stats.revenue += price;
     s.stats.cogs += u.cost;
     s.stats.soldUnits++;

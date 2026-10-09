@@ -2,6 +2,7 @@
 
 import { monthOf, yearOf } from './calendar.js';
 import { hasSkill } from './effects.js';
+import { trackMonth } from './telemetry.js';
 
 export const emptyMonth = () => ({
   revenue: 0, salesProfit: 0, expenses: 0, passive: 0, sold: 0, bought: 0, spent: 0, hours: 0, daysSum: 0, lossCuts: 0, returns: 0,
@@ -55,6 +56,7 @@ export function closeMonth(s) {
   s.monthly.push(rec);
   if (s.monthly.length > 130) s.monthly.shift();
   s.cur = emptyMonth();
+  trackMonth(s, { net: rec.net, rev: rec.revenue || 0 }); // プレイログ：月の締め（月の仕入れ・販売の集計つき）
   return rec;
 }
 

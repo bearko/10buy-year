@@ -1,6 +1,7 @@
 import { CAPSTONE_NEED, SKILLS, SKILL_MAP, TREE_NODES } from '../data/skills.js';
 import { mainRoutes, perk, routeCounts } from './perks.js';
 import { addToku, giveSkill, removeSkill } from './effects.js';
+import { track } from './telemetry.js';
 
 export const EXP_TYPES = [
   { id: 'info', name: '情報' },
@@ -19,6 +20,7 @@ export function convertExp(s, from, to, amount) {
   const got = Math.floor(amount * CONVERT_RATE);
   s.exp[from] -= amount;
   s.exp[to] = (s.exp[to] || 0) + got;
+  track(s, 'cv', { f: from, t: to, a: amount });
   return got;
 }
 
@@ -182,9 +184,10 @@ export function learnableSkills(s) {
   return SKILLS.filter((sk) => ['available', 'red'].includes(nodeState(s, sk.id)));
 }
 
-// イベントやチュートリアルで無料で解放する
-export function grantSkill(s, skillId) {
+// イベントやチュートリアルで無料で解放する（learnSkill からは via='exp'：経験点を払って解放）
+export function grantSkill(s, skillId, via = 'free') {
   const sk = SKILL_MAP[skillId];
+  track(s, 'sk', { id: skillId, ...(via === 'free' ? { free: 1 } : {}) }); // プレイログ
   if (sk.kind === 'repeat') {
     s.nodeLv[skillId] = Math.min(sk.max, nodeLv(s, skillId) + 1);
     applyGrant(s, sk.grant);
@@ -212,8 +215,10 @@ export function learnSkill(s, skillId) {
   const cost = skillCost(s, skillId);
   if (!canAfford(s, cost)) return false;
   pay(s, cost);
-  if (sk.kind === 'red') removeSkill(s, skillId);
-  else grantSkill(s, skillId);
+  if (sk.kind === 'red') {
+    removeSkill(s, skillId);
+    track(s, 'cure', { id: skillId });
+  } else grantSkill(s, skillId, 'exp');
   return true;
 }
 

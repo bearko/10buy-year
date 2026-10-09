@@ -48,6 +48,8 @@ export default {
   "値付けする": "Set prices",
   "出品を変更": "Edit listings",
   "能力強化": "Abilities",
+  "プレイ記録を送って改善に協力する: {0}": "Send play records to help improve the game: {0}",
+  "送るのは、使った行動・開いた画面・仕入れと販売の月ごとの集計・進み具合などの匿名の記録だけ。名前やランキングの登録名、端末の情報は送らない。": "Only anonymous records are sent: the actions you used, the screens you opened, monthly totals of buying and selling, and how far you got. Your name, your ranking name and device details are never sent.",
   "【業者オークション】今週開催。古物商だけの市場で、相場の5〜7割で仕入れられる": "[Dealer Auction] Held this week. A dealers-only market where you can buy at 50–70% of market price",
   "今週は業者オークションだ。資金に余裕があったら参加しよう。": "The dealer auction is on this week. If I've got cash to spare, I should go.",
   "今週開催": "This week",

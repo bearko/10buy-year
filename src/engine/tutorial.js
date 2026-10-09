@@ -4,6 +4,7 @@ import { productOf, shippingCost } from '../data/products.js';
 import { addExp, hasSkill, yen } from './effects.js';
 import { feeRate } from './inventory.js';
 import { gain, info, sfx, talk } from './steps.js';
+import { track } from './telemetry.js';
 
 const bought = (u) => !u.home;
 
@@ -132,6 +133,7 @@ export function checkTutorial(s) {
   while (!tutorialDone(s) && MISSIONS[s.tutorial].done(s)) {
     const m = MISSIONS[s.tutorial];
     s.tutorial++;
+    track(s, 'tut', { i: s.tutorial, id: m.id });
     steps.push(...m.reward(s));
     const next = currentMission(s);
     if (next) steps.push(info('次の目標', [next.title]));

@@ -1,4 +1,5 @@
 import { $, clear, h } from './dom.js';
+import { logUi } from './telemetry.js';
 
 // モーダル。render(body, api) で中身を描画し、api.refresh() で再描画できる。
 // footer を渡すと、閉じるボタンの代わりにフッターのボタンを並べる（refresh のたびに描き直す）
@@ -35,6 +36,7 @@ export function openModal(title, render, { closeLabel = '閉じる', onRefresh, 
   if (!renderFooter && !back) footer.append(h('button', { class: 'btn primary', onclick: () => api.close() }, closeLabel));
   window.addEventListener('keydown', onKey);
   $('#modal-root').append(root);
+  logUi(title); // プレイログ：どの画面が開かれたか
   api.refresh();
   return api;
 }

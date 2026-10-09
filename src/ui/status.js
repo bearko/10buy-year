@@ -13,6 +13,7 @@ import { FONT_SCALES, fontScale, setFontScale } from './a11y.js';
 import { getLang, setLang } from '../i18n/index.js';
 import { h, signYen, yenFmt } from './dom.js';
 import { openModal, toast } from './modal.js';
+import { logUi, setTelemetryEnabled, telemetryEnabled } from './telemetry.js';
 
 // ---------------- 経営（KPI・お金） ----------------
 // 昇格条件の進み具合。売上ではなく純利益（売上 − 仕入れ値 − 手数料 − 送料 − 経費）で判定する
@@ -160,11 +161,11 @@ function row(label, value, cls = '') {
 export function menuModal({ s, onTitle, onSpeed, speed, onRestart, onChange, onMarket, onBiz, onShop, onDeal, onRivals, onCollection, onCareers, onLife, onCrypto, onMap, onCompanions, onGlossary, onGuide, marketLock, newsCount = 0, fresh = () => false, seen = () => {} }) {
   // 途中で開く項目は、開くまで出さない。開いたら NEW（押したら既読）
   const item = (id, show, label, go, extra = null) => (show
-    ? h('button', { class: `btn big ${id}-btn ${fresh(id) ? 'fresh' : ''}`, onclick: () => { seen(id); api.close(); go?.(); } }, label, fresh(id) ? h('span', { class: 'new-tag' }, 'NEW') : extra)
+    ? h('button', { class: `btn big ${id}-btn ${fresh(id) ? 'fresh' : ''}`, onclick: () => { seen(id); logUi(`menu:${id}`); api.close(); go?.(); } }, label, fresh(id) ? h('span', { class: 'new-tag' }, 'NEW') : extra)
     : null);
   let api;
   let view = 'main'; // main：機能 / settings：設定
-  const big = (label, go) => h('button', { class: 'btn big', onclick: () => { api.close(); go?.(); } }, label);
+  const big = (label, go) => h('button', { class: 'btn big', onclick: () => { logUi(`menu:${label}`); api.close(); go?.(); } }, label);
   const group = (title, ...btns) => {
     const list = btns.filter(Boolean);
     return list.length ? [h('div', { class: 'menu-h' }, title), h('div', { class: 'menu-main' }, ...list)] : [];
@@ -198,6 +199,9 @@ export function menuModal({ s, onTitle, onSpeed, speed, onRestart, onChange, onM
         h('div', { class: 'menu-h' }, 'データ'),
         h('div', { class: 'menu-list' },
           h('p', { class: 'note' }, 'ゲームは行動が終わるたびと、アプリを切り替えたときに自動でセーブされる。'),
+          // プレイログ：匿名のプレイ記録を送って、ゲームの改善に使う（いつでも止められる）
+          h('button', { class: 'btn', onclick: () => { setTelemetryEnabled(!telemetryEnabled()); api.refresh(); } }, `プレイ記録を送って改善に協力する: ${telemetryEnabled() ? 'ON' : 'OFF'}`),
+          h('p', { class: 'note' }, '送るのは、使った行動・開いた画面・仕入れと販売の月ごとの集計・進み具合などの匿名の記録だけ。名前やランキングの登録名、端末の情報は送らない。'),
           h('button', { class: 'btn', onclick: () => { api.close(); onTitle(); } }, 'タイトルへ戻る'),
           h('button', { class: 'btn danger', onclick: () => { if (window.confirm('セーブデータを消して最初からやり直しますか？')) { api.close(); onRestart(); } } }, '最初からやり直す'),
         ),
