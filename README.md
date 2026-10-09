@@ -41,6 +41,8 @@ English: open with `?lang=en` or press “Play in English” on the title screen
 
 ## ドキュメント
 
+攻略ガイドブック：[`guide/index.html`](guide/index.html)（公開版は `/guide/`）。ゲームの流れ・仕入れと販売・スキルツリー全パネル・全エンディングの条件・実績・商品図鑑など。
+
 | ファイル | 内容 |
 | --- | --- |
 | [docs/01_research.md](docs/01_research.md) | 転売活動の調査（サイクル、仕入れ・販路、ジャンル、やりがい、落とし穴、法律、小ネタ、世論） |
@@ -79,6 +81,8 @@ src/
   ui/                 描画（ステージ、HUD、モーダル、各画面）
 assets/               マイクリのアセット（tools/import_assets.py で生成）
 tools/                アセット取り込みスクリプトと一覧
+  guide/              攻略ガイドの生成（build.mjs）と1ファイル版の書き出し（bundle.mjs）
+guide/                攻略ガイドブック（index.html は生成物。img/ はスクリーンショット）
 test/                 テストと自動プレイbot
 docs/                 調査・企画・ロードマップ
 ```
@@ -89,7 +93,10 @@ docs/                 調査・企画・ロードマップ
 npm test             # データ整合性・ルール・チュートリアル・ツリー・ステージ・10年完走のテスト
 npm run balance      # 自動プレイ20回の統計（ステージ到達時期・最終資産）
 npm run assets       # ../mycryptoheroes からアセットを取り込み直す
+npm run guide        # 攻略ガイド（guide/index.html）をゲームのデータから作り直す
 ```
+
+攻略ガイドの数字（行動・スキルツリー・エンディング・実績・商品など）は `src/` のデータから直接作っています。ルールを変えたら `npm run guide` で作り直してください。画像を埋めこんだ1ファイル版は `node tools/guide/bundle.mjs`（`dist/` に出力。リポジトリには入れない）。
 
 新しい商品・イベント・スキルツリーのノードは `src/data/` にデータを追加するだけで増やせます。ゲーム内のテキストに実在のゲームタイトル名は使わないでください（テストで検出します）。画像を増やしたときは `tools/assets.json` に ID を追加して `npm run assets` を実行してください（キャラ・商品・アイコンは可逆の WebP に変換されます。Pillow が必要）。
 

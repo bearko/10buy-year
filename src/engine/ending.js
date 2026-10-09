@@ -25,7 +25,7 @@ export function netWorth(s) {
   return Math.round(s.cash + pending + s.points + inventoryValue(s) + collectionValue(s) + holdingValue(s) - s.debt - s.card.current - s.card.due - (s.card.next || 0)); // 仮想通貨は時価
 }
 
-const RANKS = [
+export const RANKS = [
   { rank: 'S', min: 50000000, label: '伝説の物販王' },
   { rank: 'A', min: 20000000, label: '物販事業家' },
   { rank: 'B', min: 8000000, label: '一流のせどらー' },
@@ -38,7 +38,7 @@ const RANKS = [
 
 export const rankOf = (nw) => RANKS.find((r) => nw >= r.min);
 
-const KIND_TITLES = {
+export const KIND_TITLES = {
   staple: 'ワゴンの魔術師', hype: '限定品ハンター', collect: '古物の目利き', boom: 'バブルの申し子',
   luxury: '正規店マラソンランナー', seasonal: '季節商戦の仕掛け人', perishable: '催事の早起き番長', home: '断捨離の達人', kuji: 'くじの箱買い職人',
 };
@@ -54,7 +54,7 @@ export function titleOf(s) {
   return '見習いせどらー';
 }
 
-const ENDINGS = {
+export const ENDINGS = {
   arrested: {
     title: '御用END',
     lines: ['二度目の過ちは見逃されなかった。', '「知らなかった」「みんなやってる」――取調室で繰り返した言葉は、誰にも届かなかった。', 'やってはいけない商売は、やってはいけない。'],
