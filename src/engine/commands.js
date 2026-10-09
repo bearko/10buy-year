@@ -315,11 +315,13 @@ const HANDLERS = {
   auction(s, cmd, { night } = {}) {
     const found = pioneerTick(s, 'auction');
     tripSaturation(s, 'auction', night);
+    // 競りにかかった品は、出品物の一覧には並べない（同じ品が競りと通常の出品に二重に出ないように）
+    const lots = seriLots(s);
     return [
       ...found,
       narr('会員証を見せて、業者オークションの会場に入った。プロの目利きが静かに札を入れていく。'),
-      { t: 'seri', lots: seriLots(s) }, // 会場の競り（画面だけ。オートは参加しない）
-      offers(auctionOffers(s), '業者オークションの出品物', '真贋チェック済みが多い'),
+      { t: 'seri', lots }, // 会場の競り（画面だけ。オートは参加しない）
+      offers(auctionOffers(s, { exclude: new Set(lots.map((l) => l.pid)) }), '業者オークションの出品物', '真贋チェック済みが多い'),
     ];
   },
   oem(s) {

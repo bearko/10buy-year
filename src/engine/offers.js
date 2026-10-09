@@ -325,9 +325,10 @@ export function giftOffer(s, pid, fields) {
 }
 
 // ---- 業者オークション（古物商だけが参加できる市場）----
-export function auctionOffers(s) {
+// exclude：同じ回の競りにかかった品（一覧には出さない）
+export function auctionOffers(s, { exclude = null } = {}) {
   const n = 4 + Math.floor(s.abilities.buy / 30);
-  const pool = PRODUCTS.filter((p) => (['collect', 'luxury'].includes(p.kind) || (p.kind === 'hype' && isReleased(s, p))) && affordableTier(s, p) && knowsGenre(s, p) && !p.spot);
+  const pool = PRODUCTS.filter((p) => (['collect', 'luxury'].includes(p.kind) || (p.kind === 'hype' && isReleased(s, p))) && affordableTier(s, p) && knowsGenre(s, p) && !p.spot && !exclude?.has(p.id));
   const gens = pool.map((p) => ({
     weight: p.kind === 'collect' ? 3 : 1,
     make: () => makeOffer(s, p.id, {

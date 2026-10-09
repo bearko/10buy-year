@@ -1419,6 +1419,23 @@ test('借金を繰上げ返済で完済すると、滞納の記録もリセッ�
   assert.equal(s.delinquency, 0);
 });
 
+test('業者オークション：競りにかかった品は、出品物の一覧に二重に並ばない', () => {
+  for (let seed = 1; seed <= 40; seed++) {
+    const s = createGame(seed);
+    s.week = 200;
+    s.stage = 3;
+    s.stamina = 100;
+    s.cash = 10000000;
+    s.skills.push('src_auction');
+    const steps = performCommand(s, 'auction');
+    const seri = steps.find((x) => x.t === 'seri');
+    const list = steps.find((x) => x.t === 'offers');
+    if (!seri || !list) continue;
+    const lotPids = new Set(seri.lots.map((l) => l.pid));
+    for (const o of list.offers) assert.ok(!lotPids.has(o.pid) || o.spot, `seed ${seed}: ${o.pid} が競りと一覧の両方にある`);
+  }
+});
+
 test('業者オークションの競りのロットと、問屋の見積書の交渉', async () => {
   const { seriLots, negotiateQuote } = await import('../src/engine/pro.js');
   const { wholesaleOffers } = await import('../src/engine/offers.js');
