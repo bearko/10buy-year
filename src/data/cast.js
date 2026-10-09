@@ -58,7 +58,7 @@ export const CAST = {
   nego: { name: '値下げ交渉の民', enemy: 398 },
   fakeseller: { name: '怪しい業者', enemy: 410 },
   ghost: { name: '音信不通の購入者', enemy: 423 },
-  collector: { name: '督促状の化身', enemy: 1190 },
+  collector: { name: '督促状の化身', enemy: 171 }, // ディープ・ヨシュカ
 
   // キャリアの誘い（顧客層が育つと声をかけてくる）
   yohki: { name: '楊貴妃', hero: 4015, title: '傾国の美の伝道師' },
