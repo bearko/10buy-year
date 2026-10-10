@@ -1667,7 +1667,7 @@ body.partner-on #side { display: none !important; }
 /* 文字送りの AUTO（メッセージ欄の右上） */
 .auto-read { position: absolute; top: 4px; right: 6px; z-index: 1; padding: 1px 7px; border: 1px solid #c8cff566; border-radius: 99px; background: transparent; color: #c8cff599; font: 700 10px/1.4 'Orbitron', sans-serif; letter-spacing: 0.05em; cursor: pointer; }
 .auto-read.on { border-color: var(--gold); color: var(--gold); background: #f5c54222; }
-.install-btn { border-color: var(--gold); color: var(--gold); }
+.install-btn { display: block; margin: 0 auto 10px; padding: 5px 14px; border-radius: 99px; border-color: var(--gold); color: var(--gold); font-size: calc(13px * var(--fs, 1)); background: #0b1020cc; }
 
 /* 時間の流れ（ui/calendar.js）：季節の粒・夜の色味・日めくり */
 #stage-fx { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
