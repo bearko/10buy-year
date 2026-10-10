@@ -1,0 +1,87 @@
+import { $, clear, h } from './dom.js';
+import { logUi } from './telemetry.js';
+
+// モーダル。render(body, api) で中身を描画し、api.refresh() で再描画できる。
+// footer を渡すと、閉じるボタンの代わりにフッターのボタンを並べる（refresh のたびに描き直す）
+// back を渡すと、下の大きな閉じるボタンの代わりに、見出しの右上に小さな「戻る」を置く（選ぶ画面で押しまちがえないように）
+export function openModal(title, render, { closeLabel = '閉じる', onRefresh, footer: renderFooter, back } = {}) {
+  let resolveClosed;
+  const closed = new Promise((r) => (resolveClosed = r));
+  const body = h('div', { class: 'modal-body' });
+  const footer = h('div', { class: 'modal-footer' });
+  const backBtn = back ? h('button', { class: 'modal-back', onclick: () => api.close() }, back) : null;
+  const root = h('div', { class: 'modal-backdrop' }, h('div', { class: 'modal', role: 'dialog', 'aria-label': title }, h('div', { class: `modal-title ${back ? 'has-back' : ''}` }, h('span', {}, title), backBtn), body, back ? null : footer));
+  const api = {
+    refresh() {
+      const y = body.scrollTop;
+      clear(body);
+      render(body, api);
+      body.scrollTop = y;
+      if (renderFooter) {
+        clear(footer);
+        footer.append(...renderFooter(api).filter((x) => x != null && x !== false)); // null を「null」と書かないように
+      }
+      onRefresh?.();
+    },
+    close() {
+      root.remove();
+      window.removeEventListener('keydown', onKey);
+      resolveClosed();
+    },
+    closed,
+  };
+  const onKey = (e) => {
+    if (e.key === 'Escape') api.close();
+  };
+  if (!renderFooter && !back) footer.append(h('button', { class: 'btn primary', onclick: () => api.close() }, closeLabel));
+  window.addEventListener('keydown', onKey);
+  $('#modal-root').append(root);
+  logUi(title); // プレイログ：どの画面が開かれたか
+  api.refresh();
+  return api;
+}
+
+// トーストは画面の上に縦に積む（下のボタンと重ならないように。いちどに見せるのは3つまで）
+let stack = null;
+export function toast(text, tone = '') {
+  if (!stack || !stack.isConnected) {
+    stack = h('div', { class: 'toast-stack', 'aria-live': 'polite' });
+    document.body.append(stack);
+  }
+  const el = h('div', { class: `toast ${tone}` }, text);
+  stack.append(el);
+  while (stack.children.length > 3) stack.firstChild.remove();
+  setTimeout(() => el.classList.add('show'), 10);
+  setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(() => el.remove(), 300);
+  }, 1800);
+}
+
+// ゲーム内の確認ダイアログ。dontAsk を渡すと「次回から表示しない」チェックを出す
+export function confirmBox({ title, lines = [], okLabel = 'OK', cancelLabel = 'やめる', danger = false, dontAsk = false }) {
+  return new Promise((resolve) => {
+    let skip = false;
+    const finish = (ok) => {
+      root.remove();
+      window.removeEventListener('keydown', onKey);
+      resolve({ ok, dontAsk: skip });
+    };
+    const onKey = (e) => {
+      if (e.key === 'Escape') finish(false);
+    };
+    const root = h('div', { class: 'confirm-backdrop' },
+      h('div', { class: 'confirm', role: 'alertdialog', 'aria-label': title },
+        h('div', { class: 'confirm-title' }, title),
+        ...lines.map((l) => h('p', {}, l)),
+        dontAsk ? h('label', { class: 'confirm-skip' }, h('input', { type: 'checkbox', onchange: (e) => { skip = e.target.checked; } }), '次回から表示しない') : null,
+        h('div', { class: 'confirm-btns' },
+          h('button', { class: 'btn', onclick: () => finish(false) }, cancelLabel),
+          h('button', { class: `btn ${danger ? 'danger-fill' : 'primary'}`, onclick: () => finish(true) }, okLabel),
+        ),
+      ),
+    );
+    window.addEventListener('keydown', onKey);
+    $('#modal-root').append(root);
+  });
+}

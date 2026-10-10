@@ -1,0 +1,1302 @@
+// エントリーポイント。タイトル → プロローグ → 週ループ（10年）→ エンディング
+import { prologue } from './data/story.js';
+import { CAST } from './data/cast.js';
+import { productOf } from './data/products.js';
+import { availableCommands, availableNightCommands, COMMAND_MAP, commandPreview, GROUPS, performCommand, sickRisk, staminaCost } from './engine/commands.js';
+import { ABILITIES, claimableNodes, raiseAbility } from './engine/abilities.js';
+import { hasSkill, MOOD_MULT } from './engine/effects.js';
+import { finalResult } from './engine/ending.js';
+import { activeUnits, idleListing, listedUnits, overCapacity } from './engine/inventory.js';
+import { autoBuy } from './engine/automation.js';
+import { clearSave, loadDaily, loadGame, loadLegacy, loadMentors, loadRanking, loadRecords, pushDaily, pushLegacy, pushMentor, pushRanking, pushRecords, saveGame } from './engine/save.js';
+import { mentorRecord } from './engine/mentor.js';
+import { ACHIEVEMENTS, checkAchievements } from './engine/achievements.js';
+import { allEndings } from './engine/ending.js';
+import { SKILL_MAP, SKILLS } from './data/skills.js';
+import { dailyLabel, dailySeed, todayKey } from './engine/daily.js';
+import { weekKey, weeklySeed, weekRange } from './engine/weekly.js';
+import { liveEventOn, liveRange, nextLiveEvent } from './data/live.js';
+import { syncLive } from './engine/live.js';
+import { fetchRanking, rankingList, submitBox } from './ui/online.js';
+import { SPECIALTIES, STYLES, styleLabel, styleOf } from './engine/style.js';
+import { createGame } from './engine/state.js';
+import { endWeek, startWeek } from './engine/turn.js';
+import { checkTutorial, currentMission, treeOpen, tutorialDone } from './engine/tutorial.js';
+import { playBgm, playSe, setSound, soundOn } from './ui/audio.js';
+import { $, clear, h, wait, yenFmt } from './ui/dom.js';
+import { renderHud, renderParams, renderTicker, setParamsOpen, setPreview } from './ui/hud.js';
+import { openAbilities } from './ui/abilities.js';
+import { confirmBox, openModal, toast } from './ui/modal.js';
+import { choose, hidePartner, holdRoom, isAuto, say, setAuto, setBackground, setClutter, setLogger, setMessage, setTextSpeed, showChris, showInfo, showInfos } from './ui/stage.js';
+import { bizModal, menuModal } from './ui/status.js';
+import { openTree } from './ui/tree.js';
+import { groupItems, showItems } from './ui/loot.js';
+import { celebrate, goalPopup, unlockedPopup } from './ui/goal.js';
+import { logModal, pushLog } from './ui/log.js';
+import { offersModal } from './ui/shop.js';
+import { initFontScale } from './ui/a11y.js';
+import { initPixelArt } from './ui/pixel.js';
+import { initLayout } from './ui/layout.js';
+import { initBackNav } from './ui/backnav.js';
+import { getLang, initLang, setLang, tr } from './i18n/index.js';
+import { listNowCovers, listNowPrompt } from './ui/listnow.js';
+import { autoVisible } from './engine/sourcing.js';
+import { mailbox, salesMails } from './ui/mail.js';
+import { checkQuests } from './engine/quests.js';
+import { DIFFICULTIES, difficultyOf } from './engine/finance.js';
+import { questsModal } from './ui/quests.js';
+import { queueScene } from './ui/queue.js';
+import { myStoreModal } from './ui/mystore.js';
+import { routineModal } from './ui/routine.js';
+import { storeMapModal } from './ui/storemap.js';
+import { companionsModal } from './ui/companions.js';
+import { photoModal } from './ui/worklife.js';
+import { shipScene } from './ui/room.js';
+import { battleEnd, battleResult, battleSkill, battleStart, inBattle } from './ui/battle.js';
+import { monthCard } from './ui/monthcard.js';
+import { yearCard } from './ui/yearcard.js';
+import { glossaryModal, guideModal } from './ui/guide.js';
+import { oneTap } from './ui/prefs.js';
+import { resumeCard } from './ui/resume.js';
+import { setNight, setSeason, weekFlip } from './ui/calendar.js';
+import { decadeChart, highlightList, resultImage, revealSequence } from './ui/finale.js';
+import { quoteModal, seriModal } from './ui/pro.js';
+import { kujiModal } from './ui/kuji.js';
+import { autoPick } from './engine/dealpolicy.js';
+import { pioneerLine } from './engine/pioneer.js';
+import { satLine } from './engine/rivals.js';
+import { rivalsModal } from './ui/rivals.js';
+import { collectionModal, galleryModal } from './ui/collection.js';
+import { careersModal } from './ui/careers.js';
+import { lifestyleModal } from './ui/lifestyle.js';
+import { cryptoModal } from './ui/crypto.js';
+import { dealPolicyModal } from './ui/dealpolicy.js';
+import { routineBuy, routineList, routineListStamina, routineStale } from './engine/routine.js';
+import { addStamina } from './engine/effects.js';
+import { inventoryModal, marketModal, salesSummary } from './ui/trade.js';
+import { flush as flushPlaylog, initTelemetry, logGame, logUi, startPlaylog } from './ui/telemetry.js';
+import { setTelemetryContext } from './engine/telemetry.js';
+import { endingData } from './engine/playlog.js';
+
+let state = null;
+let busy = false;
+let speed = 22;
+let autoWeeks = 0;
+let autoCmd = null;
+// ルーティン実行中の記録（始めたときの成績と、週ごとのまとめ）
+let routineRun = null;
+try {
+  const v = window.localStorage.getItem('10buy-year:speed');
+  if (v !== null) speed = Number(v);
+} catch {
+  /* noop */
+}
+setTextSpeed(speed);
+setLogger((entry) => { if (state) pushLog(state, entry, isAuto()); });
+
+// PCのキーボード操作：数字キーで行動カード・選択肢を選ぶ。Esc／Backspaceで分類の一覧に戻る
+window.addEventListener('keydown', (e) => {
+  if (e.ctrlKey || e.metaKey || e.altKey || e.target.closest?.('input, textarea, select')) return;
+  if ($('#modal-root').children.length) return;
+  const n = Number(e.key);
+  if (n >= 1 && n <= 9) {
+    const choices = [...document.querySelectorAll('#choices button')];
+    const list = choices.length ? choices : busy ? [] : [...document.querySelectorAll('#commands button.cmd')];
+    const b = list[n - 1];
+    if (b && !b.disabled) {
+      e.preventDefault();
+      b.click();
+    }
+  } else if ((e.key === 'Escape' || e.key === 'Backspace') && !busy) {
+    const back = document.querySelector('#commands .cmd-back');
+    if (back) {
+      e.preventDefault();
+      back.click();
+    }
+  }
+});
+
+function showScreen(id) {
+  for (const el of document.querySelectorAll('.screen')) el.hidden = el.id !== id;
+}
+
+function stopAuto() {
+  autoWeeks = 0;
+  setAuto(false);
+}
+
+// ---------------- 演出ステップの再生 ----------------
+async function playSteps(steps) {
+  const queue = [...steps];
+  setBusy(true);
+  while (queue.length) {
+    const st = queue.shift();
+    switch (st.t) {
+      case 'talk':
+        await say(st.who, st.text, st.pose);
+        break;
+      case 'info': {
+        if (inBattle()) {
+          await battleResult(st.tone); // 交渉バトルの勝敗（ui/battle.js）
+          moodPose(st.tone === 'good' ? 'smile' : st.tone === 'bad' ? 'sad' : null);
+          await showInfo(st.title, st.lines, st.tone);
+          moodPose(null);
+          break;
+        }
+        if (st.card === 'year') {
+          moodPose(st.net < 0 ? 'sad' : 'cheer');
+          await yearCard(state, st);
+          moodPose(null);
+          break;
+        }
+        if (st.card === 'month') {
+          // 月末：黒字ならにっこり（大きく稼いだらガッツポーズ）、赤字ならしょんぼり
+          moodPose(st.net < 0 ? 'sad' : st.prevNet != null && st.net > st.prevNet * 1.3 && st.net > 0 ? 'guts' : 'smile');
+          await monthCard(state, st);
+          moodPose(null);
+          break;
+        }
+        // 続けて届くお知らせは1枚にまとめる（間の効果音はその場で鳴らす）
+        const list = [st];
+        const plain = (x) => x?.t === 'info' && !x.card;
+        for (;;) {
+          if (plain(queue[0])) list.push(queue.shift());
+          else if (queue[0]?.t === 'sfx' && plain(queue[1])) playSe(queue.shift().name);
+          else break;
+        }
+        await showInfos(list);
+        break;
+      }
+      case 'battle':
+        if (st.on && !isAuto() && !routineRun) await battleStart(st.enemy, st.title, st.start);
+        else battleEnd();
+        break;
+      case 'gain':
+        await flashGain(st.exp);
+        break;
+      case 'choice': {
+        // 取引の対応で答えを決めてあれば、止まらずにその答えを選ぶ
+        const picked = autoPick(state, st, isAuto() || !!routineRun);
+        if (picked >= 0) {
+          if (routineRun) routineRun.week.deals = (routineRun.week.deals || 0) + 1;
+          if (inBattle()) await battleSkill(st.options[picked]);
+          queue.unshift({ t: 'talk', who: 'narr', text: `（決めておいた対応：${st.options[picked].label}）` }, ...(st.options[picked].run() || []));
+          break;
+        }
+        if (isAuto()) toast('ルーティンを止めた。それまでの出来事は「ログ」で読み返せる');
+        stopAuto(); // 選択肢はプレイヤーが決める
+        await endRoutine();
+        const idx = await choose(st.options, st.prompt);
+        if (inBattle()) await battleSkill(st.options[idx]); // 選んだ対応を「スキル」として発動（成功率のゲージが貯まる）
+        queue.unshift(...(st.options[idx].run() || []));
+        break;
+      }
+      case 'offers': {
+        // 外注・ルーティンは「ふつうに回ったら見つかる分」だけを見る（店舗巡りのルート全部ではない）
+        if (hasSkill(state, 'out_buy') && state.settings.autoBuy) st.autoBought = autoBuy(state, autoVisible(st));
+        if (isAuto()) {
+          if (st.autoBought?.length) toast(`外注が${st.autoBought.length}件を仕入れた`, 'good');
+          if (routineRun) routineRun.week.bought.push(...routineBuy(state, autoVisible(st, state), routineRun.cfg));
+        } else {
+          const before = new Set(state.inventory.map((u) => u.uid));
+          const got = await offersModal(state, st, refresh);
+          refresh();
+          // 仕入れた品が全部すぐ出品できるなら、手に入れたカードは省いて「すぐ出品する？」に絵を並べる（1画面で済ませる）
+          const merged = listNowCovers(state, before);
+          if (!merged) await showItems(state, '仕入れた商品', groupItems(got || []), { se: false });
+          await listNowPrompt(state, before, refresh, { got: merged }); // 仕入れたその場で出品もできる
+        }
+        break;
+      }
+      case 'gallery':
+        // 百貨店の美術画廊（ルーティン・オート中は寄らない）
+        if (!isAuto()) {
+          const before = new Set(state.inventory.map((u) => u.uid));
+          await galleryModal(state, st, refresh);
+          await listNowPrompt(state, before, refresh);
+        }
+        break;
+      case 'items':
+        await showItems(state, st.title, groupItems(st.list), st.opts || {});
+        break;
+      case 'sales':
+        if (isAuto()) {
+          if (st.sold.length) await showInfo('今週の取引', [`${st.sold.length}件売れた（売上金 ${yenFmt(st.sold.reduce((a, x) => a + x.net, 0))}）`], 'good');
+        } else if (st.sold.length || st.auctionsUnsold.length || st.authFailed?.length || st.takedowns?.length) {
+          // 売れた知らせはメールで届く。受信トレイのいちばん上に今週の取引のまとめを出し、そのまま発送へ
+          // よく売れた週はガッツポーズ、損の週はしょんぼり（受信トレイを見ているあいだだけ）
+          const weekProfit = st.sold.reduce((a, x) => a + x.profit, 0);
+          moodPose(st.weekBest ? 'cheer' : !st.sold.length ? null : weekProfit > 0 ? 'guts' : weekProfit < 0 ? 'sad' : null);
+          await mailbox(salesMails(st), { summary: salesSummary(state, st), button: st.sold.length ? '発送する ▶' : '閉じる' });
+          moodPose(null);
+          // 発送：部屋にあった売れた品を箱に詰めて送り出す（演出だけ。部屋から品が減っていく）
+          await shipScene(st.sold);
+        } else if (listedUnits(state).length) await showInfo('今週の取引', ['1つも売れなかった…'], 'bad');
+        holdRoom(false); // 売れた品を部屋から片づける
+        refresh();
+        break;
+      case 'queue':
+        if (!isAuto()) await queueScene(st);
+        break;
+      case 'photo':
+        if (!isAuto()) await photoModal(state);
+        break;
+      case 'kuji':
+        if (!isAuto() && !routineRun) {
+          const before = new Set(state.inventory.map((u) => u.uid));
+          await kujiModal(state);
+          await listNowPrompt(state, before, refresh);
+        }
+        break;
+      case 'seri':
+        if (!isAuto() && !routineRun) {
+          const before = new Set(state.inventory.map((u) => u.uid));
+          await seriModal(state, st.lots);
+          await listNowPrompt(state, before, refresh);
+        }
+        break;
+      case 'quote':
+        if (!isAuto() && !routineRun) {
+          const before = new Set(state.inventory.map((u) => u.uid));
+          await quoteModal(state, st.offers);
+          await listNowPrompt(state, before, refresh);
+        }
+        break;
+      case 'mail':
+        if (!isAuto()) await mailbox(st.mails, { button: '閉じる' });
+        break;
+      case 'sfx':
+        playSe(st.name);
+        break;
+      case 'celebrate':
+        await celebrate(st.text, { quick: isAuto() });
+        break;
+      case 'goal':
+        // ステージが上がったら、新しい目標の前に「できるようになったこと」を並べる
+        if (!isAuto() && unlockSnap && state.stage > unlockSnap.stage) await unlockedPopup(state.stage, unlockDiff(unlockSnap));
+        unlockSnap = snapUnlocks();
+        await goalPopup(state, { quick: isAuto() });
+        break;
+      case 'bgm':
+        playBgm(st.name);
+        break;
+      case 'bg':
+        setBackground(st.name);
+        if (st.name === 'queue') playBgm('raid'); // 発売日の行列は争奪戦の曲
+        break;
+      case 'defer':
+        queue.unshift(...(st.run() || []));
+        break;
+      default:
+        break;
+    }
+    refresh();
+  }
+  setBusy(false);
+}
+
+// 行動・画面を閉じたあと：チュートリアルの進み具合と、ミッションの達成を確かめる
+const tutorialStep = () => playSteps([...checkTutorial(state), ...checkQuests(state)]);
+
+// 経験点の獲得は、ステージ右の経験点パネルを光らせて見せる
+async function flashGain(exp) {
+  if (!Object.keys(exp).length) return;
+  document.body.classList.add('gain-flash');
+  renderParams(state, { gains: exp });
+  await wait(isAuto() ? 350 : 1100);
+  document.body.classList.remove('gain-flash');
+  renderParams(state);
+}
+
+function setBusy(v) {
+  busy = v;
+  document.body.classList.toggle('busy', v);
+}
+
+let redrawCommands = null; // 行動を選んでいる間だけ入る
+let resumeCommands = null; // 画面を閉じたあと、会話の相手を下げて選択画面に戻す
+
+function refresh() {
+  if (!state) return;
+  if (redrawCommands && !busy) redrawCommands();
+  renderHud(state);
+  if (!document.body.classList.contains('gain-flash')) renderParams(state);
+  renderTicker(state);
+  renderTabs();
+  setSeason(state.week);
+  // 部屋に積んである在庫（届いている品。アマクリに預けた品は倉庫にあるので除く）
+  setClutter(activeUnits(state).filter((u) => u.listing?.platform !== 'ama').sort((a, b) => a.uid - b.uid).map((u) => ({ uid: u.uid, pid: u.pid })), { over: overCapacity(state) });
+}
+
+// ---------------- ルーティン ----------------
+const emptyRoutineWeek = () => ({ bought: [], listed: 0, cut: 0, dumped: 0, dumpTotal: 0 });
+
+function startRoutine(cfg) {
+  const st = state.stats;
+  routineRun = { cfg, weeks: 0, start: { sold: st.soldUnits, revenue: st.revenue, bought: st.boughtUnits, spent: st.spent }, week: emptyRoutineWeek() };
+}
+
+// 週ごとの1行まとめをログに残す
+function logRoutineWeek() {
+  const w = routineRun.week;
+  if (w.logged) return;
+  w.logged = true;
+  routineRun.weeks++;
+  // 型が崩れたか：条件に合う仕入れが続けて見つからない週を数える
+  routineRun.dry = w.bought.length ? 0 : (routineRun.dry || 0) + 1;
+  const units = w.bought.reduce((a, x) => a + x.qty, 0);
+  const cost = w.bought.reduce((a, x) => a + x.cost, 0);
+  const parts = [`${COMMAND_MAP[routineRun.cfg.cmd].name}：${units}点仕入れ ${yenFmt(cost)}`, `出品 ${w.listed}件`];
+  if (w.cut) parts.push(`値下げ ${w.cut}件`);
+  if (w.deals) parts.push(`取引の対応 ${w.deals}件`);
+  if (w.dumped) parts.push(`即決買取 ${w.dumped}点 ${yenFmt(w.dumpTotal)}`);
+  pushLog(state, { who: 'ルーティン', text: parts.join('／'), kind: 'info' }, true);
+}
+
+// 終わったら、期間のまとめを見せる
+async function endRoutine() {
+  if (!routineRun) return;
+  logRoutineWeek(); // 途中で止まった週も記録する
+  const r = routineRun;
+  routineRun = null;
+  const st = state.stats;
+  await showInfo('ルーティンのまとめ', [
+    `${r.weeks}週・${COMMAND_MAP[r.cfg.cmd].name}`,
+    `仕入れ ${st.boughtUnits - r.start.bought}点（${yenFmt(st.spent - r.start.spent)}）`,
+    `売れた ${st.soldUnits - r.start.sold}点（売上 ${yenFmt(st.revenue - r.start.revenue)}）`,
+    '週ごとの記録は「ログ」で見られる',
+  ], 'good');
+}
+
+// ---------------- コマンド ----------------
+function nextCommand(mode) {
+  if (autoWeeks > 0) {
+    if (mode === 'night') return Promise.resolve('sleep');
+    const ok = availableCommands(state).some((c) => c.id === autoCmd);
+    const cmd = COMMAND_MAP[autoCmd];
+    if (ok && state.stamina - staminaCost(state, cmd) >= 25) return Promise.resolve(autoCmd);
+    return Promise.resolve(availableCommands(state).some((c) => c.id === 'rest') ? 'rest' : availableCommands(state)[0].id);
+  }
+  return waitForCommand(mode);
+}
+
+const cmdMode = (on) => document.body.classList.toggle('cmd-mode', on);
+
+// 行動を選んでいないとき（演出中・週の切り替わり）も、4つの分類カードを並べておく
+function drawIdleCommands() {
+  const nav = clear($('#commands'));
+  if (!state) return;
+  nav.classList.add('groups');
+  nav.append(h('div', { class: 'cmd-header' }, h('span', {}, '今週')));
+  for (const g of GROUPS) nav.append(h('button', { class: 'cmd grp', tabindex: -1 }, h('img', { class: 'cmd-ic', src: g.icon, alt: '' }), h('b', {}, g.name)));
+}
+
+function waitForCommand(mode) {
+  return new Promise((resolve) => {
+    const night = mode === 'night';
+    const nav = $('#commands');
+    const mood = MOOD_MULT[state.mood];
+    // スキルツリーなどで途中に解放しても反映されるよう、描くたびに数え直す
+    let cmds = [];
+    const loadCmds = () => {
+      cmds = night ? availableNightCommands(state) : availableCommands(state);
+    };
+    let group = null;
+    let selected = null;
+    // まだ見たことのない行動には NEW を付ける（開いた分類の中を見たら既読。この週のあいだは NEW のまま）
+    state.seenCmds ||= availableCommands(state).map((c) => c.id);
+    const fresh = new Set();
+    const isNew = (c) => fresh.has(c.id) || !state.seenCmds.includes(c.id);
+    const markSeen = (list) => {
+      for (const c of list) {
+        if (state.seenCmds.includes(c.id)) continue;
+        fresh.add(c.id);
+        state.seenCmds.push(c.id);
+      }
+    };
+    const newTag = () => h('span', { class: 'new-tag' }, 'NEW');
+
+    const guide = () => (night || state.sick > 0 ? null : tutorialGuide(group));
+    const idleMessage = () => {
+      const g = guide();
+      if (g) return setMessage('マイン', g.say);
+      setMessage('', night ? '夜。もうひと仕事？' : state.sick > 0 ? '体調が悪い…休むか、病院へ行こう。' : '今週は何をしよう？');
+    };
+    const point = (on) => (on ? ' tut-point' : '');
+    const unpreview = () => {
+      selected = null;
+      setPreview(null);
+      refresh();
+    };
+    const pickCmd = async (id) => {
+      redrawCommands = null;
+      resumeCommands = null;
+      drawIdleCommands();
+      unpreview();
+      cmdMode(false);
+      resolve(id);
+    };
+    const select = (c) => {
+      if (selected === c.id) return pickCmd(c.id);
+      selected = c.id;
+      const p = commandPreview(state, c, { night });
+      setPreview({ ...p, exp: Object.fromEntries(Object.entries(c.exp).map(([k, v]) => [k, Math.round(v * mood)])) });
+      refresh();
+      const extra = [pioneerLine(state, c.id), satLine(state, c.id)].filter(Boolean);
+      setMessage(c.name, [c.desc, ...extra].join('\n'));
+      draw();
+    };
+
+    const card = (props, icon, label, ...extra) => h('button', props, h('img', { class: 'cmd-ic', src: icon, alt: '' }), h('b', {}, label), ...extra);
+    // カードの下に、体力と費用の目安（足りないときは赤）
+    const costLine = (c) => {
+      const p = commandPreview(state, c, { night });
+      const parts = [];
+      if (p.stamina) parts.push(h('span', { class: p.stamina > 0 ? 'heal' : state.stamina + p.stamina < 0 ? 'low' : '' }, `体力${p.stamina > 0 ? '+' : ''}${p.stamina}`));
+      if (p.cash < 0) parts.push(h('span', { class: state.cash + p.cash < 0 ? 'low' : 'yen' }, yenFmt(-p.cash)));
+      return parts.length ? h('span', { class: 'cmd-cost' }, ...parts) : null;
+    };
+    const cmdCard = (c) => {
+      const risk = sickRisk(state, c);
+      const sel = selected === c.id;
+      // 1タップで決める設定（チュートリアルの案内中と、体調を崩しそうな行動は、いつもどおり2タップ）：長押しで予告だけ見る
+      const quick = oneTap() && !guide() && risk === 0;
+      let pressed = false;
+      let timer = null;
+      const el = card({
+        class: `cmd ${sel ? 'sel' : ''} ${risk >= 0.3 ? 'danger' : risk > 0 ? 'risky' : ''}${point(!sel && guide()?.cmd === c.id)}`,
+        onclick: () => {
+          if (busy) return;
+          if (pressed) { pressed = false; return; }
+          if (quick) pickCmd(c.id);
+          else select(c);
+        },
+      }, c.icon, c.name, costLine(c), sel ? h('span', { class: 'go' }, '決定') : c.id === 'auction' ? h('span', { class: 'event-tag' }, '今週開催') : isNew(c) ? newTag() : null, risk > 0 && !sel ? h('span', { class: 'risk' }, '⚠') : null);
+      if (c.id === 'auction') el.classList.add('featured'); // 月に一度の業者オークションは目立たせる
+      if (quick) {
+        el.addEventListener('pointerdown', () => { pressed = false; timer = setTimeout(() => { pressed = true; select(c); }, 450); });
+        for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) el.addEventListener(ev, () => clearTimeout(timer));
+      }
+      return el;
+    };
+
+    function draw() {
+      loadCmds();
+      clear(nav);
+      nav.classList.toggle('groups', !group && !night);
+      const count = state.actionsPerWeek > 1 && !night ? ` ${state.actionsPerWeek - state.actionsLeft + 1}/${state.actionsPerWeek}` : '';
+      const head = h('div', { class: 'cmd-header' });
+      if (group) {
+        head.append(h('button', { class: `cmd-back${point(guide()?.group && guide().group !== group)}`, onclick: () => { if (busy) return; group = null; unpreview(); idleMessage(); draw(); } }, `◀ ${GROUPS.find((g) => g.id === group).name}`));
+      } else {
+        head.append(h('span', {}, night ? '夜' : `今週${count}`));
+      }
+      if (!night && !group && hasSkill(state, 'routine')) {
+        head.append(h('button', {
+          class: 'cmd-auto',
+          title: '仕入れ→出品→売却→値下げのサイクルを回す',
+          onclick: async () => {
+            if (busy) return;
+            const cfg = await routineModal(state);
+            if (!cfg) return;
+            state.routine = cfg;
+            logGame(state, 'routine', { cmd: cfg.cmd, weeks: cfg.weeks });
+            autoWeeks = cfg.weeks;
+            autoCmd = cfg.cmd;
+            startRoutine(cfg);
+            setAuto(true);
+            pickCmd(cmds.some((c) => c.id === cfg.cmd) ? cfg.cmd : 'rest');
+          },
+        }, '⟳ ルーティン'));
+      }
+      nav.append(head);
+      // 出品できる在庫と出品枠のあきがあれば、カードの上に帯で知らせる（売れるのは週末。止めずに知らせるだけ）
+      const idle = idleListing(state);
+      if (idle.n > 0 && !group && !guide() && state.settings.warnIdleListing !== false) {
+        nav.append(h('button', {
+          class: 'cmd-idle',
+          onclick: async () => {
+            if (busy) return;
+            await inventoryModal(state, refresh);
+            await tutorialStep();
+            resumeCommands?.();
+            refresh();
+          },
+        }, h('span', {}, `出品枠あき${idle.free}・未出品${idle.unlisted}点`), h('b', {}, '先に出品する ▶')));
+      }
+
+      if (night) {
+        cmds.forEach((c) => nav.append(cmdCard(c)));
+        markSeen(cmds);
+        nav.append(card({ class: 'cmd sleep', onclick: () => { if (!busy) pickCmd('sleep'); } }, 'assets/icons/sleep.webp', '寝る'));
+        return;
+      }
+      if (group) {
+        if (group === 'sell') {
+          nav.append(card({
+            class: `cmd free${point(guide()?.cmd === 'list')}`,
+            onclick: async () => {
+              if (busy) return;
+              await inventoryModal(state, refresh);
+              await tutorialStep();
+              resumeCommands?.();
+              refresh();
+            },
+          }, 'assets/extensions/1059.webp', '在庫を出品', h('span', { class: 'free-tag' }, '週は進まない')));
+        }
+        // 開催中の業者オークションは、分類のいちばん上に
+        const inGroup = cmds.filter((c) => c.group === group).sort((a, b) => (b.id === 'auction') - (a.id === 'auction'));
+        markSeen(inGroup);
+        inGroup.forEach((c) => nav.append(cmdCard(c)));
+        return;
+      }
+      for (const g of GROUPS) {
+        const list = cmds.filter((c) => c.group === g.id);
+        const sel = list.length === 1 && selected === list[0].id;
+        nav.append(card({
+          class: `cmd grp ${list.length ? '' : 'off'} ${sel ? 'sel' : ''}${point(!sel && guide()?.group === g.id)}`,
+          onclick: () => {
+            if (busy || (!list.length && g.id !== 'sell')) return;
+            if (g.id === 'rest') return select(list[0]);
+            group = g.id;
+            unpreview();
+            idleMessage();
+            draw();
+          },
+        }, g.icon, g.name, sel ? h('span', { class: 'go' }, '決定') : list.some((c) => !state.seenCmds.includes(c.id)) ? newTag() : list.length > 1 ? h('span', { class: 'n' }, list.length) : null,
+        list.some((c) => c.id === 'auction') ? h('span', { class: 'grp-event' }, 'オークション開催') : null));
+      }
+    }
+
+    showChris('idle');
+    hidePartner();
+    setBackground('home');
+    playBgm('pve');
+    idleMessage();
+    cmdMode(true);
+    redrawCommands = draw;
+    resumeCommands = () => {
+      showChris('idle');
+      hidePartner();
+      setBackground('home');
+      idleMessage();
+      draw();
+    };
+    draw();
+    // 体調不良のときは「休む」だけ
+    if (state.sick > 0) select(COMMAND_MAP.rest);
+  });
+}
+
+// チュートリアル中に指し示すボタン（group：分類、cmd：行動、side：右のボタン）と、マインの案内
+function tutorialGuide(group = null) {
+  const m = !tutorialDone(state) && currentMission(state);
+  if (!m) return null;
+  const wait = '行動を1つ選ぶと1週間が進んで、週末に売れたかどうかがメールで届くわ。';
+  switch (m.id) {
+    case 'list_home':
+    case 'list_bought':
+      return { group: 'sell', cmd: 'list', say: group === 'sell' ? '「在庫を出品」を押して、売りたい物の「出品」ボタンを押すの。ここは週が進まないから、ゆっくり選んで。' : `${m.id === 'list_home' ? '家の不用品' : '仕入れた商品'}を売りに出しましょう。まずは「出品」を開いて。` };
+    case 'sell_home':
+    case 'sell_more':
+      return { group: 'buy', cmd: 'home_search', say: `${wait}今週は「仕入れ」→「家の中を探す」で、次の売り物を探しましょう。` };
+    case 'tree_root':
+    case 'tree_store':
+      return { side: 'tree', say: '右の「スキルツリー」を開いて、光っているパネルを解放して。' };
+    case 'go_store':
+    case 'buy':
+      return { group: 'buy', cmd: 'store', say: '「仕入れ」→「店舗せどり」でお店へ。相場より安い物を見つけたら仕入れましょう。' };
+    case 'sell_bought':
+      return { group: 'buy', say: `${wait}売れなかったら「在庫」から値下げしてもいいわ。` };
+    default:
+      return null;
+  }
+}
+
+// 自分の手で解放できるパネルの数（スキルツリーのボタンに出す）
+function treeBadge() {
+  if (!treeOpen(state)) return '';
+  const n = claimableNodes(state).length;
+  return n ? `${n}` : '';
+}
+
+// 能力強化のバッジ：いまの経験点で +5 以上上げられる能力の数（+1 だけだと、ほぼいつも付いてしまうので）
+function abilityBadge() {
+  const n = ABILITIES.filter((a) => {
+    const t = structuredClone({ exp: state.exp, abilities: state.abilities });
+    return raiseAbility(t, a.id, 5) >= 5;
+  }).length;
+  return n ? `${n}` : '';
+}
+
+// ステージ右側のボタン（在庫・スキルツリー・メニュー）。相場と経営はメニューの中
+function renderTabs() {
+  const nav = clear($('#side-btns'));
+  if (!state) return;
+  const unlisted = activeUnits(state).filter((u) => !u.listing && !(state.flags.noAlcohol && productOf(u.pid).alcohol)).length;
+  const after = async (p) => {
+    await p;
+    await tutorialStep();
+    resumeCommands?.();
+    refresh();
+  };
+  const marketLock = !hasSkill(state, 'eye_market') && 'スキルツリー「相場チェック」で解放';
+  const questN = state.quests?.active?.length || 0;
+  const questNew = state.quests?.active?.some((q) => q.fresh);
+  // ミッションの「やってみる」で開く画面
+  const guides = {
+    biz: () => bizModal(state, refresh, playSteps),
+    rivals: () => rivalsModal(state, refresh),
+    deal: () => dealPolicyModal(state),
+    collection: () => collectionModal(state, refresh),
+    inv: () => inventoryModal(state, refresh),
+  };
+  const tabs = [
+    { id: 'quest', label: 'ミッション', open: async () => { const g = await questsModal(state); if (g && guides[g]) await guides[g](); }, badge: questNew ? '!' : questN ? `${questN}` : '', lock: !tutorialDone(state) && 'チュートリアルを完了すると開ける' },
+    { id: 'tree', label: 'スキルツリー', open: () => openTree(state, refresh, { focus: currentMission(state)?.node }), lock: !treeOpen(state) && '最初の売上のあとに開ける', badge: treeBadge() },
+    { id: 'inv', label: '在庫', open: () => inventoryModal(state, refresh), badge: unlisted ? `${unlisted}` : '' },
+    {
+      id: 'menu',
+      label: 'メニュー',
+      badge: state.news.length > 1 && !marketLock ? '!' : '',
+      open: () => menuModal({
+        s: state, onTitle: toTitle, onRestart: restart, speed: () => speed, onSpeed: setSpeed, onChange: refresh,
+        marketLock,
+        newsCount: state.news.length,
+        onMarket: () => after(marketModal(state)),
+        onBiz: () => after(bizModal(state, refresh, playSteps)),
+        onShop: () => after(myStoreModal(state, refresh)),
+        onDeal: () => after(dealPolicyModal(state)),
+        onRivals: () => after(rivalsModal(state, refresh)),
+        onCollection: () => after(collectionModal(state, refresh)),
+        onCareers: () => after(careersModal(state)),
+        onLife: () => after(lifestyleModal(state, refresh)),
+        onCrypto: () => after(cryptoModal(state, refresh)),
+        onMap: () => after(storeMapModal(state)),
+        onCompanions: () => after(companionsModal(state)),
+        onGlossary: () => after(glossaryModal()),
+        onGuide: () => after(guideModal()),
+        fresh: uiFresh,
+        seen: (id) => { uiSeen(id); refresh(); },
+      }),
+    },
+    { id: 'ab', label: '能力強化', open: () => openAbilities(state, refresh), lock: !treeOpen(state) && '最初の売上のあとに開ける', badge: abilityBadge() },
+    { id: 'log', label: 'ログ', open: () => logModal(state) },
+  ];
+  const pointSide = tutorialGuide()?.side;
+  const menuFresh = MENU_UI.some((id) => uiFresh(id));
+  // まだ使えないボタンは出さない。開いたら NEW で光って現れる（押したら既読）
+  for (const t of tabs) {
+    if (t.lock) continue;
+    const fresh = uiFresh(t.id) || (t.id === 'menu' && menuFresh);
+    nav.append(h('button', {
+      class: `side-btn ${t.id} ${fresh ? 'fresh' : ''} ${pointSide === t.id ? 'tut-point' : ''}`,
+      onclick: () => {
+        if (busy) return;
+        uiSeen(t.id);
+        logUi(`tab:${t.id}`);
+        after(t.open());
+      },
+    }, t.label, fresh ? h('span', { class: 'new-tag' }, 'NEW') : t.badge ? h('span', { class: 'badge' }, t.badge) : null));
+  }
+}
+
+// ステージ到達のときに見せる「できるようになったこと」：週のはじめの時点と比べて、増えた行動・夜の行動・メニュー
+let unlockSnap = null;
+function snapUnlocks() {
+  if (!state) return null;
+  return {
+    stage: state.stage,
+    cmds: new Set(availableCommands(state).map((c) => c.id)),
+    night: new Set(availableNightCommands(state).map((c) => c.id)),
+    menu: new Set(['quest', 'tree', 'ab', ...MENU_UI].filter(uiOpen)),
+  };
+}
+const UI_NAMES = { quest: 'ミッション', tree: 'スキルツリー', ab: '能力強化', market: '相場', shop: '自分の店', rivals: '業界の動き', collection: 'コレクション', careers: 'キャリア', life: '暮らし', crypto: '仮想通貨', map: '店の地図' };
+function unlockDiff(snap) {
+  const now = snapUnlocks();
+  return [
+    ...availableCommands(state).filter((c) => !snap.cmds.has(c.id)).map((c) => ({ icon: c.icon, label: c.name, kind: '行動' })),
+    ...availableNightCommands(state).filter((c) => !snap.night.has(c.id)).map((c) => ({ icon: c.icon, label: c.name, kind: '夜の行動' })),
+    ...[...now.menu].filter((id) => !snap.menu.has(id)).map((id) => ({ label: UI_NAMES[id], kind: 'メニュー' })),
+  ];
+}
+
+// 結果に合わせて、クリスの表情を少しのあいだだけ切りかえる（null で元に戻す）
+function moodPose(pose) {
+  if (isAuto()) return;
+  showChris(pose || 'idle');
+}
+
+// 段階的な開放：右のボタンとメニューの項目のうち、途中で開くもの。開いているかどうか
+const MENU_UI = ['market', 'shop', 'rivals', 'collection', 'careers', 'life', 'crypto', 'map'];
+function uiOpen(id) {
+  const s = state;
+  switch (id) {
+    case 'quest': return tutorialDone(s);
+    case 'tree': case 'ab': return treeOpen(s);
+    case 'market': return hasSkill(s, 'eye_market');
+    case 'shop': return !!s.shop;
+    case 'rivals': case 'careers': case 'life': return s.stage >= 2;
+    case 'collection': return s.stage >= 3 || !!s.collection?.length;
+    case 'crypto': return !!s.crypto?.open;
+    case 'map': return Object.keys(s.storeMap || {}).length > 0;
+    default: return true;
+  }
+}
+// 開いていて、まだ押していないもの。前の版のセーブは、いま開いているものを既読として始める
+const UI_TRACKED = ['quest', 'tree', 'ab', ...MENU_UI];
+function uiFresh(id) {
+  if (!state || !UI_TRACKED.includes(id) || !uiOpen(id)) return false;
+  if (!state.uiSeen) state.uiSeen = Object.fromEntries(UI_TRACKED.filter(uiOpen).map((x) => [x, true]));
+  return !state.uiSeen[id];
+}
+function uiSeen(id) {
+  if (state && UI_TRACKED.includes(id) && uiOpen(id)) (state.uiSeen ||= {})[id] = true;
+}
+
+// プレイログ：行動・夜の行動・メニューが初めて使えるようになったら記録する（「使われていない機能」を、使える人のうち何人が使ったかで見るため）
+function trackUnlocks() {
+  const now = [
+    ...availableCommands(state).map((c) => c.id),
+    ...(state.stage >= 2 ? availableNightCommands(state).map((c) => `night:${c.id}`) : []), // 夜の行動はステージ2から
+    ...UI_TRACKED.filter(uiOpen).map((id) => `ui:${id}`),
+  ];
+  const seen = new Set(state.tlmSeen || []);
+  const fresh = now.filter((id) => !seen.has(id));
+  if (!fresh.length) return;
+  state.tlmSeen = [...seen, ...fresh];
+  logGame(state, 'unl', { ids: fresh });
+}
+
+function setSpeed(ms) {
+  speed = ms;
+  setTextSpeed(ms);
+  try {
+    window.localStorage.setItem('10buy-year:speed', String(ms));
+  } catch {
+    /* noop */
+  }
+}
+
+// ---------------- セーブと「戻る」 ----------------
+// 週のはじめに加えて、行動が終わるごとと、アプリを切り替えたとき（演出の途中でなければ）にセーブする
+function persist() {
+  if (state && !state.over) saveGame(state);
+}
+const saveIfIdle = () => {
+  if (!busy) persist();
+};
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') saveIfIdle();
+});
+window.addEventListener('pagehide', saveIfIdle);
+
+// 何も開いていないときの「戻る」：行動の分類の中なら一覧へ、それ以外は「タイトルに戻る？」
+function onBackIdle() {
+  if (!state || state.over) return;
+  if (busy) {
+    toast('画面をタップすると話が進む');
+    return;
+  }
+  const back = document.querySelector('#commands .cmd-back');
+  if (back) {
+    back.click();
+    return;
+  }
+  confirmBox({ title: 'タイトルに戻りますか？', lines: ['ここまでの進み具合はセーブされる。'], okLabel: 'タイトルへ', cancelLabel: 'つづける' }).then((r) => {
+    if (r.ok) toTitle();
+  });
+}
+
+// ---------------- ゲームループ ----------------
+async function loop() {
+  initBackNav({ onIdle: onBackIdle });
+  showScreen('game-screen');
+  playBgm('pve');
+  refresh();
+  while (!state.over) {
+    if (state.phase === 'weekStart') {
+      unlockSnap = snapUnlocks();
+      drawIdleCommands();
+      await weekFlip(state.week, { quick: isAuto() }); // 日めくり
+      if (routineRun) routineRun.week = { ...emptyRoutineWeek(), ...routineStale(state, routineRun.cfg) };
+      // 期間限定フェア：現実の日付で決まる（チュートリアルが終わってから）
+      await playSteps(syncLive(state, tutorialDone(state) ? liveEventOn()?.id : null));
+      await playSteps(startWeek(state));
+      await tutorialStep();
+      trackUnlocks();
+      saveGame(state);
+      if (state.over) break;
+    }
+    refresh();
+    while (state.actionsLeft > 0 && !state.over) {
+      const cmd = await nextCommand('day');
+      state.actionsLeft--;
+      setTelemetryContext({ auto: !!routineRun || autoWeeks > 0 }); // ルーティン・おまかせで選ばれた行動か
+      await playSteps(performCommand(state, cmd));
+      setTelemetryContext({ cmd: null });
+      await tutorialStep();
+      if (routineRun) {
+        const n = routineList(state, routineRun.cfg);
+        routineRun.week.listed += n;
+        if (n) addStamina(state, -routineListStamina(state, n));
+        refresh();
+      }
+      persist(); // 行動ごとにセーブ（週の途中でアプリを閉じても、終わった行動は残る）
+    }
+    if (state.nightLeft > 0 && state.sick <= 0 && !state.over) {
+      setNight(true);
+      const cmd = await nextCommand('night');
+      state.nightLeft = 0;
+      if (cmd !== 'sleep') {
+        setTelemetryContext({ auto: !!routineRun || autoWeeks > 0 });
+        await playSteps(performCommand(state, cmd, { night: true }));
+        setTelemetryContext({ cmd: null });
+        await tutorialStep();
+      } else logGame(state, 'cmd', { id: 'sleep', n: 1 }); // 夜に何もしなかった
+      setNight(false);
+      persist();
+    }
+    holdRoom(true); // 売れた品は、発送の演出まで部屋に残す
+    unlockSnap = snapUnlocks(); // ステージが上がる前の状態（週のあいだにスキルで開いた分は数えない）
+    await playSteps(endWeek(state));
+    holdRoom(false);
+    await tutorialStep();
+    persist();
+    if (routineRun) logRoutineWeek();
+    if (routineRun && routineRun.dry >= 3) {
+      // 相場や仕入れ先が変わって、決めたルールでは仕入れられなくなった
+      stopAuto();
+      await say('mine', '3週続けて、ルールに合う品が見つからなかったわ。相場か仕入れ先が変わったのかも。「業界の動き」と仕入れ先の荒れ具合を見て、ルールを見直しましょう。', 'arms');
+      await endRoutine();
+    }
+    if (autoWeeks > 0 && --autoWeeks === 0) {
+      setAuto(false);
+      await endRoutine();
+    }
+  }
+  stopAuto();
+  clearSave();
+  showEnding();
+}
+
+// 難易度を選ぶ（閉じたら null）
+function pickDifficulty() {
+  let pick = null;
+  const man = (v) => `${(v / 10000).toLocaleString('ja-JP')}万円`;
+  const m = openModal('難易度を選ぶ', (body, api) => {
+    body.append(h('p', { class: 'note' }, '借金の額と、毎月の最低返済・金利が変わる。始めたあとは変えられない。'));
+    // 縦長のカードを横に3枚。タップで決まる
+    body.append(h('div', { class: 'diff-cards' }, ...Object.entries(DIFFICULTIES).map(([id, d]) => h('button', { class: `diff-card ${id}`, onclick: () => { pick = id; api.close(); } },
+      id === 'normal' ? h('em', { class: 'diff-rec' }, 'おすすめ') : null,
+      h('b', {}, d.name),
+      h('dl', {},
+        h('dt', {}, '借金'), h('dd', {}, man(d.debt)),
+        h('dt', {}, '最低返済'), h('dd', {}, `月${man(d.minPay)}`),
+        h('dt', {}, '年利'), h('dd', {}, `${Math.round(d.rate * 100)}%`)),
+      h('small', {}, d.note)))));
+  }, { back: '戻る' });
+  return m.closed.then(() => pick);
+}
+
+// daily：デイリーチャレンジの日付（難易度は「ふつう」で固定）
+// 前の周の到達点から1つ選ぶ（引き継がないなら ''、やめたら null）
+function pickLegacy(ids) {
+  let pick = null;
+  const m = openModal('前の周から引き継ぐ', (body, api) => {
+    body.append(h('p', { class: 'note' }, '前の周でたどり着いたルートの到達点を、1つだけ最初から持って始められる。'));
+    for (const id of ids) {
+      const sk = SKILL_MAP[id];
+      body.append(h('button', { class: 'btn diff-btn', onclick: () => { pick = id; api.close(); } }, h('b', {}, sk.name), h('small', {}, sk.desc)));
+    }
+    body.append(h('button', { class: 'btn diff-btn primary', onclick: () => { pick = ''; api.close(); } }, h('b', {}, '引き継がない'), h('small', {}, 'まっさらな状態から始める')));
+  }, { back: '戻る' });
+  return m.closed.then(() => pick);
+}
+
+// キャリアの型を選ぶ（10年を一度でも走りきったら選べる）。やめたら null
+function pickStyle() {
+  let pick = null;
+  const m = openModal('キャリアの型', (body, api) => {
+    body.append(h('p', { class: 'note' }, '一度10年を走りきった転売屋は、最初から「型」を決めて始められる。'));
+    body.append(h('button', { class: 'btn diff-btn primary', onclick: () => { pick = { type: 'normal' }; api.close(); } }, h('b', {}, STYLES.normal.name), h('small', {}, STYLES.normal.desc)));
+    body.append(h('div', { class: 'sub' }, `${STYLES.spec.name}`), h('p', { class: 'note' }, STYLES.spec.desc));
+    for (const [cat, name] of Object.entries(SPECIALTIES)) {
+      body.append(h('button', { class: 'btn diff-btn', onclick: () => { pick = { type: 'spec', cat }; api.close(); } }, h('b', {}, `${name}専門`), h('small', {}, `${name}の見立てのぶれ0.4倍・真贋の細部+2か所・専門の掘り出し物・買い手1.25倍（専門外の見立ては1.15倍ぶれる）`)));
+    }
+    body.append(h('div', { class: 'sub' }, STYLES.org.name), h('button', { class: 'btn diff-btn', onclick: () => { pick = { type: 'org' }; api.close(); } }, h('b', {}, STYLES.org.name), h('small', {}, STYLES.org.desc)));
+  }, { back: '戻る' });
+  return m.closed.then(() => pick);
+}
+
+// weekly：週替わりチャレンジの週（オンラインランキングに登録できる）
+async function newGame({ daily = null, weekly = null } = {}) {
+  const challenge = !!(daily || weekly);
+  const difficulty = challenge ? 'normal' : await pickDifficulty();
+  if (!difficulty) return;
+  // チャレンジは同じ条件で競うので、引き継ぎ・型・師匠はなし
+  const legacyIds = challenge ? [] : loadLegacy().filter((id) => SKILL_MAP[id]);
+  const legacy = legacyIds.length ? await pickLegacy(legacyIds) : '';
+  if (legacy === null) return;
+  const veteran = !challenge && loadRanking().some((r) => !r.daily && !r.weekly);
+  const style = veteran ? await pickStyle() : { type: 'normal' };
+  if (!style) return;
+  state = createGame(daily ? dailySeed(daily) : weekly ? weeklySeed(weekly) : undefined, difficulty);
+  state.style = style;
+  if (!challenge && loadMentors()[0]) state.mentor = loadMentors()[0]; // いちばん新しい前の周の転売屋が師匠になる
+  if (daily) state.daily = daily;
+  if (weekly) state.weekly = weekly;
+  if (legacy) {
+    state.skills.push(legacy);
+    state.legacy = legacy;
+  }
+  clearSave();
+  startPlaylog(state, { resumed: false });
+  showScreen('game-screen');
+  refresh();
+  showChris('idle');
+  await playSteps(await prologueSteps());
+  await loop();
+}
+
+// 一度見たプロローグは飛ばせる（会話だけを省き、目標の案内と師匠の知らせは残す）
+const PROLOGUE_KEY = '10buy-year:prologueSeen';
+async function prologueSteps() {
+  const steps = prologue(state);
+  let seen = false;
+  try {
+    seen = window.localStorage.getItem(PROLOGUE_KEY) === '1';
+    window.localStorage.setItem(PROLOGUE_KEY, '1');
+  } catch {
+    /* noop */
+  }
+  if (!seen) return steps;
+  setBackground('danger');
+  const k = await choose([{ label: 'スキップして始める' }, { label: 'プロローグを見る', sub: '借金を背負うまでの話' }], 'プロローグは前に見ている');
+  if (k === 1) return steps;
+  setBackground('home');
+  return steps.filter((st) => !['talk', 'bg', 'bgm'].includes(st.t));
+}
+
+function continueGame() {
+  const loaded = loadGame();
+  if (!loaded) return newGame();
+  state = loaded;
+  startPlaylog(state, { resumed: true });
+  showScreen('game-screen');
+  refresh();
+  return resumeCard(state).then(() => loop());
+}
+
+function restart() {
+  newGame(); // 難易度を選んだところで、前のセーブを消す
+}
+
+function toTitle() {
+  saveGame(state);
+  window.location.reload();
+}
+
+// ---------------- タイトル ----------------
+function showTitle() {
+  const el = clear($('#title-screen'));
+  const hasSave = !!loadGame();
+  el.append(
+    h('div', { class: 'title-bg' }),
+    h('div', { class: 'title-inner' },
+      installButton(), // スクロールしなくても見えるように、いちばん上に小さく
+      h('p', { class: 'kicker' }, 'My Crypto Heroes 二次創作'),
+      h('h1', {}, '10 buy year！', h('small', {}, 'クリスの転売キャリア10年')),
+      h('div', { class: 'title-cast' },
+        h('img', { class: 'sprite', src: CAST.chris.poses.guts, alt: 'クリス' }),
+        h('img', { class: 'sprite mine', src: CAST.mine.poses.pointer, alt: 'マイン' }),
+        h('img', { class: 'sprite maycri', src: CAST.maycri.poses.wide, alt: 'マイクリくん' }),
+      ),
+      h('p', { class: 'lead' }, '仮想通貨で溶かして、友達にまで借金をした。', h('br'), '押し入れの本を1冊売るところから、10年の転売キャリアが始まる。'),
+      liveBanner(),
+      h('div', { class: 'title-buttons' },
+        hasSave ? h('button', { class: 'btn primary big', onclick: () => continueGame() }, 'つづきから') : null,
+        h('button', { class: `btn big ${hasSave ? '' : 'primary'}`, onclick: () => { if (!hasSave || window.confirm('セーブデータを消して最初から始めますか？')) newGame(); } }, 'はじめから'),
+        // チャレンジは2つを横並び
+        h('div', { class: 'title-row' },
+          h('button', { class: 'btn', onclick: () => { if (!hasSave || window.confirm('セーブデータを消して、今週のチャレンジを始めますか？')) newGame({ weekly: weekKey() }); } }, '今週のチャレンジ', h('small', { class: 'btn-sub' }, `${weekRange()}・オンライン`)),
+          h('button', { class: 'btn', onclick: () => { if (!hasSave || window.confirm('セーブデータを消して、今日のチャレンジを始めますか？')) newGame({ daily: todayKey() }); } }, '今日のチャレンジ', h('small', { class: 'btn-sub' }, dailyLabel(todayKey())))),
+      ),
+      // ランキング・実績・このゲームについて・言語・サウンドは、下に小さく
+      h('div', { class: 'title-foot' },
+        h('button', { class: 'btn', onclick: () => rankingModal() }, '🏆 ランキング'),
+        h('button', { class: 'btn', onclick: () => recordsModal() }, '🎖 実績'),
+        h('button', { class: 'btn', onclick: () => aboutModal() }, 'ⓘ このゲームについて'),
+        langButton(),
+        h('button', {
+          class: 'btn sound-toggle',
+          onclick: (e) => {
+            setSound(!soundOn());
+            if (soundOn()) playBgm('land');
+            e.currentTarget.textContent = soundLabel();
+          },
+        }, soundLabel()),
+      ),
+    ),
+  );
+  showScreen('title-screen');
+  playBgm('land');
+}
+
+// ホーム画面に追加（PWA）。Android の Chrome が「追加できる」と合図したら、その場で追加の画面を出す。
+// 合図が来ないとき（一度削除した直後・iPhone・PC など）も、ボタンは出しておき、ブラウザのメニューからの手順を案内する。
+// すでに追加して開いているときは出さない
+let installEvt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  installEvt = e;
+});
+window.addEventListener('appinstalled', () => {
+  installEvt = null;
+  document.getElementById('install-btn')?.remove();
+});
+const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+const isIOS = () => /iPhone|iPad|iPod/.test(window.navigator.userAgent);
+function installButton() {
+  if (isStandalone()) return null;
+  return h('button', {
+    id: 'install-btn',
+    class: 'btn install-btn',
+    onclick: async () => {
+      if (installEvt) {
+        installEvt.prompt();
+        await installEvt.userChoice.catch(() => null);
+        installEvt = null;
+        return;
+      }
+      openModal('ホーム画面に追加', (body) => body.append(
+        isIOS()
+          ? h('p', {}, 'Safari の共有ボタン（□に↑）から「ホーム画面に追加」を選ぶと、アドレスバーのない全画面で遊べる。')
+          : h('p', {}, 'Chrome の右上のメニュー（︙）から「アプリをインストール」または「ホーム画面に追加」を選ぶと、アドレスバーのない全画面で遊べる。'),
+        isIOS() ? null : h('p', { class: 'note' }, '一度削除したあとは、しばらくこのボタンからは追加できないことがある。そのときはメニューから追加する。メニューに出ないときは、Chrome をいったん終了して開き直す。'),
+        h('p', { class: 'note' }, 'セーブデータはこのブラウザのものを引き継がないことがある。追加したほうで、はじめから遊ぶのがおすすめ。'),
+      ));
+    },
+  }, '📲 ホーム画面に追加');
+}
+
+// 言語の切りかえ（表示はそれぞれの言語で書いておき、訳さない）
+function langButton() {
+  return h('button', { class: 'btn lang-toggle', 'data-no-tr': '', onclick: () => setLang(getLang() === 'en' ? 'ja' : 'en') }, getLang() === 'en' ? '日本語で遊ぶ' : 'Play in English');
+}
+
+// 現実の季節に合わせた期間限定フェアの告知
+function liveBanner() {
+  const ev = liveEventOn();
+  if (ev) return h('p', { class: 'live-banner on' }, h('b', {}, `開催中：${ev.name}`), h('small', {}, `${liveRange(ev)}・限定の「${productOf(ev.pid).genre}」が店とネットに並ぶ`));
+  const next = nextLiveEvent();
+  return h('p', { class: 'live-banner' }, h('small', {}, `次の期間限定フェア：${next.name}（${liveRange(next)}）`));
+}
+
+const soundLabel = () => (soundOn() ? '🔊 サウンド ON' : '🔇 サウンド OFF');
+
+function rankingModal() {
+  // オンライン（週替わり）は読み込んでから差し込む
+  const online = h('div', { class: 'online-list' }, h('p', { class: 'note' }, '読み込み中…'));
+  fetchRanking(weekKey()).then((data) => online.replaceChildren(...rankingList(data).filter(Boolean)));
+  openModal('ランキング', (body) => {
+    body.append(
+      h('div', { class: 'sub' }, `今週のチャレンジ（${weekRange()}）オンライン`),
+      h('p', { class: 'note' }, 'この週は誰が遊んでも、同じ相場・同じ出来事から始まる（難易度ふつう）。遊び終えたら、エンディングで登録できる。'),
+      online,
+    );
+    const key = todayKey();
+    const daily = loadDaily(key);
+    body.append(h('div', { class: 'sub' }, `今日のチャレンジ（${dailyLabel(key)}）この端末`), h('p', { class: 'note' }, '今日は誰が遊んでも、同じ相場・同じ出来事から始まる（難易度ふつう）。'));
+    if (!daily.length) body.append(h('p', { class: 'empty' }, 'まだ記録がない'));
+    daily.forEach((r, i) => body.append(h('div', { class: 'card row' }, h('div', { class: `rank r${r.rank}` }, r.rank), h('div', { class: 'grow' }, h('div', { class: 'name' }, `${i + 1}位 ${yenFmt(r.netWorth)}`), h('small', {}, `${r.ending}／${r.stage || ''}／${r.title}`)))));
+    body.append(h('div', { class: 'sub' }, 'これまでの記録（この端末）'));
+    const list = loadRanking();
+    if (!list.length) body.append(h('p', { class: 'empty' }, 'まだ記録がない'));
+    list.forEach((r, i) => body.append(h('div', { class: 'card row' }, h('div', { class: `rank r${r.rank}` }, r.rank), h('div', { class: 'grow' }, h('div', { class: 'name' }, `${i + 1}位 ${yenFmt(r.netWorth)}`), h('small', {}, `${r.daily ? `チャレンジ ${dailyLabel(r.daily)}／` : ''}${r.weekly ? `週替わり ${r.weekly}／` : ''}${r.style ? `${r.style}／` : ''}${r.difficulty ? `${r.difficulty}／` : ''}${r.ending}／${r.stage || ''}／${r.title}／売上 ${yenFmt(r.revenue)}／${r.date}`)))));
+  });
+}
+
+// 実績とエンディングの回収
+function recordsModal() {
+  openModal('実績', (body) => {
+    const rec = loadRecords();
+    const ends = allEndings();
+    const seenEnds = ends.filter((e) => rec.endings[e.id]).length;
+    const got = ACHIEVEMENTS.filter((a) => rec.achievements[a.id]).length;
+    body.append(
+      h('div', { class: 'sub' }, `エンディング ${seenEnds}/${ends.length}（${Math.round((seenEnds / ends.length) * 100)}%）`),
+      h('div', { class: 'ach-grid' }, ...ends.map((e) => h('div', { class: `ach ${rec.endings[e.id] ? 'on' : ''}` }, h('b', {}, rec.endings[e.id] ? e.title : '？？？'), rec.endings[e.id] ? h('small', {}, rec.endings[e.id]) : null))),
+      h('div', { class: 'sub' }, `実績 ${got}/${ACHIEVEMENTS.length}`),
+      ...ACHIEVEMENTS.map((a) => h('div', { class: `ach row ${rec.achievements[a.id] ? 'on' : ''}` }, h('b', {}, a.name), h('small', {}, a.desc), rec.achievements[a.id] ? h('small', { class: 'ach-date' }, rec.achievements[a.id]) : null)),
+    );
+  });
+}
+
+function aboutModal() {
+  openModal('このゲームについて', (body) => {
+    body.append(
+      h('p', {}, '「転売」という商いを、家の不用品を売るところから、仕入れ・相場・出品・発送・トラブル・税金、そして専業化・法人化まで、10年のキャリアとして真剣に体験する育成シミュレーションです。転売を奨励するものではなく、その仕組みと生々しさを笑いと一緒に描く社会風刺ゲームです。'),
+      h('p', {}, '登場するプラットフォーム・商品・人物はすべてフィクションです。法律や手数料の数値はゲーム用に簡略化しています。'),
+      h('div', { class: 'sub' }, 'クレジット'),
+      h('p', {}, 'ヒーロー・エクステンション・エネミー・背景・音声：My Crypto Heroes（MCH Co., Ltd.）の二次創作ガイドラインに基づき使用'),
+      h('p', {}, 'クリスくん／マインちゃん ドット絵：こじもこ　マイクリくん 原画：こはるさん／ドット絵：こじもこさん'),
+    );
+  });
+}
+
+// ---------------- エンディング ----------------
+function showEnding() {
+  const r = finalResult(state);
+  logGame(state, 'end', endingData(state, r));
+  flushPlaylog();
+  const entry = {
+    netWorth: r.netWorth, rank: r.rank, title: r.title, ending: r.ending.title, stage: r.stage, revenue: r.revenue, difficulty: difficultyOf(state).name, style: styleOf(state) === 'normal' ? null : styleLabel(state), daily: state.daily || null, weekly: state.weekly || null, date: new Date().toLocaleDateString('ja-JP'),
+  };
+  const ranking = pushRanking(entry);
+  if (state.daily) pushDaily(state.daily, entry);
+  const before = new Set(loadLegacy());
+  const caps = SKILLS.filter((x) => x.kind === 'capstone' && state.skills.includes(x.id)).map((x) => x.id);
+  const challenge = !!(state.daily || state.weekly);
+  const newCaps = challenge ? [] : caps.filter((id) => !before.has(id));
+  if (!challenge) {
+    pushLegacy(caps);
+    pushMentor(mentorRecord(state, r));
+  }
+  const newAch = pushRecords(checkAchievements(state, r), r.ending.id);
+  const rec = loadRecords();
+  const ends = allEndings();
+  const seenEnds = ends.filter((e) => rec.endings?.[e.id]).length;
+  const el = clear($('#ending-screen'));
+  playBgm('land');
+  playSe(['arrested', 'bankrupt', 'vanished'].includes(r.ending.id) ? 'lose' : 'win');
+  const chris = CAST.chris.poses[r.ending.pose] || CAST.chris.poses.idle;
+  const hl = highlightList(state);
+  const root = h('div', { class: 'ending' },
+    h('p', { class: 'kicker rv', 'data-hold': 300 }, '最終査定'),
+    h('h2', { class: 'rv', 'data-hold': 500 }, r.ending.title),
+    h('img', { class: 'sprite big rv', src: chris, alt: 'クリス' }),
+    ...r.ending.lines.map((l) => h('p', { class: 'ending-line rv', 'data-hold': 900 }, l)),
+    h('div', { class: 'end-worth rv', 'data-hold': 300 }, h('small', {}, '純資産（スコア）'), h('b', { 'data-count': Math.round(r.netWorth) }, yenFmt(0))),
+    h('div', { class: 'result' },
+      h('div', { class: `rank huge r${r.rank} rv rv-stamp`, 'data-hold': 700 }, r.rank),
+      h('div', { class: 'rv', 'data-hold': 400 },
+        h('div', { class: 'rank-label' }, r.rankLabel),
+        h('div', {}, `称号：${r.title}`),
+        h('div', {}, r.stage),
+      ),
+    ),
+    h('div', { class: 'rv rv-rest' },
+      h('div', { class: 'ledger-grid' },
+        r.vision ? row('志', `${r.vision.name}（達成 ${r.vision.done}/3）`) : null,
+        row('残った借金', yenFmt(r.debt)),
+        row('累計売上', yenFmt(r.revenue)),
+        row('粗利益', yenFmt(r.profit)),
+        row('売った商品', `${r.soldUnits}個`),
+        row('取引トラブル', `${r.troubles}件`),
+        row('定価で確保した品薄商品', `${r.scarceBought}個`),
+      ),
+      decadeChart(state.monthly || []),
+      hl ? h('div', { class: 'sub' }, '10年の名場面') : null,
+      hl,
+      newAch.length ? h('div', { class: 'ach-new' }, h('b', {}, '実績を解除'), ...newAch.map((id) => { const a = ACHIEVEMENTS.find((x) => x.id === id); return h('div', {}, `${a.name}（${a.desc}）`); })) : null,
+      newCaps.length ? h('p', { class: 'note' }, `次の周に引き継げる到達点が増えた：${newCaps.map((id) => SKILL_MAP[id].name).join('、')}`) : null,
+      h('p', { class: 'note' }, r.scarceBought ? `あなたが確保した${r.scarceBought}個の品薄商品。その向こうには、定価で買えなかった誰かがいたかもしれないし、近くの店で買えずにあなたから買えて喜んだ誰かもいたかもしれない。` : '品薄の限定品には手を出さず、価格差で稼ぎきった10年だった。'),
+      state.weekly ? submitBox({ week: state.weekly, netWorth: Math.round(r.netWorth), revenue: Math.round(r.revenue), endingId: r.ending.id, title: r.title, stage: r.stage }) : null,
+      h('div', { class: 'sub' }, 'この端末のランキング'),
+      ...ranking.slice(0, 5).map((x, i) => h('div', { class: 'ledger-row' }, h('small', {}, `${i + 1}位`), h('span', {}, `${x.ending}／${x.title}`), h('b', {}, yenFmt(x.netWorth)))),
+      h('p', { class: 'end-count' }, `エンディング ${seenEnds}/${ends.length}`, seenEnds < ends.length ? h('small', {}, `（まだ見ていないエンディングが${ends.length - seenEnds}つ）`) : h('small', {}, '（すべて見た！）')),
+      h('div', { class: 'title-buttons' },
+        h('button', { class: 'btn primary big', onclick: () => playAgain() }, 'もう一度はじめる'),
+        h('button', { class: 'btn', onclick: () => shareResult(r, chris) }, 'シェアする'),
+        h('button', { class: 'btn', onclick: () => saveResultImage(r, chris) }, '結果を画像で保存'),
+        h('button', { class: 'btn', onclick: () => copyResult(r) }, '結果をコピー'),
+        h('button', { class: 'btn', onclick: () => window.location.reload() }, 'タイトルへ'),
+      ),
+    ),
+  );
+  el.append(root);
+  showScreen('ending-screen');
+  revealSequence(root);
+}
+
+// 「もう一度はじめる」：読みこみ直してから、はじめからの流れへ（前の周の状態を残さない）
+const AGAIN_KEY = '10buy-year:again';
+function playAgain() {
+  try {
+    window.sessionStorage.setItem(AGAIN_KEY, '1');
+  } catch {
+    /* noop */
+  }
+  window.location.reload();
+}
+function takeAgain() {
+  try {
+    const on = window.sessionStorage.getItem(AGAIN_KEY) === '1';
+    window.sessionStorage.removeItem(AGAIN_KEY);
+    return on;
+  } catch {
+    return false;
+  }
+}
+
+async function resultFile(r, chris) {
+  const blob = await resultImage(r, state, { url: GAME_URL, chris });
+  return blob ? new File([blob], '10buy-year-result.png', { type: 'image/png' }) : null;
+}
+
+async function saveResultImage(r, chris) {
+  const file = await resultFile(r, chris);
+  if (!file) return toast('画像を作れなかった', 'bad');
+  const a = h('a', { href: URL.createObjectURL(file), download: file.name });
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+
+function row(label, value) {
+  return h('div', { class: 'lg-row' }, h('span', {}, label), h('b', {}, value));
+}
+
+// シェアの文面：結果と、遊んだ場所のURL・ハッシュタグ
+const GAME_URL = 'https://10buy-year.vercel.app/';
+function resultText(r) {
+  const vision = r.vision ? `\n志：${r.vision.name}（達成 ${r.vision.done}/3）` : '';
+  return tr(`10 buy year！ 最終査定【${r.rank}】${r.ending.title}\n${r.stage}／称号：${r.title}${vision}\n純資産 ${yenFmt(r.netWorth)} / 売上 ${yenFmt(r.revenue)}`); // 英語版では訳す（DOMを通らないので）
+}
+
+function copyResult(r) {
+  navigator.clipboard?.writeText(`${resultText(r)}\n${GAME_URL}`).then(() => toast('結果をコピーした', 'good')).catch(() => {});
+}
+
+// スマホは端末のシェア画面、PCはXの投稿画面を開く
+async function shareResult(r, chris) {
+  const text = `${resultText(r)}\n#10buyyear`;
+  if (navigator.share) {
+    try {
+      const file = navigator.canShare ? await resultFile(r, chris).catch(() => null) : null;
+      const files = file && navigator.canShare({ files: [file] }) ? [file] : undefined;
+      await navigator.share({ title: '10 buy year！', text, url: GAME_URL, files });
+      return;
+    } catch (e) {
+      if (e?.name === 'AbortError') return;
+    }
+  }
+  window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(GAME_URL)}`, '_blank', 'noopener');
+}
+
+initFontScale();
+initPixelArt(); // ドット絵を端末の画素の整数倍で出す
+initLayout(); // ステージの高さを、画面の高さと行動カードの段数に合わせる
+// 右のパネルの基礎能力を押したら、能力強化の画面を開く
+setParamsOpen(() => {
+  if (busy || !state) return;
+  if (!treeOpen(state)) return toast('最初の売上のあとに開ける', 'bad');
+  openAbilities(state, refresh).then(() => refresh());
+});
+await initLang(); // 英語版なら訳を読みこんでから
+initTelemetry(); // プレイログ（設定で止められる）
+showTitle();
+if (takeAgain()) newGame();

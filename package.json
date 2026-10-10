@@ -1,0 +1,20 @@
+{
+  "name": "10buy-year",
+  "version": "0.1.0",
+  "private": true,
+  "description": "10 buy year！ 転売を題材にした10年間の育成シミュレーション（My Crypto Heroes 二次創作）",
+  "type": "module",
+  "scripts": {
+    "dev": "node tools/dev-server.mjs",
+    "test": "node --test test/game.test.js",
+    "balance": "node test/balance.mjs 20",
+    "assets": "python3 tools/import_assets.py ../mycryptoheroes",
+    "guide": "node tools/guide/build.mjs",
+    "analytics:fetch": "node tools/analytics/fetch.mjs",
+    "analytics:report": "node tools/analytics/report.mjs",
+    "analytics:sim": "node tools/analytics/simulate.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
