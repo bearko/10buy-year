@@ -2042,3 +2042,13 @@ test('プレイログの分析：使える人のうち使った割合・離脱�
   assert.equal(r.churn.funnel.find((f) => f.label === '12週目').n, 1);
   assert.equal(r.sourcing.cmds[0].id, 'store');
 });
+
+test('ホーム画面のアイコン：マニフェストの画像がそろっていて、丸く切り抜く用（maskable）もある', () => {
+  const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+  const manifest = JSON.parse(readFileSync(join(root, 'manifest.json'), 'utf8'));
+  for (const ic of manifest.icons) assert.ok(existsSync(join(root, ic.src)), `${ic.src} がある`);
+  assert.ok(manifest.icons.some((ic) => ic.purpose === 'maskable' && ic.sizes === '512x512'), '512pxの maskable');
+  const html = readFileSync(join(root, 'index.html'), 'utf8');
+  const touch = /rel="apple-touch-icon" href="([^"]+)"/.exec(html)[1];
+  assert.ok(existsSync(join(root, touch)), 'iPhone 用のアイコンがある');
+});
