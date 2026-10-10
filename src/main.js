@@ -1005,6 +1005,7 @@ function showTitle() {
   el.append(
     h('div', { class: 'title-bg' }),
     h('div', { class: 'title-inner' },
+      installButton(), // スクロールしなくても見えるように、いちばん上に小さく
       h('p', { class: 'kicker' }, 'My Crypto Heroes 二次創作'),
       h('h1', {}, '10 buy year！', h('small', {}, 'クリスの転売キャリア10年')),
       h('div', { class: 'title-cast' },
@@ -1021,7 +1022,6 @@ function showTitle() {
         h('div', { class: 'title-row' },
           h('button', { class: 'btn', onclick: () => { if (!hasSave || window.confirm('セーブデータを消して、今週のチャレンジを始めますか？')) newGame({ weekly: weekKey() }); } }, '今週のチャレンジ', h('small', { class: 'btn-sub' }, `${weekRange()}・オンライン`)),
           h('button', { class: 'btn', onclick: () => { if (!hasSave || window.confirm('セーブデータを消して、今日のチャレンジを始めますか？')) newGame({ daily: todayKey() }); } }, '今日のチャレンジ', h('small', { class: 'btn-sub' }, dailyLabel(todayKey())))),
-        installButton(),
       ),
       // ランキング・実績・このゲームについて・言語・サウンドは、下に小さく
       h('div', { class: 'title-foot' },
@@ -1078,7 +1078,7 @@ function installButton() {
         h('p', { class: 'note' }, 'セーブデータはこのブラウザのものを引き継がないことがある。追加したほうで、はじめから遊ぶのがおすすめ。'),
       ));
     },
-  }, '📲 ホーム画面に追加（全画面で遊べる）');
+  }, '📲 ホーム画面に追加');
 }
 
 // 言語の切りかえ（表示はそれぞれの言語で書いておき、訳さない）
