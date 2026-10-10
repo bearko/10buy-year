@@ -1044,13 +1044,17 @@ function showTitle() {
   playBgm('land');
 }
 
-// ホーム画面に追加（PWA）。Android は端末の追加の画面を出し、iPhone は手順を案内する。すでに追加して開いているときは出さない
+// ホーム画面に追加（PWA）。Android の Chrome が「追加できる」と合図したら、その場で追加の画面を出す。
+// 合図が来ないとき（一度削除した直後・iPhone・PC など）も、ボタンは出しておき、ブラウザのメニューからの手順を案内する。
+// すでに追加して開いているときは出さない
 let installEvt = null;
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   installEvt = e;
-  const b = document.getElementById('install-btn');
-  if (b) b.hidden = false;
+});
+window.addEventListener('appinstalled', () => {
+  installEvt = null;
+  document.getElementById('install-btn')?.remove();
 });
 const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 const isIOS = () => /iPhone|iPad|iPod/.test(window.navigator.userAgent);
@@ -1059,17 +1063,18 @@ function installButton() {
   return h('button', {
     id: 'install-btn',
     class: 'btn install-btn',
-    hidden: !installEvt && !isIOS(),
     onclick: async () => {
       if (installEvt) {
         installEvt.prompt();
         await installEvt.userChoice.catch(() => null);
         installEvt = null;
-        document.getElementById('install-btn')?.remove();
         return;
       }
       openModal('ホーム画面に追加', (body) => body.append(
-        h('p', {}, 'Safari の共有ボタン（□に↑）から「ホーム画面に追加」を選ぶと、アドレスバーのない全画面で遊べる。'),
+        isIOS()
+          ? h('p', {}, 'Safari の共有ボタン（□に↑）から「ホーム画面に追加」を選ぶと、アドレスバーのない全画面で遊べる。')
+          : h('p', {}, 'Chrome の右上のメニュー（︙）から「アプリをインストール」または「ホーム画面に追加」を選ぶと、アドレスバーのない全画面で遊べる。'),
+        isIOS() ? null : h('p', { class: 'note' }, '一度削除したあとは、しばらくこのボタンからは追加できないことがある。そのときはメニューから追加する。メニューに出ないときは、Chrome をいったん終了して開き直す。'),
         h('p', { class: 'note' }, 'セーブデータはこのブラウザのものを引き継がないことがある。追加したほうで、はじめから遊ぶのがおすすめ。'),
       ));
     },
