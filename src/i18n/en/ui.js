@@ -48,6 +48,8 @@ export default {
   "値付けする": "Set prices",
   "出品を変更": "Edit listings",
   "能力強化": "Abilities",
+  "Chrome の右上のメニュー（︙）から「アプリをインストール」または「ホーム画面に追加」を選ぶと、アドレスバーのない全画面で遊べる。": "Open Chrome's menu (︙) at the top right and choose \"Install app\" or \"Add to Home screen\" to play full screen without the address bar.",
+  "一度削除したあとは、しばらくこのボタンからは追加できないことがある。そのときはメニューから追加する。メニューに出ないときは、Chrome をいったん終了して開き直す。": "Right after you remove the app, this button may not be able to add it for a while. Add it from the menu instead. If the menu doesn't show the option, close Chrome completely and open it again.",
   "プレイ記録を送って改善に協力する: {0}": "Send play records to help improve the game: {0}",
   "送るのは、使った行動・開いた画面・仕入れと販売の月ごとの集計・進み具合などの匿名の記録だけ。名前やランキングの登録名、端末の情報は送らない。": "Only anonymous records are sent: the actions you used, the screens you opened, monthly totals of buying and selling, and how far you got. Your name, your ranking name and device details are never sent.",
   "【業者オークション】今週開催。古物商だけの市場で、相場の5〜7割で仕入れられる": "[Dealer Auction] Held this week. A dealers-only market where you can buy at 50–70% of market price",
