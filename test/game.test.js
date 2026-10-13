@@ -2064,7 +2064,7 @@ test('Cloudflare Workers の入口：Request を api/ のハンドラにつな�
     return handler(req, res);
   };
   const body = { week: '2026-W41', revenue: 90000000, endingId: 'pro', player: 'aaaaaaaa', name: 'A', netWorth: 10000000 };
-  const posted = await runNodeHandler(spy, new Request('https://10buy.bearko.games/api/ranking', {
+  const posted = await runNodeHandler(spy, new Request('https://10-buy-year.bearko.games/api/ranking', {
     method: 'POST',
     headers: { 'cf-connecting-ip': '5.6.7.8', 'content-type': 'application/json' },
     body: JSON.stringify(body),
@@ -2075,7 +2075,7 @@ test('Cloudflare Workers の入口：Request を api/ のハンドラにつな�
   assert.match(posted.headers.get('content-type'), /application\/json/);
 
   const telemetryHandler = createTelemetryHandler(() => memoryTelemetryStore(), { now: () => now, readToken: () => 'secret' });
-  const sent = await runNodeHandler(telemetryHandler, new Request('https://10buy.bearko.games/api/telemetry', {
+  const sent = await runNodeHandler(telemetryHandler, new Request('https://10-buy-year.bearko.games/api/telemetry', {
     method: 'POST',
     body: JSON.stringify({ v: 1, pid: 'abcdef12', sid: 'abcdef12', dev: 'pc', lang: 'ja', ev: [] }),
   }));
@@ -2085,8 +2085,8 @@ test('Cloudflare Workers の入口：Request を api/ のハンドラにつな�
 
 test('Cloudflare Workers の入口：/api 以外は静的ファイル、保存先がなければ 503', async () => {
   const env = { ASSETS: { fetch: async () => new Response('asset') } };
-  assert.equal(await (await worker.fetch(new Request('https://10buy.bearko.games/'), env)).text(), 'asset');
-  assert.equal((await worker.fetch(new Request('https://10buy.bearko.games/api/ranking'), env)).status, 503);
+  assert.equal(await (await worker.fetch(new Request('https://10-buy-year.bearko.games/'), env)).text(), 'asset');
+  assert.equal((await worker.fetch(new Request('https://10-buy-year.bearko.games/api/ranking'), env)).status, 503);
 });
 
 import { d1TelemetryStore } from '../api/_telemetry.js';
