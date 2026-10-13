@@ -1,11 +1,11 @@
 // 本番のプレイログを取ってくる。日ごとに analytics-data/YYYY-MM-DD.jsonl（1行に1束）に保存する。
-// 使い方: TELEMETRY_READ_TOKEN=... node tools/analytics/fetch.mjs [開始日=7日前] [終了日=今日] [--base https://10buy.bearko.games]
+// 使い方: TELEMETRY_READ_TOKEN=... node tools/analytics/fetch.mjs [開始日=7日前] [終了日=今日] [--base https://10-buy-year.bearko.games]
 // トークンは Cloudflare（Worker の Secret）の TELEMETRY_READ_TOKEN と同じもの。Vercel の記録を取るときは --base https://10buy-year.vercel.app。analytics-data/ はリポジトリに入れない
 import { mkdirSync, writeFileSync } from 'node:fs';
 
 const args = process.argv.slice(2);
 const bi = args.indexOf('--base');
-const base = bi >= 0 ? args.splice(bi, 2)[1] : 'https://10buy.bearko.games';
+const base = bi >= 0 ? args.splice(bi, 2)[1] : 'https://10-buy-year.bearko.games';
 const token = process.env.TELEMETRY_READ_TOKEN;
 if (!token) {
   console.error('環境変数 TELEMETRY_READ_TOKEN を設定してください');
