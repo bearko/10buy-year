@@ -1261,7 +1261,7 @@ function row(label, value) {
 }
 
 // シェアの文面：結果と、遊んだ場所のURL・ハッシュタグ
-const GAME_URL = 'https://10buy-year.vercel.app/';
+const GAME_URL = 'https://10-buy-year.bearko.games/';
 function resultText(r) {
   const vision = r.vision ? `\n志：${r.vision.name}（達成 ${r.vision.done}/3）` : '';
   return tr(`10 buy year！ 最終査定【${r.rank}】${r.ending.title}\n${r.stage}／称号：${r.title}${vision}\n純資産 ${yenFmt(r.netWorth)} / 売上 ${yenFmt(r.revenue)}`); // 英語版では訳す（DOMを通らないので）
