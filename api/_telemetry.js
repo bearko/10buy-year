@@ -1,4 +1,5 @@
-// プレイログの受け取り（api/telemetry.js から使う）。保存先は差し替えられる：本番は Upstash Redis（ランキングと同じ）、テストはメモリ。
+// プレイログの受け取り（api/telemetry.js・worker/index.js から使う）。保存先は差し替えられる：
+// Cloudflare では D1、Vercel では Upstash Redis（ランキングと同じ）、テストはメモリ。
 // 受け取った束は、受け取った日（日本時間）ごとのリストに入れる。180日で消える。IPアドレスは回数制限にだけ使い、保存しない。
 // 読み出し（GET）は、環境変数 TELEMETRY_READ_TOKEN と同じトークンを Authorization: Bearer で渡したときだけ。
 import { upstashStore } from './_ranking.js';
@@ -53,6 +54,39 @@ export function redisTelemetryStore(url, token, fetchFn = fetch) {
     async read(day, start, count) {
       const [items, total] = await call([['LRANGE', listKey(day), start, start + count - 1], ['LLEN', listKey(day)]]);
       return { items, total: Number(total) };
+    },
+  };
+}
+
+// Cloudflare D1（SQLite）。テーブルは migrations/0001_telemetry.sql。
+// 中身は Redis 版と同じ：日ごとに束を並べ、180日より古いもの・2時間より古い回数は、ときどき消す
+export function d1TelemetryStore(db, { random = Math.random } = {}) {
+  const KEEP_DAYS = TTL / 86400;
+  return {
+    async hit(ip, hour) {
+      const row = await db
+        .prepare(
+          'INSERT INTO telemetry_hits (key, hour, count) VALUES (?1, ?2, 1) ' +
+            'ON CONFLICT (key) DO UPDATE SET count = count + 1 RETURNING count',
+        )
+        .bind(`t:${ip}:${hour}`, hour)
+        .first();
+      if (random() < 0.01) await db.prepare('DELETE FROM telemetry_hits WHERE hour < ?1').bind(hour - 2).run();
+      return Number(row?.count ?? 1);
+    },
+    async append(day, json) {
+      await db.prepare('INSERT INTO telemetry (day, json) VALUES (?1, ?2)').bind(day, json).run();
+      if (random() < 0.01) {
+        const oldest = new Date(Date.parse(`${day}T00:00:00Z`) - KEEP_DAYS * 86400e3).toISOString().slice(0, 10);
+        await db.prepare('DELETE FROM telemetry WHERE day < ?1').bind(oldest).run();
+      }
+    },
+    async read(day, start, count) {
+      const [rows, total] = await db.batch([
+        db.prepare('SELECT json FROM telemetry WHERE day = ?1 ORDER BY id LIMIT ?2 OFFSET ?3').bind(day, count, start),
+        db.prepare('SELECT COUNT(*) AS n FROM telemetry WHERE day = ?1').bind(day),
+      ]);
+      return { items: rows.results.map((r) => r.json), total: Number(total.results[0]?.n ?? 0) };
     },
   };
 }

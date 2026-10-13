@@ -4,6 +4,8 @@ node_modules
 .wrangler
 api
 worker
+migrations
+analytics-data
 test
 tools
 docs

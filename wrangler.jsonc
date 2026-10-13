@@ -9,5 +9,14 @@
     "binding": "ASSETS",
     // /api/* だけ Worker のコードを通し、それ以外は静的ファイルを直接返す
     "run_worker_first": ["/api/*"]
-  }
+  },
+  // プレイログの保存先（テーブルは migrations/0001_telemetry.sql）
+  "d1_databases": [
+    {
+      "binding": "TELEMETRY_DB",
+      "database_name": "10buy-telemetry",
+      "database_id": "05ff7554-dc52-4983-a1cf-38186c0b6301",
+      "migrations_dir": "migrations"
+    }
+  ]
 }

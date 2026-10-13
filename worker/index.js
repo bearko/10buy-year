@@ -2,17 +2,20 @@
 // /api/ranking と /api/telemetry は api/ のハンドラ（Vercel／Node の req・res 形式）に渡し、
 // それ以外は静的ファイル（ASSETS）をそのまま返す。
 import { createHandler, storeFromEnv } from '../api/_ranking.js';
-import { createTelemetryHandler, telemetryStoreFromEnv } from '../api/_telemetry.js';
+import { createTelemetryHandler, d1TelemetryStore, telemetryStoreFromEnv } from '../api/_telemetry.js';
 
 let ranking;
 let telemetry;
+
+// プレイログの保存先：D1（TELEMETRY_DB）がつながっていればそちら、なければ Upstash
+const telemetryStoreOf = (env) => (env.TELEMETRY_DB ? d1TelemetryStore(env.TELEMETRY_DB) : telemetryStoreFromEnv(env));
 
 function init(env) {
   if (ranking) return;
   let rankingStore;
   let telemetryStore;
   ranking = createHandler(() => (rankingStore ??= storeFromEnv(env)));
-  telemetry = createTelemetryHandler(() => (telemetryStore ??= telemetryStoreFromEnv(env)), {
+  telemetry = createTelemetryHandler(() => (telemetryStore ??= telemetryStoreOf(env)), {
     readToken: () => env.TELEMETRY_READ_TOKEN,
   });
 }
