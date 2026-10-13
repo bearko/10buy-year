@@ -2052,3 +2052,75 @@ test('ホーム画面のアイコン：マニフェストの画像がそろっ�
   const touch = /rel="apple-touch-icon" href="([^"]+)"/.exec(html)[1];
   assert.ok(existsSync(join(root, touch)), 'iPhone 用のアイコンがある');
 });
+
+import worker, { runNodeHandler } from '../worker/index.js';
+
+test('Cloudflare Workers の入口：Request を api/ のハンドラにつなぎ、IP は cf-connecting-ip を使う', async () => {
+  const now = Date.parse('2026-10-07T12:00:00+09:00');
+  const handler = createHandler(() => memoryStore(), { now: () => now });
+  let seenIp;
+  const spy = (req, res) => {
+    seenIp = req.headers['x-forwarded-for'];
+    return handler(req, res);
+  };
+  const body = { week: '2026-W41', revenue: 90000000, endingId: 'pro', player: 'aaaaaaaa', name: 'A', netWorth: 10000000 };
+  const posted = await runNodeHandler(spy, new Request('https://10buy.bearko.games/api/ranking', {
+    method: 'POST',
+    headers: { 'cf-connecting-ip': '5.6.7.8', 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  }));
+  assert.equal(posted.status, 200);
+  assert.equal((await posted.json()).position, 1);
+  assert.equal(seenIp, '5.6.7.8');
+  assert.match(posted.headers.get('content-type'), /application\/json/);
+
+  const telemetryHandler = createTelemetryHandler(() => memoryTelemetryStore(), { now: () => now, readToken: () => 'secret' });
+  const sent = await runNodeHandler(telemetryHandler, new Request('https://10buy.bearko.games/api/telemetry', {
+    method: 'POST',
+    body: JSON.stringify({ v: 1, pid: 'abcdef12', sid: 'abcdef12', dev: 'pc', lang: 'ja', ev: [] }),
+  }));
+  assert.ok([204, 400].includes(sent.status), `telemetry は Response に変換される（${sent.status}）`);
+  if (sent.status === 204) assert.equal(await sent.text(), '');
+});
+
+test('Cloudflare Workers の入口：/api 以外は静的ファイル、保存先がなければ 503', async () => {
+  const env = { ASSETS: { fetch: async () => new Response('asset') } };
+  assert.equal(await (await worker.fetch(new Request('https://10buy.bearko.games/'), env)).text(), 'asset');
+  assert.equal((await worker.fetch(new Request('https://10buy.bearko.games/api/ranking'), env)).status, 503);
+});
+
+import { d1TelemetryStore } from '../api/_telemetry.js';
+
+// D1 の API（prepare・bind・first・run・all・batch）を、Node の SQLite で真似たもの
+async function sqliteD1() {
+  const { DatabaseSync } = await import('node:sqlite');
+  const sqlite = new DatabaseSync(':memory:');
+  sqlite.exec(readFileSync(join(ROOT, 'migrations/0001_telemetry.sql'), 'utf8'));
+  const stmt = (sql, args = []) => ({
+    bind: (...a) => stmt(sql, a),
+    first: async () => sqlite.prepare(sql).get(...args) ?? null,
+    run: async () => (sqlite.prepare(sql).run(...args), { success: true }),
+    all: async () => ({ results: sqlite.prepare(sql).all(...args) }),
+  });
+  return { prepare: (sql) => stmt(sql), batch: async (list) => Promise.all(list.map((s) => s.all())) };
+}
+
+test('プレイログの保存先 D1：日ごとに並べて読み出し、回数制限を数え、古いものは消える', async () => {
+  const db = await sqliteD1();
+  const now = Date.parse('2026-10-09T23:30:00+09:00');
+  const store = d1TelemetryStore(db, { random: () => 0 }); // 掃除を毎回走らせる
+  const handler = createTelemetryHandler(() => store, { now: () => now, readToken: () => 'secret' });
+  const batch = { v: 1, pid: 'abcdef123456', sid: 'sess01', dev: 'm-web', lang: 'ja', ev: [{ g: 'game0001', e: 'cmd', w: 3, id: 'store' }] };
+  await store.append('2026-01-01', '{"old":true}'); // 180日より前
+  for (let i = 0; i < 3; i++) assert.equal((await tcall(handler, { method: 'POST', body: JSON.stringify(batch) })).status, 204);
+  const got = await tcall(handler, { url: '/api/telemetry?day=2026-10-09&start=1&count=1', auth: 'Bearer secret' });
+  assert.equal(got.status, 200);
+  assert.equal(got.body.total, 3);
+  assert.equal(got.body.items.length, 1);
+  assert.equal(got.body.next, 2, '続きの位置');
+  assert.equal(got.body.items[0].ev[0].id, 'store');
+  assert.equal((await store.read('2026-01-01', 0, 10)).total, 0, '180日より古い日は消える');
+  const hour = Math.floor(now / 3600000);
+  assert.equal(await store.hit('1.2.3.4', hour), 4, 'POST 3回のあとの4回目');
+  assert.equal(await store.hit('1.2.3.4', hour + 1), 1, '時間が変われば数え直す');
+});
