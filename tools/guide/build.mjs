@@ -786,7 +786,7 @@ const html = `<!doctype html>
 <title>10 buy year！ 完全攻略ガイド</title>
 <meta name="description" content="『10 buy year！』の完全攻略ガイドブック。ゲームの流れ、仕入れと販売、スキルツリー全パネル、全エンディングの条件、実績、商品図鑑まで。">
 <meta property="og:title" content="10 buy year！ 完全攻略ガイド">
-<meta property="og:image" content="https://10buy-year.vercel.app/assets/og.jpg">
+<meta property="og:image" content="https://10-buy-year.bearko.games/assets/og.jpg">
 <link rel="icon" href="../assets/icons/gum.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

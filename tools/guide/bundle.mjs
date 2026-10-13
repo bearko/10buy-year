@@ -43,7 +43,7 @@ const table = JSON.stringify(Object.fromEntries(shared.map((ref) => [key[ref], d
 html = html.replace('</head>', `<style>:root{${vars}}</style>\n</head>`);
 html = html.replace('<body>', `<body>\n<script>window.__B=${table};new MutationObserver((l)=>{for(const r of l)for(const n of r.addedNodes)if(n.nodeType===1)(n.matches('[data-b]')?[n]:[]).concat([...n.querySelectorAll('[data-b]')]).forEach((e)=>{const u=__B[e.dataset.b];e.tagName==='image'?e.setAttribute('href',u):(e.src=u);e.removeAttribute('data-b');});}).observe(document.documentElement,{childList:true,subtree:true});</script>`);
 // 1ファイル版では、ゲームへのリンクを公開先に向ける
-html = html.replace(/href="\.\.\/"/g, 'href="https://10buy-year.vercel.app/"');
+html = html.replace(/href="\.\.\/"/g, 'href="https://10-buy-year.bearko.games/"');
 // 1つの画像を何度も使うので、遅延読み込みは外して最初から出す（data URI なので通信はない）
 html = html.replace(/ loading="lazy"/g, '');
 mkdirSync(dirname(out), { recursive: true });
