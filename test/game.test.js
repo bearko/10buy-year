@@ -2052,3 +2052,39 @@ test('ホーム画面のアイコン：マニフェストの画像がそろっ�
   const touch = /rel="apple-touch-icon" href="([^"]+)"/.exec(html)[1];
   assert.ok(existsSync(join(root, touch)), 'iPhone 用のアイコンがある');
 });
+
+import worker, { runNodeHandler } from '../worker/index.js';
+
+test('Cloudflare Workers の入口：Request を api/ のハンドラにつなぎ、IP は cf-connecting-ip を使う', async () => {
+  const now = Date.parse('2026-10-07T12:00:00+09:00');
+  const handler = createHandler(() => memoryStore(), { now: () => now });
+  let seenIp;
+  const spy = (req, res) => {
+    seenIp = req.headers['x-forwarded-for'];
+    return handler(req, res);
+  };
+  const body = { week: '2026-W41', revenue: 90000000, endingId: 'pro', player: 'aaaaaaaa', name: 'A', netWorth: 10000000 };
+  const posted = await runNodeHandler(spy, new Request('https://10buy.bearko.games/api/ranking', {
+    method: 'POST',
+    headers: { 'cf-connecting-ip': '5.6.7.8', 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  }));
+  assert.equal(posted.status, 200);
+  assert.equal((await posted.json()).position, 1);
+  assert.equal(seenIp, '5.6.7.8');
+  assert.match(posted.headers.get('content-type'), /application\/json/);
+
+  const telemetryHandler = createTelemetryHandler(() => memoryTelemetryStore(), { now: () => now, readToken: () => 'secret' });
+  const sent = await runNodeHandler(telemetryHandler, new Request('https://10buy.bearko.games/api/telemetry', {
+    method: 'POST',
+    body: JSON.stringify({ v: 1, pid: 'abcdef12', sid: 'abcdef12', dev: 'pc', lang: 'ja', ev: [] }),
+  }));
+  assert.ok([204, 400].includes(sent.status), `telemetry は Response に変換される（${sent.status}）`);
+  if (sent.status === 204) assert.equal(await sent.text(), '');
+});
+
+test('Cloudflare Workers の入口：/api 以外は静的ファイル、保存先がなければ 503', async () => {
+  const env = { ASSETS: { fetch: async () => new Response('asset') } };
+  assert.equal(await (await worker.fetch(new Request('https://10buy.bearko.games/'), env)).text(), 'asset');
+  assert.equal((await worker.fetch(new Request('https://10buy.bearko.games/api/ranking'), env)).status, 503);
+});
