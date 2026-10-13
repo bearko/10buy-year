@@ -3,3 +3,6 @@ node_modules/
 *.log
 dist/
 analytics-data/
+
+# Cloudflare Wrangler のローカル作業用
+.wrangler/
