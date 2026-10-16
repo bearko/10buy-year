@@ -39,6 +39,7 @@ import { initPixelArt } from './ui/pixel.js';
 import { initLayout } from './ui/layout.js';
 import { initBackNav } from './ui/backnav.js';
 import { getLang, initLang, setLang, tr } from './i18n/index.js';
+import { initPlatform, reportScore, scoreMetrics } from './platform.js';
 import { listNowCovers, listNowPrompt } from './ui/listnow.js';
 import { autoVisible } from './engine/sourcing.js';
 import { mailbox, salesMails } from './ui/mail.js';
@@ -1150,6 +1151,8 @@ function aboutModal() {
 function showEnding() {
   const r = finalResult(state);
   logGame(state, 'end', endingData(state, r));
+  // bearko.games の総合スコア（純資産・難易度。計算は共通基盤）
+  reportScore(scoreMetrics(state, r.netWorth));
   flushPlaylog();
   const entry = {
     netWorth: r.netWorth, rank: r.rank, title: r.title, ending: r.ending.title, stage: r.stage, revenue: r.revenue, difficulty: difficultyOf(state).name, style: styleOf(state) === 'normal' ? null : styleLabel(state), daily: state.daily || null, weekly: state.weekly || null, date: new Date().toLocaleDateString('ja-JP'),
@@ -1288,6 +1291,7 @@ async function shareResult(r, chris) {
 }
 
 initFontScale();
+initPlatform('0.1.0'); // bearko.games 共通基盤（総合スコア）。SDK がなければ何もしない
 initPixelArt(); // ドット絵を端末の画素の整数倍で出す
 initLayout(); // ステージの高さを、画面の高さと行動カードの段数に合わせる
 // 右のパネルの基礎能力を押したら、能力強化の画面を開く
