@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "node tools/dev-server.mjs",
-    "test": "node --test test/game.test.js",
+    "test": "node --test test/game.test.js test/platform.test.js",
     "balance": "node test/balance.mjs 20",
     "assets": "python3 tools/import_assets.py ../mycryptoheroes",
     "guide": "node tools/guide/build.mjs",
