@@ -39,7 +39,7 @@ import { initPixelArt } from './ui/pixel.js';
 import { initLayout } from './ui/layout.js';
 import { initBackNav } from './ui/backnav.js';
 import { getLang, initLang, setLang, tr } from './i18n/index.js';
-import { initPlatform, reportScore, reportTrophies, scoreMetrics } from './platform.js';
+import { initPlatform, isChatAvailable, openChat, reportScore, reportTrophies, scoreMetrics } from './platform.js';
 import { listNowCovers, listNowPrompt } from './ui/listnow.js';
 import { autoVisible } from './engine/sourcing.js';
 import { mailbox, salesMails } from './ui/mail.js';
@@ -683,6 +683,8 @@ function renderTabs() {
     },
     { id: 'ab', label: '能力強化', open: () => openAbilities(state, refresh), lock: !treeOpen(state) && '最初の売上のあとに開ける', badge: abilityBadge() },
     { id: 'log', label: 'ログ', open: () => logModal(state) },
+    // 全体チャット（共通基盤 SPEC-004）：SDK の窓をこのボタンから開く。SDK が読めていないあいだは出さない
+    { id: 'chat', label: 'チャット', open: () => openChat(), lock: !isChatAvailable() && 'bearko.games の SDK が読めたら開ける' },
   ];
   const pointSide = tutorialGuide()?.side;
   const menuFresh = MENU_UI.some((id) => uiFresh(id));

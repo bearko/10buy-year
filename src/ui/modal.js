@@ -1,5 +1,6 @@
 import { $, clear, h } from './dom.js';
 import { logUi } from './telemetry.js';
+import { blockChat, unblockChat } from '../platform.js';
 
 // モーダル。render(body, api) で中身を描画し、api.refresh() で再描画できる。
 // footer を渡すと、閉じるボタンの代わりにフッターのボタンを並べる（refresh のたびに描き直す）
@@ -24,8 +25,10 @@ export function openModal(title, render, { closeLabel = '閉じる', onRefresh, 
       onRefresh?.();
     },
     close() {
+      if (!root.isConnected) return;   // 2 度閉じても数を狂わせない
       root.remove();
       window.removeEventListener('keydown', onKey);
+      unblockChat();   // 全体チャット（共通基盤 SPEC-004）：モーダルが全部閉じたら出す
       resolveClosed();
     },
     closed,
@@ -36,6 +39,7 @@ export function openModal(title, render, { closeLabel = '閉じる', onRefresh, 
   if (!renderFooter && !back) footer.append(h('button', { class: 'btn primary', onclick: () => api.close() }, closeLabel));
   window.addEventListener('keydown', onKey);
   $('#modal-root').append(root);
+  blockChat();   // 全体チャット：モーダルの最中は隠す
   logUi(title); // プレイログ：どの画面が開かれたか
   api.refresh();
   return api;

@@ -39,11 +39,48 @@ export function initPlatform(version) {
   const bg = sdk();
   if (!bg) return;
   try {
-    Promise.resolve(bg.init({ game: '10buy', version })).catch((e) => console.warn('[platform] init', e));
+    // 全体チャット（共通基盤 SPEC-004）：右下の 💬 は出さず、横のボタンの列の「チャット」から窓を開く（SDK 1.6.1 の button: false）
+    Promise.resolve(bg.init({ game: '10buy', version, chat: { button: false, position: 'bottom-right' } }))
+      .then(() => applyChatVisible())
+      .catch((e) => console.warn('[platform] init', e));
   } catch (e) {
     console.warn('[platform] init', e);
   }
 }
+
+// ---------------------------------------------------------------- 全体チャット（共通基盤 SPEC-004。SDK 1.6.1 から）
+// 窓は SDK が描く。ここでは「開ける」「出す・隠す」だけ。スキルツリーとモーダルの最中は隠す（開いていた窓も閉じる）
+let chatWanted = true;
+
+/** 横のボタンに「チャット」を出せるか（SDK が読めて、窓を開ける版のとき） */
+export function isChatAvailable() {
+  const bg = sdk();
+  return !!(bg && bg.chat && typeof bg.chat.open === 'function');
+}
+
+/** 窓を開く（横のボタンから） */
+export function openChat() {
+  const bg = sdk();
+  if (!bg || !bg.chat || typeof bg.chat.open !== 'function') return;
+  try { bg.chat.open(); } catch (e) { console.warn('[platform] chat', e); }
+}
+
+function applyChatVisible() {
+  const bg = sdk();
+  if (!bg || !bg.chat || typeof bg.chat.setVisible !== 'function') return;
+  try { bg.chat.setVisible(chatWanted); } catch (e) { console.warn('[platform] chat', e); }
+}
+
+/** 窓を出せる（true）／隠す（false。開いていれば閉じる）。SDK がない・古いときは覚えておいて、読めたときにそろえる */
+export function setChatVisible(on) {
+  chatWanted = !!on;
+  applyChatVisible();
+}
+
+// モーダルやスキルツリーは重なって開くので、数えて 0 に戻ったときだけ出す
+let chatBlockers = 0;
+export function blockChat() { chatBlockers++; setChatVisible(false); }
+export function unblockChat() { chatBlockers = Math.max(0, chatBlockers - 1); if (chatBlockers === 0) setChatVisible(true); }
 
 /** エンディングで 1 回送る */
 export function reportScore(metrics) {
