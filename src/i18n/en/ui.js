@@ -117,6 +117,8 @@ export default {
   "{0}・オンライン": "{0} · Online",
   "今日のチャレンジ": "Today's Challenge",
   "🏆 ランキング": "🏆 Rankings",
+  "bearko.games の総合ランキング ↗": "bearko.games overall ranking ↗",
+  "このランキングとは別の、bearko.games のタイトル共通のランキングです": "A separate ranking shared by all bearko.games titles",
   "🎖 実績": "🎖 Achievements",
   "ⓘ このゲームについて": "ⓘ About",
   "◀ メニューに戻る": "◀ Back to menu",
