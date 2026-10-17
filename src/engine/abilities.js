@@ -1,0 +1,234 @@
+import { CAPSTONE_NEED, SKILLS, SKILL_MAP, TREE_NODES } from '../data/skills.js';
+import { mainRoutes, perk, routeCounts } from './perks.js';
+import { addToku, giveSkill, removeSkill } from './effects.js';
+import { track } from './telemetry.js';
+
+export const EXP_TYPES = [
+  { id: 'info', name: '情報' },
+  { id: 'act', name: '行動' },
+  { id: 'tech', name: '技術' },
+  { id: 'social', name: '対人' },
+  { id: 'mind', name: '精神' },
+];
+export const EXP_NAME = Object.fromEntries(EXP_TYPES.map((e) => [e.id, e.name]));
+
+// 経験点の振り替え：余った経験点を、別の種類に半分の値で移す（情報・対人だけ余りがちなので）
+export const CONVERT_RATE = 0.5;
+export function convertExp(s, from, to, amount) {
+  amount = Math.min(Math.floor(amount), s.exp[from] || 0);
+  if (from === to || amount <= 0) return 0;
+  const got = Math.floor(amount * CONVERT_RATE);
+  s.exp[from] -= amount;
+  s.exp[to] = (s.exp[to] || 0) + got;
+  track(s, 'cv', { f: from, t: to, a: amount });
+  return got;
+}
+
+// 基礎能力。行動で貯めた経験点（情報・行動・技術・対人・精神）を組み合わせて上げる。
+export const ABILITIES = [
+  { id: 'eye', name: '目利き', desc: '相場を読む精度と、偽物に気づく力', weights: { info: 1, mind: 0.5 } },
+  { id: 'buy', name: '仕入れ', desc: '掘り出し物を見つける力。抽選・行列にも効く', weights: { act: 1, info: 0.5 } },
+  { id: 'list', name: '出品', desc: '写真と説明文の上手さ。高く・早く売れる', weights: { tech: 1, info: 0.5 } },
+  { id: 'talk', name: '交渉', desc: '値下げ交渉とトラブル対応の上手さ', weights: { social: 1, mind: 0.5 } },
+  { id: 'pack', name: '梱包', desc: '梱包・発送の手際。体力消費と破損が減る', weights: { act: 1, tech: 0.5 } },
+];
+export const ABILITY_NAME = Object.fromEntries(ABILITIES.map((a) => [a.id, a.name]));
+export const ABILITY_MAX = 100;
+
+export function rankOf(v) {
+  if (v >= 90) return 'S';
+  if (v >= 80) return 'A';
+  if (v >= 70) return 'B';
+  if (v >= 60) return 'C';
+  if (v >= 50) return 'D';
+  if (v >= 40) return 'E';
+  if (v >= 20) return 'F';
+  return 'G';
+}
+
+// 能力を +1 するのに必要な経験点。高いほど上げにくい。
+export function abilityCost(abilityId, level) {
+  const ab = ABILITIES.find((a) => a.id === abilityId);
+  const unit = 3 + Math.floor(level / 10) * 1.5;
+  const cost = {};
+  for (const [k, w] of Object.entries(ab.weights)) cost[k] = Math.ceil(unit * w);
+  return cost;
+}
+
+export const canAfford = (s, cost) => Object.entries(cost).every(([k, v]) => (s.exp[k] || 0) >= v);
+
+function pay(s, cost) {
+  for (const [k, v] of Object.entries(cost)) s.exp[k] -= v;
+}
+
+export function raiseAbility(s, abilityId, times = 1) {
+  let done = 0;
+  for (let i = 0; i < times; i++) {
+    const lv = s.abilities[abilityId];
+    if (lv >= ABILITY_MAX) break;
+    const cost = abilityCost(abilityId, lv);
+    if (!canAfford(s, cost)) break;
+    pay(s, cost);
+    s.abilities[abilityId] = lv + 1;
+    done++;
+  }
+  return done;
+}
+
+// 自動で割り振る：いまの経験点で上げられる能力のうち、いちばん低いものから1ずつ、上げられなくなるまで。
+// 同じ高さなら能力の並び順。上げた回数を { 能力id: 回数 } で返す
+export function autoRaise(s) {
+  const done = {};
+  for (;;) {
+    const next = ABILITIES
+      .filter((a) => s.abilities[a.id] < ABILITY_MAX && canAfford(s, abilityCost(a.id, s.abilities[a.id])))
+      .sort((a, b) => s.abilities[a.id] - s.abilities[b.id])[0];
+    if (!next) return done;
+    raiseAbility(s, next.id, 1);
+    done[next.id] = (done[next.id] || 0) + 1;
+  }
+}
+
+// ---------------- スキルツリー ----------------
+export const nodeLv = (s, id) => (s.nodeLv?.[id] || 0);
+const owns = (s, id) => s.skills.includes(id) || nodeLv(s, id) > 0;
+
+// 記録パネル（丸）の現在値
+export function recordValue(s, key) {
+  if (key === 'netTotal') return s.monthly.reduce((a, m) => a + m.net, 0);
+  return s.stats[key] || 0;
+}
+
+// 専門外コスト：ルートのノードを4個以上持ったら、上位2ルート以外のノードは25%高くなる
+export const OFF_ROUTE_RATE = 1.25;
+export function isOffRoute(s, skillId) {
+  const sk = SKILL_MAP[skillId];
+  if (!sk.route || ['starter', 'record', 'red'].includes(sk.kind)) return false;
+  const counts = routeCounts(s);
+  const total = Object.values(counts).reduce((a, n) => a + n, 0);
+  if (total < 4) return false;
+  return !mainRoutes(s).slice(0, 2).includes(sk.route);
+}
+
+// 解放コスト。金ノードはコツLvで安くなり、repeat はレベルごとに高くなり、専門外は高くなる
+export function skillCost(s, skillId) {
+  const sk = SKILL_MAP[skillId];
+  if (sk.kind === 'record') return {};
+  let rate = 1;
+  if (sk.kind === 'gold' || sk.kind === 'perk') {
+    const hint = s.hints[skillId] || 0;
+    rate = 1 - Math.min(0.6, hint * 0.12 + (hint > 0 ? 0.08 : 0));
+  }
+  if (sk.kind === 'repeat') rate = 1 + nodeLv(s, skillId);
+  if (isOffRoute(s, skillId)) rate *= OFF_ROUTE_RATE;
+  const cost = {};
+  for (const [k, v] of Object.entries(sk.cost || {})) cost[k] = Math.ceil(v * rate);
+  return cost;
+}
+
+// 解放できない理由の一覧（空なら解放できる状態）
+export function nodeBlockers(s, skillId) {
+  const sk = SKILL_MAP[skillId];
+  const out = [];
+  if (sk.parent && !owns(s, sk.parent)) out.push(`「${SKILL_MAP[sk.parent].name}」の先`);
+  for (const r of sk.req || []) if (!owns(s, r)) out.push(`「${SKILL_MAP[r].name}」が必要`);
+  if (sk.stage && s.stage < sk.stage) out.push(`ステージ${sk.stage}から`);
+  if (sk.flag && !s.flags[sk.flag]) out.push(sk.flag === 'license' ? '古物商許可が必要' : '条件未達');
+  if (sk.kind === 'gold' && !(s.hints[skillId] > 0)) out.push('偉人からコツを教わる必要がある');
+  // 基礎能力の前提：パネルだけでなく、能力そのものを育てる意味を持たせる
+  for (const [k, v] of Object.entries(sk.need || {})) if (s.abilities[k] < v) out.push(`${ABILITY_NAME[k]}${v}以上（いま${s.abilities[k]}）`);
+  // TOKU（徳）：正道は高くないと、魔道は低くないと取れない。裏の人間は正道を歩めない
+  if (sk.toku?.min !== undefined) out.push(...(s.underworld ? ['裏の人間には歩めない道'] : (s.toku ?? 100) < sk.toku.min ? [`TOKU${sk.toku.min}以上（いま${Math.round(s.toku ?? 100)}）`] : []));
+  if (sk.toku?.max !== undefined && !s.underworld && (s.toku ?? 100) >= sk.toku.max) out.push(`TOKU${sk.toku.max}未満（いま${Math.round(s.toku ?? 100)}）`);
+  // 序盤は選択肢を絞る：売上・仕入れの実績やチュートリアルの進み具合で、各ルートの入口が順に開く
+  for (const g of sk.gate || []) {
+    if (g.flag && !s.flags[g.flag]) out.push(g.label);
+    if (g.key && recordValue(s, g.key) < g.target) out.push(`${g.label}：${Math.floor(recordValue(s, g.key)).toLocaleString()} / ${g.target.toLocaleString()}`);
+  }
+  if (sk.kind === 'record' && recordValue(s, sk.record.key) < sk.record.target) out.push(`${sk.record.label}：${Math.floor(recordValue(s, sk.record.key)).toLocaleString()} / ${sk.record.target.toLocaleString()}`);
+  if (sk.kind === 'capstone') {
+    const n = routeCounts(s)[sk.route] || 0;
+    if (n < CAPSTONE_NEED) out.push(`このルートのノードを${CAPSTONE_NEED}個（いま${n}個）`);
+  }
+  return out;
+}
+
+export function nodeState(s, skillId) {
+  const sk = SKILL_MAP[skillId];
+  if (sk.kind === 'repeat') {
+    if (nodeLv(s, skillId) >= sk.max) return 'owned';
+  } else if (s.skills.includes(skillId)) {
+    return sk.kind === 'red' ? 'red' : 'owned';
+  }
+  if (sk.kind === 'red') return 'none';
+  return nodeBlockers(s, skillId).length ? 'locked' : 'available';
+}
+
+// ツリーに表示するか：中心、持っているノード、親を持っているノード
+export function nodeVisible(s, skillId) {
+  const sk = SKILL_MAP[skillId];
+  if (sk.kind === 'root') return true;
+  if (!sk.route) return false;
+  return owns(s, skillId) || owns(s, sk.parent);
+}
+
+// 「この先がある」ことだけを見せるパネル（灰色の？）。条件を満たしていて、まだ持っていないパネルの1つ先
+export function nodeTeaser(s, skillId) {
+  const sk = SKILL_MAP[skillId];
+  if (!sk.route || nodeVisible(s, skillId)) return false;
+  const parent = SKILL_MAP[sk.parent];
+  return parent.kind !== 'root' && nodeVisible(s, parent.id) && nodeState(s, parent.id) === 'available';
+}
+
+export function learnableSkills(s) {
+  return SKILLS.filter((sk) => ['available', 'red'].includes(nodeState(s, sk.id)));
+}
+
+// イベントやチュートリアルで無料で解放する（learnSkill からは via='exp'：経験点を払って解放）
+export function grantSkill(s, skillId, via = 'free') {
+  const sk = SKILL_MAP[skillId];
+  track(s, 'sk', { id: skillId, ...(via === 'free' ? { free: 1 } : {}) }); // プレイログ
+  if (sk.kind === 'repeat') {
+    s.nodeLv[skillId] = Math.min(sk.max, nodeLv(s, skillId) + 1);
+    applyGrant(s, sk.grant);
+    return;
+  }
+  giveSkill(s, skillId);
+  applyGrant(s, sk.grant);
+  if (sk.tokuDelta) addToku(s, sk.tokuDelta);
+}
+
+// パネルを取ったときに、そのまま上がるパラメータ（基礎能力・体力の上限）
+function applyGrant(s, grant) {
+  if (!grant) return;
+  for (const [k, v] of Object.entries(grant.abilities || {})) s.abilities[k] = Math.min(ABILITY_MAX, s.abilities[k] + v);
+  if (grant.maxStamina) {
+    s.maxStamina += grant.maxStamina;
+    s.stamina += grant.maxStamina;
+  }
+}
+
+export function learnSkill(s, skillId) {
+  const sk = SKILL_MAP[skillId];
+  const state = nodeState(s, skillId);
+  if (state !== 'available' && state !== 'red') return false;
+  const cost = skillCost(s, skillId);
+  if (!canAfford(s, cost)) return false;
+  pay(s, cost);
+  if (sk.kind === 'red') {
+    removeSkill(s, skillId);
+    track(s, 'cure', { id: skillId });
+  } else grantSkill(s, skillId, 'exp');
+  return true;
+}
+
+// 所有ノードの月額維持費（仕組み化ルートの熟練度・物流センターで安くなる）
+export function monthlyNodeFees(s) {
+  const mult = perk(s, 'monthlyFees');
+  return SKILLS.filter((sk) => sk.monthly && s.skills.includes(sk.id)).map((sk) => ({ name: sk.name, amount: Math.round(sk.monthly * mult) }));
+}
+
+// いま自分の手で解放できるパネル（経験点が足りるもの・条件を満たした記録パネル）
+export function claimableNodes(s) {
+  return TREE_NODES.filter((n) => nodeVisible(s, n.id) && nodeState(s, n.id) === 'available' && canAfford(s, skillCost(s, n.id)));
+}

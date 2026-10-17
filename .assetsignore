@@ -1,0 +1,17 @@
+node_modules
+.git
+.github
+.wrangler
+api
+worker
+migrations
+analytics-data
+test
+tools
+docs
+package.json
+package-lock.json
+bun.lock
+wrangler.jsonc
+vercel.json
+.vercelignore
