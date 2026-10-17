@@ -12,6 +12,7 @@ import { isEn, tr } from '../i18n/index.js';
 const SHORT_EN = { store: 'Store', online: 'Web', vintage: 'Used', sales: 'Sell', system: 'Sys', network: 'Net', manage: 'Biz', trade: 'Trade', dark: 'Dark' };
 import { $, clear, h } from './dom.js';
 import { toast } from './modal.js';
+import { blockChat, unblockChat } from '../platform.js';
 
 const UNIT = 108; // 1マスのピクセル
 const RING_R = 2.6 + 0.9; // 中心から1段目と、その先の「？」が収まる距離（マス）
@@ -61,13 +62,16 @@ export function openTree(s, onChange, { focus = null } = {}) {
     viewport.append(world, expSide);
     root.append(head, routeBar, viewport, sheet);
     $('#modal-root').append(root);
+    blockChat();   // 全体チャット（共通基盤 SPEC-004）：スキルツリーの最中は隠す
 
     const prevBgm = currentBgm();
     playBgm('craft');
     const close = () => {
+      if (!root.isConnected) return;   // 2 度閉じても数を狂わせない
       if (prevBgm) playBgm(prevBgm);
       root.remove();
       window.removeEventListener('keydown', onKey);
+      unblockChat();
       resolve();
     };
     const onKey = (e) => {
