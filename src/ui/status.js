@@ -158,6 +158,23 @@ function row(label, value, cls = '') {
   return h('div', { class: 'lg-row' }, h('span', {}, label), h('b', { class: cls }, value));
 }
 
+// 音量のつまみ（0〜100%、5%きざみ。0 は OFF）。保存は 0〜1 のままなので、前の版の 小・中・大（0.35 / 0.7 / 1）もそのまま読め、
+// 表示だけ 5% に丸める。BGMはその場で変わり、効果音は離したときに1つ鳴らして確かめる。描き直すとつまみから手が離れるので refresh はしない
+const volumeLabel = (pct) => (pct === 0 ? 'OFF' : `${pct}%`);
+function volumeRow(kind, label) {
+  const pct = Math.round(volumeOf(kind) * 20) * 5;
+  const value = h('b', { class: 'vol-value' }, volumeLabel(pct));
+  const input = h('input', { type: 'range', min: 0, max: 100, step: 5, value: pct, class: 'vol-range', style: { '--val': `${pct}%` } });
+  input.addEventListener('input', () => {
+    const v = Number(input.value);
+    setVolume(kind, v / 100);
+    value.textContent = volumeLabel(v);
+    input.style.setProperty('--val', `${v}%`);
+  });
+  if (kind === 'se') input.addEventListener('change', () => playSe('coin'));
+  return h('label', { class: 'seg vol-row' }, h('span', {}, `${label}の音量 `), input, value);
+}
+
 export function menuModal({ s, onTitle, onSpeed, speed, onRestart, onChange, onMarket, onBiz, onShop, onDeal, onRivals, onCollection, onCareers, onLife, onCrypto, onMap, onCompanions, onGlossary, onGuide, marketLock, newsCount = 0, fresh = () => false, seen = () => {} }) {
   // 途中で開く項目は、開くまで出さない。開いたら NEW（押したら既読）
   const item = (id, show, label, go, extra = null) => (show
@@ -178,9 +195,8 @@ export function menuModal({ s, onTitle, onSpeed, speed, onRestart, onChange, onM
         h('div', { class: 'menu-h' }, '画面と音'),
         h('div', { class: 'menu-list' },
           h('button', { class: 'btn', onclick: () => { setSound(!soundOn()); api.refresh(); } }, `サウンド: ${soundOn() ? 'ON' : 'OFF'}`),
-          // BGMと効果音の音量を別々に
-          ...[['bgm', 'BGM'], ['se', '効果音']].map(([k, label]) => h('div', { class: 'seg' }, h('span', {}, `${label}の音量 `),
-            ...[['小', 0.35], ['中', 0.7], ['大', 1]].map(([l, v]) => h('button', { class: `btn small ${Math.abs(volumeOf(k) - v) < 0.01 ? 'on' : ''}`, onclick: () => { setVolume(k, v); if (k === 'se') playSe('coin'); api.refresh(); } }, l)))),
+          // BGMと効果音の音量を別々に（0〜100%、5%きざみ。0 は OFF）
+          ...[['bgm', 'BGM'], ['se', '効果音']].map(([k, label]) => volumeRow(k, label)),
           canVibrate() ? h('button', { class: 'btn', onclick: () => { setVibrate(!vibrateEnabled()); if (vibrateEnabled()) buzz(30); api.refresh(); } }, `振動: ${vibrateEnabled() ? 'ON' : 'OFF'}`) : null,
           h('button', { class: 'btn', onclick: () => { setOneTap(!oneTap()); api.refresh(); } }, `行動を1タップで決める: ${oneTap() ? 'ON（長押しで予告だけ見る）' : 'OFF'}`),
           h('button', { class: 'btn', 'data-no-tr': '', onclick: () => { if (window.confirm(getLang() === 'en' ? 'Switch to Japanese? (The game reloads. Your save is kept.)' : '英語に切りかえますか？（ゲームを読みこみ直します。セーブはそのまま）')) setLang(getLang() === 'en' ? 'ja' : 'en'); } }, getLang() === 'en' ? '日本語 / Japanese' : 'English / 英語'),
