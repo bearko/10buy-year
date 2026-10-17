@@ -12,6 +12,7 @@ import { oneTap, setOneTap } from './prefs.js';
 import { FONT_SCALES, fontScale, setFontScale } from './a11y.js';
 import { getLang, setLang } from '../i18n/index.js';
 import { h, signYen, yenFmt } from './dom.js';
+import { canPickAvatar, openAvatarPicker } from '../platform.js';
 import { openModal, toast } from './modal.js';
 import { logUi, setTelemetryEnabled, telemetryEnabled } from './telemetry.js';
 
@@ -194,6 +195,8 @@ export function menuModal({ s, onTitle, onSpeed, speed, onRestart, onChange, onM
         h('button', { class: 'menu-back', onclick: () => { view = 'main'; api.refresh(); } }, '◀ メニューに戻る'),
         h('div', { class: 'menu-h' }, '画面と音'),
         h('div', { class: 'menu-list' },
+          // bearko.games 共通のアイコン（SPEC-005 5.3）。SDK が読めているときだけ。閉じてから窓を開く（モーダルの最中はチャットが隠れるため）
+          canPickAvatar() ? h('button', { class: 'btn', onclick: () => { api.close(); openAvatarPicker(); } }, 'アイコンを変える（bearko.games 全体で共通）') : null,
           h('button', { class: 'btn', onclick: () => { setSound(!soundOn()); api.refresh(); } }, `サウンド: ${soundOn() ? 'ON' : 'OFF'}`),
           // BGMと効果音の音量を別々に（0〜100%、5%きざみ。0 は OFF）
           ...[['bgm', 'BGM'], ['se', '効果音']].map(([k, label]) => volumeRow(k, label)),

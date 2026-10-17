@@ -77,6 +77,18 @@ export function setChatVisible(on) {
   applyChatVisible();
 }
 
+/** bearko.games 共通のアイコンを選ぶ窓（SDK 1.7.0）。SDK がない・古いときは false */
+export function canPickAvatar() {
+  const bg = sdk();
+  return !!(bg && typeof bg.openAvatarPicker === 'function');
+}
+export function openAvatarPicker() {
+  const bg = sdk();
+  if (!bg || typeof bg.openAvatarPicker !== 'function') return false;
+  try { bg.openAvatarPicker(); } catch (e) { console.warn('[platform] avatar', e); }
+  return true;
+}
+
 // モーダルやスキルツリーは重なって開くので、数えて 0 に戻ったときだけ出す
 let chatBlockers = 0;
 export function blockChat() { chatBlockers++; setChatVisible(false); }
