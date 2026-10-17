@@ -1103,6 +1103,13 @@ function rankingModal() {
   const online = h('div', { class: 'online-list' }, h('p', { class: 'note' }, '読み込み中…'));
   fetchRanking(weekKey()).then((data) => online.replaceChildren(...rankingList(data).filter(Boolean)));
   openModal('ランキング', (body) => {
+    // bearko.games の総合ランキングへ（MyCryptoPortfolio#29）。この画面のランキングとは別物だと分かるように添え書きする。
+    // 新しいタブで開く：遊んでいる途中の画面を失わないため
+    body.append(
+      h('p', { class: 'platform-link' },
+        h('a', { href: 'https://bearko.games/score/?game=10buy', target: '_blank', rel: 'noopener' }, 'bearko.games の総合ランキング ↗'),
+        h('small', {}, 'このランキングとは別の、bearko.games のタイトル共通のランキングです')),
+    );
     body.append(
       h('div', { class: 'sub' }, `今週のチャレンジ（${weekRange()}）オンライン`),
       h('p', { class: 'note' }, 'この週は誰が遊んでも、同じ相場・同じ出来事から始まる（難易度ふつう）。遊び終えたら、エンディングで登録できる。'),

@@ -1897,3 +1897,8 @@ body.stage-xs #side-btns .side-btn.quest, body.stage-xs #side-btns .side-btn.tre
 .cmd .event-tag { position: absolute; top: -8px; right: -4px; z-index: 1; font-size: calc(10px * var(--fs, 1)); font-weight: 700; padding: 1px 7px; border-radius: 99px; background: linear-gradient(135deg, #f5c542, #e3a81f); color: #221a00; box-shadow: 0 0 10px #f5c54288; animation: new-pulse 1.4s ease-in-out infinite; white-space: nowrap; }
 .cmd.grp .grp-event { position: absolute; left: 50%; bottom: -7px; transform: translateX(-50%); font-size: calc(9px * var(--fs, 1)); font-weight: 700; padding: 0 6px; border-radius: 99px; background: #f5c542; color: #221a00; white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) { .cmd .event-tag { animation: none; } }
+
+/* bearko.games の総合ランキングへの導線（MyCryptoPortfolio#29） */
+.platform-link { display: flex; flex-direction: column; gap: 2px; margin: 0 0 10px; text-align: center; }
+.platform-link a { color: var(--gold); font-weight: bold; font-size: calc(14px * var(--fs, 1)); }
+.platform-link small { color: var(--muted); font-size: calc(11px * var(--fs, 1)); }

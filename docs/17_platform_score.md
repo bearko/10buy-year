@@ -24,6 +24,11 @@ bearko.games の総合スコア（[bearko/mycryptoportfolio の SPEC-002](https:
 - 送ったものはセーブ（`s.trophies`）に覚えて、同じプレイでは送り直さない。通信に失敗したら次の週に送り直す。通知は SDK が出す
 - 定義（名前・説明）は共通基盤の `platform/trophies.js`。ID は変えない
 
+## 総合ランキングへの導線（MyCryptoPortfolio#29）
+
+- ランキングの画面（`rankingModal`）のいちばん上に「bearko.games の総合ランキング ↗」と添え書き。行き先は `https://bearko.games/score/?game=10buy`（共通基盤のタイトル別ランキング）
+- 新しいタブで開く。週替わりのオンラインランキング・この端末の記録はそのまま
+
 ## テスト
 
 `npm test`（`test/platform.test.js`）
