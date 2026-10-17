@@ -1827,6 +1827,18 @@ body.stage-xs #side-btns .side-btn.quest, body.stage-xs #side-btns .side-btn.tre
 .menu-back { font: inherit; font-size: calc(13px * var(--fs, 1)); background: none; border: 1px solid var(--line); color: var(--gold); border-radius: 99px; padding: 3px 12px; margin-bottom: 10px; cursor: pointer; }
 .menu-list + .menu-h { margin-top: 14px; }
 
+/* 音量のつまみ（G2）：BGM・効果音を 0〜100%（5%きざみ）。帯はいまの値まで色で埋める（--val は status.js が入れる） */
+.vol-row { flex-wrap: nowrap; gap: 8px; }
+.vol-row > span { flex: none; }
+.vol-value { flex: none; min-width: 3.4em; text-align: right; color: var(--info); }
+.vol-range { flex: 1; min-width: 0; -webkit-appearance: none; appearance: none; height: 28px; margin: 0; background: transparent; cursor: pointer; }
+.vol-range::-webkit-slider-runnable-track { height: 10px; border-radius: 99px; border: 1px solid var(--line); background: linear-gradient(90deg, var(--info) var(--val, 100%), #0005 var(--val, 100%)); }
+.vol-range::-moz-range-track { height: 10px; border-radius: 99px; border: 1px solid var(--line); background: #0005; }
+.vol-range::-moz-range-progress { height: 10px; border-radius: 99px; background: var(--info); }
+.vol-range::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; margin-top: -6px; border-radius: 50%; background: var(--text); border: 2px solid var(--info); }
+.vol-range::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: var(--text); border: 2px solid var(--info); }
+.vol-range:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
 /* タイトル画面の整理（E5）：つづきから／はじめからを大きく、チャレンジは横並び、そのほかは下に小さく */
 .title-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: min(340px, 100%); }
 .title-row .btn { min-width: 0; padding: 8px 6px; font-size: calc(13px * var(--fs, 1)); }
