@@ -6,7 +6,10 @@ import { upstashStore } from './_ranking.js';
 
 export const MAX_BODY = 64 * 1024;
 export const MAX_EVENTS = 400;
-export const POSTS_PER_HOUR = 240; // 1つのIPから1時間に受け取る回数（家族・学校などで共有していても足りるように多め）
+export const POSTS_PER_HOUR = 120; // 1つのIPから1時間に受け取る回数（ふつうは 1 分に 1 回まで。家族・学校などで共有していても足りるように多め）
+export const MAX_EVENT = 2048;     // 1件の大きさ（月末の 'mon' は集計と状態を持つので MAX_EVENT_MON）
+export const MAX_EVENT_MON = 16384;
+export const MAX_DEPTH = 4;        // 入れ子の深さ（mon の t：{種類: {キー: [個数, 金額]}} が 3 段）
 const TTL = 180 * 24 * 3600;
 const JST = 9 * 3600 * 1000;
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -15,6 +18,8 @@ const EV_RE = /^[a-z]{2,12}$/;
 
 export const dayKey = (now) => new Date(now + JST).toISOString().slice(0, 10);
 const listKey = (day) => `10buy:tlm:${day}`;
+
+const depthOf = (x, d = 0) => (x && typeof x === 'object' ? (d >= 8 ? 99 : 1 + Math.max(0, ...Object.values(x).map((v) => depthOf(v, d + 1)))) : 0);
 
 // 送られてきた束を確かめる。ゲームの中身までは見ない（形と大きさだけ）
 export function validateBatch(body) {
@@ -26,6 +31,8 @@ export function validateBatch(body) {
     if (!e || typeof e !== 'object' || !EV_RE.test(e.e || '')) return { ok: false, error: 'event' };
     if (e.g != null && !ID_RE.test(e.g)) return { ok: false, error: 'game' };
     if (e.w != null && !(Number.isInteger(e.w) && e.w >= 0 && e.w <= 1000)) return { ok: false, error: 'week' };
+    // 中身は見ないが、1件の大きさと入れ子の深さは確かめる（ゲームの外から大きなものを積まれないように）
+    if (JSON.stringify(e).length > (e.e === 'mon' ? MAX_EVENT_MON : MAX_EVENT) || depthOf(e) > MAX_DEPTH) return { ok: false, error: 'event' };
   }
   const short = (x) => (typeof x === 'string' ? x.slice(0, 16) : undefined);
   return { ok: true, batch: { v: 1, pid: body.pid, sid: body.sid, dev: short(body.dev), lang: short(body.lang), ev: body.ev } };

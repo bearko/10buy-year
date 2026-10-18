@@ -1961,10 +1961,12 @@ test('チュートリアル中は、値下げ交渉・取引トラブル・偉�
 // ---------------- プレイログ ----------------
 import { setTelemetrySink, setTelemetryContext, track } from '../src/engine/telemetry.js';
 import { createTelemetryHandler, dayKey, memoryTelemetryStore, validateBatch } from '../api/_telemetry.js';
+import { snapshot as snapshotForTest } from '../src/engine/playlog.js';
 
 test('プレイログ：行動・仕入れ・販売・ツリー・月末の集計が記録される（プレイIDのないゲームは記録しない）', () => {
   const evs = [];
-  setTelemetrySink((ev) => evs.push(ev));
+  const sent = []; // ブラウザが送る形（月末は状態の要約つき）
+  setTelemetrySink((ev, st) => { evs.push(ev); sent.push({ g: 'testgame01', at: 1, ...ev, ...(ev.e === 'mon' ? snapshotForTest(st) : {}) }); });
   try {
     const clone = { exp: { info: 99 }, abilities: {}, week: 3 };
     track(clone, 'cmd', { id: 'x' });
@@ -1985,6 +1987,11 @@ test('プレイログ：行動・仕入れ・販売・ツリー・月末の集�
   assert.ok(mons.some((m) => m.t.sell && Object.keys(m.t.sell).length), '販路ごとの販売');
   assert.ok(evs.filter((e) => e.e === 'sk').every((e) => typeof e.id === 'string'));
   assert.ok(evs.every((e) => Number.isInteger(e.w)), 'すべてに週が付く');
+  // 受け取り側の 1 件の大きさ・入れ子の深さの上限に、本物のプレイの出来事が収まる
+  for (let i = 0; i < sent.length; i += 300) {
+    const r = validateBatch({ v: 1, pid: 'player0001', sid: 'session001', ev: sent.slice(i, i + 300) });
+    assert.ok(r.ok, `本物の出来事が受け取れる（${r.error}）`);
+  }
 });
 
 function tcall(handler, { method = 'GET', url = '/api/telemetry', body, ip = '1.2.3.4', auth } = {}) {
@@ -2012,6 +2019,8 @@ test('プレイログの受け取り：形を確かめて日ごとに保存し�
   assert.equal(validateBatch({ ...batch, ev: [] }).error, 'events');
   assert.equal(validateBatch({ ...batch, ev: [{ e: 'DROP TABLE' }] }).error, 'event');
   assert.equal(validateBatch({ ...batch, ev: [{ e: 'cmd', w: -1 }] }).error, 'week');
+  assert.equal(validateBatch({ ...batch, ev: [{ e: 'cmd', w: 1, junk: 'x'.repeat(5000) }] }).error, 'event', '1件が大きすぎる');
+  assert.equal(validateBatch({ ...batch, ev: [{ e: 'cmd', w: 1, a: { b: { c: { d: { e: 1 } } } } }] }).error, 'event', '入れ子が深すぎる');
   assert.equal((await tcall(handler, { method: 'POST', body: 'x'.repeat(70 * 1024) })).status, 413, '大きすぎる束');
   assert.equal((await tcall(handler, { url: '/api/telemetry?day=2026-10-09' })).status, 401, 'トークンなしでは読めない');
   assert.equal((await tcall(handler, { url: '/api/telemetry?day=2026-10-09', auth: 'Bearer nope' })).status, 401);
