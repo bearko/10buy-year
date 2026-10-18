@@ -10,20 +10,19 @@
 | ファイル | 役目 |
 | --- | --- |
 | `src/engine/weekly.js` | 週の区切り・シード・登録内容のチェック（ブラウザとサーバーで共通） |
-| `api/ranking.js` | Vercel のサーバーレス関数（入口） |
-| `api/_ranking.js` | 処理の本体と保存先（Upstash Redis／メモリ） |
+| `worker/index.js` | Cloudflare Workers の入口（`/api/ranking` を受ける） |
+| `api/_ranking.js` | 処理の本体と保存先（D1／Upstash Redis／メモリ） |
+| `migrations/0002_ranking.sql` | D1 の表（`ranking`・`ranking_hits`） |
 | `src/ui/online.js` | 登録欄・順位表・通信 |
 | `tools/dev-server.mjs` | `npm run dev`：静的ファイルと API をまとめて配信（保存先はメモリ） |
 
-## 公開のための設定（人の作業）
+## 保存先
 
-保存先に **Upstash Redis**（無料枠あり）を使う。Vercel の管理画面から：
+**Cloudflare D1** の `10buy-telemetry`（プレイログと同じデータベース。`wrangler.jsonc` の `TELEMETRY_DB`）。人の作業は要らない。
 
-1. プロジェクト → **Storage**（または Marketplace）→ **Upstash for Redis** を作成し、このプロジェクトにつなぐ
-2. 環境変数 `KV_REST_API_URL` と `KV_REST_API_TOKEN`（または `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`）が自動で入る
-3. 再デプロイする
-
-つながっていないあいだ、API は `503 not-configured` を返し、ゲームには「オンラインランキングはまだ準備中です」と出る（遊ぶのには影響しない）。
+- 表は `migrations/0002_ranking.sql`。1 週 × 1 プレイヤーに 1 行で、純資産が上がったときだけ書き換える。90 日で消える
+- 2026-10 までは Vercel の Upstash Redis だった。Cloudflare に移ったあとは Upstash のキーを登録しておらず、保存先がつながっていなかったと見られる（本番の `/api/ranking` がエラーを返していた。つながっていないと `503 not-configured` で、ゲームには「オンラインランキングはまだ準備中です」と出る）。Upstash の記録は引き継いでいない（週替わりで今週と先週しか登録できないため）
+- `TELEMETRY_DB` がないとき（`npm run dev`）は、Upstash の環境変数（`KV_REST_API_URL` / `KV_REST_API_TOKEN`）があればそれ、なければメモリ
 
 ## 不正への備え（できていること・できていないこと）
 
@@ -35,4 +34,4 @@
 - 1つのIPから1時間に20回まで
 - データは90日で消える
 
-本格的に防ぐには、プレイヤーの操作を記録してサーバーで再現（リプレイ検証）する必要があるが、店舗せどり・電脳せどりの実時間の操作があるため、今はやっていない。おかしな記録は Upstash の管理画面から `10buy:rank:<週>` の該当メンバーを消す。
+本格的に防ぐには、プレイヤーの操作を記録してサーバーで再現（リプレイ検証）する必要があるが、店舗せどり・電脳せどりの実時間の操作があるため、今はやっていない。おかしな記録は、Cloudflare の管理画面（D1 → `10buy-telemetry` → Console）で `DELETE FROM ranking WHERE week = '2026-W43' AND player = '…'` のように消す。

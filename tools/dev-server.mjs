@@ -1,7 +1,7 @@
 // 開発用サーバー：静的ファイルと /api/ranking・/api/telemetry（メモリに保存。再起動で消える）を配信する。
 // プレイログは localhost では既定で送らない。確かめるときは、設定の「プレイ記録を送って改善に協力する」をONにする（読み出しのトークンは dev）
 // 使い方: npm run dev → http://localhost:8000/
-// Upstash の環境変数（KV_REST_API_URL / KV_REST_API_TOKEN）があれば、本物の保存先を使う
+// Upstash の環境変数（KV_REST_API_URL / KV_REST_API_TOKEN）があれば、そちらを使う（本番は Cloudflare D1。worker/index.js）
 import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';

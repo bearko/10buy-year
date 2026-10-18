@@ -1,5 +1,5 @@
 // プレイログの受け取り（api/telemetry.js・worker/index.js から使う）。保存先は差し替えられる：
-// Cloudflare では D1、Vercel では Upstash Redis（ランキングと同じ）、テストはメモリ。
+// Cloudflare では D1（ランキングと同じ 10buy-telemetry）、Upstash Redis（Vercel のころの保存先）も使える、テストはメモリ。
 // 受け取った束は、受け取った日（日本時間）ごとのリストに入れる。180日で消える。IPアドレスは回数制限にだけ使い、保存しない。
 // 読み出し（GET）は、環境変数 TELEMETRY_READ_TOKEN と同じトークンを Authorization: Bearer で渡したときだけ。
 import { upstashStore } from './_ranking.js';

@@ -1,5 +1,6 @@
-// オンラインランキングの中身（api/ranking.js から使う）。保存先は差し替えられる：
-// 本番は Upstash Redis（Vercel の Marketplace でつなぐと環境変数が入る）、テストはメモリ
+// オンラインランキングの中身（worker/index.js・tools/dev-server.mjs から使う）。保存先は差し替えられる：
+// 本番は Cloudflare D1（プレイログと同じ 10buy-telemetry。表は migrations/0002_ranking.sql）、テストはメモリ。
+// Upstash Redis も残してある（Vercel で公開していたころの保存先。環境変数があれば使える）
 import { openWeeks, validateEntry, weekKey } from '../src/engine/weekly.js';
 
 export const TOP_N = 50;
@@ -52,6 +53,51 @@ export function upstashStore(url, token, fetchFn = fetch) {
   };
 }
 
+// Cloudflare D1（本番）。Upstash と同じ動き：自己ベストを更新したときだけ書き換え、90 日で消える
+export function d1Store(db, { random = Math.random, now = () => Date.now() } = {}) {
+  return {
+    async hit(ip, hour) {
+      const row = await db
+        .prepare('INSERT INTO ranking_hits (key, hour, count) VALUES (?1, ?2, 1) ON CONFLICT (key) DO UPDATE SET count = count + 1 RETURNING count')
+        .bind(`r:${ip}:${hour}`, hour)
+        .first();
+      if (random() < 0.01) await db.prepare('DELETE FROM ranking_hits WHERE hour < ?1').bind(hour - 2).run();
+      return Number(row?.count ?? 1);
+    },
+    async submit(e) {
+      const at = now();
+      const r = await db
+        .prepare(
+          'INSERT INTO ranking (week, player, net_worth, entry, updated_at) VALUES (?1, ?2, ?3, ?4, ?5) ' +
+            'ON CONFLICT (week, player) DO UPDATE SET net_worth = excluded.net_worth, entry = excluded.entry, updated_at = excluded.updated_at ' +
+            'WHERE excluded.net_worth > ranking.net_worth',
+        )
+        .bind(e.week, e.player, Math.round(e.netWorth), JSON.stringify(e), at)
+        .run();
+      if (random() < 0.01) await db.prepare('DELETE FROM ranking WHERE updated_at < ?1').bind(at - TTL * 1000).run();
+      return Number(r?.meta?.changes ?? 0) > 0;
+    },
+    async top(week, n) {
+      const { results } = await db
+        .prepare('SELECT player, net_worth, entry FROM ranking WHERE week = ?1 ORDER BY net_worth DESC, updated_at ASC LIMIT ?2')
+        .bind(week, n)
+        .all();
+      return results.map((r) => ({ ...JSON.parse(r.entry || '{}'), player: r.player, netWorth: Number(r.net_worth) }));
+    },
+    async position(week, player) {
+      const [mine, total] = await db.batch([
+        db.prepare('SELECT net_worth FROM ranking WHERE week = ?1 AND player = ?2').bind(week, player),
+        db.prepare('SELECT COUNT(*) AS n FROM ranking WHERE week = ?1').bind(week),
+      ]);
+      const best = mine.results[0] ? Number(mine.results[0].net_worth) : null;
+      const n = Number(total.results[0]?.n ?? 0);
+      if (best === null) return { position: null, total: n, best: null };
+      const above = await db.prepare('SELECT COUNT(*) AS n FROM ranking WHERE week = ?1 AND net_worth > ?2').bind(week, best).first();
+      return { position: Number(above?.n ?? 0) + 1, total: n, best };
+    },
+  };
+}
+
 // テスト・ローカル確認用
 export function memoryStore() {
   const hits = new Map();
@@ -81,8 +127,9 @@ export function memoryStore() {
   };
 }
 
-// 環境変数から保存先を作る。つながっていなければ null
+// 環境変数から保存先を作る。D1（TELEMETRY_DB）があればそれ、なければ Upstash。どちらもなければ null
 export function storeFromEnv(env = process.env) {
+  if (env.TELEMETRY_DB) return d1Store(env.TELEMETRY_DB);
   const url = env.KV_REST_API_URL || env.UPSTASH_REDIS_REST_URL;
   const token = env.KV_REST_API_TOKEN || env.UPSTASH_REDIS_REST_TOKEN;
   return url && token ? upstashStore(url, token) : null;
