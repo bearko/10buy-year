@@ -48,6 +48,7 @@ English: open with `?lang=en` or press “Play in English” on the title screen
 | [docs/06_counterfeit_checks.md](docs/06_counterfeit_checks.md) | せどりの偽物見極めポイントと、仕入れ画面（フリマ・通販・店舗風）への落とし込み |
 | [docs/07_next_spec.md](docs/07_next_spec.md) | 次の改修の仕様（プレイフィードバック：目標欄と演出、ルーティン、会話ログ、資格、自分の店、TOKUと魔道ルートなど） |
 | [docs/03_roadmap.md](docs/03_roadmap.md) | 開発ロードマップ（MVP v1・v2 → α → β → 1.0 → 公開後） |
+| [CHANGELOG.md](CHANGELOG.md) | 更新履歴（v1.0.0 から） |
 | [docs/04_pro_reseller_life.md](docs/04_pro_reseller_life.md) | 追加調査：専業転売屋の一日・週・月のリズム、商材別の苦労と戦略、あるある、ゲームへの落とし込み案 |
 | [docs/05_career_and_kpi.md](docs/05_career_and_kpi.md) | 追加調査：転売屋の10年キャリアパスとKPI（素人〜玄人の見る目の違い）、ゲームでの実装 |
 | [docs/16_play_telemetry.md](docs/16_play_telemetry.md) | プレイログ（匿名のプレイ記録）：記録する項目、止め方、公開の設定、分析レポートの見方 |
