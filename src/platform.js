@@ -11,11 +11,11 @@ export function scoreMetrics(s, netWorth) {
     years,
     netWorth: Math.round(netWorth || 0),
     difficulty: s.difficulty || 'normal',
-    // 将来の難易度ごとのレギュレーション用（今は点に効かない）
+    // 事業売却（exit）は遊び切ったのと同じに数える（共通基盤 SPEC-002 3.8 v2）
     ending: s.over || null,
     daily: s.daily || null,
     weekly: s.weekly || null,
-    // 前の周からの継承：継承スキルの ID と、師匠がついたか（今は記録だけ。点に効かない）
+    // 前の周からの継承：継承スキルの ID と、師匠がついたか（v2 から点の係数になる。継承なしがいちばん高い）
     legacy: s.legacy || null,
     mentor: !!s.mentor,
   };
@@ -127,5 +127,76 @@ export function reportTrophies(s, r = null) {
     } catch (e) {
       retry(id, e);
     }
+  }
+}
+
+// ---------------------------------------------------------------- RTA（共通基盤 SPEC-001 6.18。レギュレーション 10buy-stage5）
+// 今週のチャレンジを「⏱ RTA で挑む」で始めると、ステージ 2〜5 に上がった週を区切りとして送る。
+// 順位はステージ 5 に着いた週（IGT）で決まるので、igtMs の欄に週をそのまま入れる。
+// 計測はこのページの中だけで持つ（再読み込み・つづきから・タイトルに戻ると消える）
+export const RTA_REGULATION = '10buy-stage5';
+const RTA_CHECKPOINTS = { 2: 'stage2', 3: 'stage3', 4: 'stage4', 5: 'clear' };
+
+/** 届いたステージのうち、まだ送っていない区切り（sent は送り終えたステージ）。IGT は上がった週。純関数 */
+export function rtaPendingCheckpoints(s, sent) {
+  const out = [];
+  for (let st = Math.max(2, (sent | 0) + 1); st <= Math.min(5, s.stage | 0); st++) {
+    const week = s.stageWeeks?.[st] ?? s.week;
+    out.push({ id: RTA_CHECKPOINTS[st], stage: st, igtMs: Math.max(0, week | 0) });
+  }
+  return out;
+}
+
+let rtaRun = null; // { s, sent, chain }
+
+/** RTA を始められるか（SDK が読めて、計測の関数があるとき） */
+export function canRta() {
+  const bg = sdk();
+  return !!(bg && bg.rta && typeof bg.rta.start === 'function');
+}
+
+export const isRtaRunning = () => !!rtaRun;
+
+/** 計測を始める。s はこれから遊ぶプレイ。始められたら true（失敗してもゲームはふつうに遊べる） */
+export async function rtaStart(s, timerOffset = 0) {
+  rtaAbort();
+  if (!canRta()) return false;
+  try {
+    const r = await sdk().rta.start({ regulation: RTA_REGULATION, timerOffset });
+    if (!r || !r.ok) {
+      console.warn('[platform] rta start', r && r.error);
+      return false;
+    }
+    rtaRun = { s, sent: s.stage | 0, chain: Promise.resolve() };
+    return true;
+  } catch (e) {
+    console.warn('[platform] rta start', e);
+    return false;
+  }
+}
+
+/** 週ごとに呼ぶ。上がったステージの区切りを順に送る（前の区切りの返事を待ってから次を送る） */
+export function rtaProgress(s) {
+  const run = rtaRun;
+  if (!run || run.s !== s) return;
+  for (const cp of rtaPendingCheckpoints(s, run.sent)) {
+    run.sent = cp.stage;
+    run.chain = run.chain
+      .then(() => sdk().rta.checkpoint(cp.id, { igtMs: cp.igtMs }))
+      .then((r) => { if (!r || !r.ok) console.warn('[platform] rta checkpoint', cp.id, r && r.error); })
+      .catch((e) => console.warn('[platform] rta checkpoint', cp.id, e));
+    if (cp.stage >= 5) rtaRun = null; // 最後の区切りで計測が終わる
+  }
+}
+
+/** 中断（ステージ 5 より前のゲームオーバー・事業売却、タイトルに戻る、別のプレイを始める） */
+export function rtaAbort() {
+  if (!rtaRun) return;
+  rtaRun = null;
+  const bg = sdk();
+  try {
+    if (bg && bg.rta && typeof bg.rta.abort === 'function') Promise.resolve(bg.rta.abort()).catch((e) => console.warn('[platform] rta abort', e));
+  } catch (e) {
+    console.warn('[platform] rta abort', e);
   }
 }
