@@ -79,6 +79,9 @@ import { flush as flushPlaylog, initTelemetry, logGame, logUi, startPlaylog } fr
 import { setTelemetryContext } from './engine/telemetry.js';
 import { endingData } from './engine/playlog.js';
 
+// 版（package.json・CHANGELOG.md とそろえる。共通基盤にも送る）
+const APP_VERSION = '1.0.0';
+
 let state = null;
 let busy = false;
 let speed = 22;
@@ -1164,6 +1167,7 @@ function aboutModal() {
       h('div', { class: 'sub' }, 'クレジット'),
       h('p', {}, 'ヒーロー・エクステンション・エネミー・背景・音声：My Crypto Heroes（MCH Co., Ltd.）の二次創作ガイドラインに基づき使用'),
       h('p', {}, 'クリスくん／マインちゃん ドット絵：こじもこ　マイクリくん 原画：こはるさん／ドット絵：こじもこさん'),
+      h('p', {}, h('small', {}, `v${APP_VERSION}`)),
     );
   });
 }
@@ -1313,7 +1317,7 @@ async function shareResult(r, chris) {
 }
 
 initFontScale();
-initPlatform('0.1.0'); // bearko.games 共通基盤（総合スコア・トロフィー）。SDK がなければ何もしない
+initPlatform(APP_VERSION); // bearko.games 共通基盤（総合スコア・トロフィー・RTA）。SDK がなければ何もしない
 initPixelArt(); // ドット絵を端末の画素の整数倍で出す
 initLayout(); // ステージの高さを、画面の高さと行動カードの段数に合わせる
 // 右のパネルの基礎能力を押したら、能力強化の画面を開く
