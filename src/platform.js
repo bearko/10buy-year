@@ -1,6 +1,8 @@
-// bearko.games 共通基盤への窓口（総合スコアとトロフィー。bearko/mycryptoportfolio の SPEC-002 3.8・SPEC-001 9.4）
+// bearko.games 共通基盤への窓口（総合スコアとアチーブメント。bearko/mycryptoportfolio の SPEC-002 3.8・SPEC-001 9.4・SPEC-008）
 // SDK（https://bearko.games/sdk/v1.js）が読めない・通信に失敗しても何もしない。ゲームの進行は止めない。
 import { YEAR_WEEKS, TOTAL_YEARS } from './engine/calendar.js';
+import { questsDone } from './engine/quests.js';
+import { tutorialDone } from './engine/tutorial.js';
 
 const sdk = () => (typeof window !== 'undefined' ? window.BearkoGames : undefined);
 
@@ -21,12 +23,26 @@ export function scoreMetrics(s, netWorth) {
   };
 }
 
-/** いま取れているトロフィー（共通基盤の platform/trophies.js の 10buy.*）。r はエンディングの最終査定。純関数 */
+/**
+ * いま取れているアチーブメント（共通基盤の platform/trophies.js の 10buy.*。docs/17）。r はエンディングの最終査定。純関数。
+ * セーブに残る値だけで判定する（前から遊んでいる人にも付く）。10buy.visit は SDK が自動で送るので入れない
+ */
 export function earnedTrophies(s, r = null) {
   const ids = [];
+  const sold = s.stats?.soldUnits || 0;
+  const quests = questsDone(s);
+  if (s.flags?.tutorialDone || tutorialDone(s)) ids.push('10buy.tutorial');
+  if (sold >= 1) ids.push('10buy.firstsale');
+  if (quests >= 1) ids.push('10buy.quest1');
+  if ((s.collection || []).length >= 1 || s.museum) ids.push('10buy.collection');
+  if (s.stage >= 2) ids.push('10buy.stage2');
   if (s.flags?.debtFree !== undefined) ids.push('10buy.debtfree');
-  if ((s.stats?.soldUnits || 0) >= 1000) ids.push('10buy.sold1000');
+  if (quests >= 10) ids.push('10buy.quest10');
+  if (s.stage >= 3) ids.push('10buy.stage3');
+  if (s.stage >= 4) ids.push('10buy.stage4');
+  if (sold >= 1000) ids.push('10buy.sold1000');
   if (s.stage >= 5) ids.push('10buy.stage5');
+  if (s.museum) ids.push('10buy.museum');
   // 10 年を走り切った（事業売却での引退も含む）
   if (r && (s.over === 'timeup' || s.over === 'exit')) {
     ids.push('10buy.clear');
@@ -107,27 +123,41 @@ export function reportScore(metrics) {
   }
 }
 
-/** 取れたトロフィーを送る（週のはじめとエンディング）。送ったものは s.trophies に覚えて、同じプレイで送り直さない。失敗したら次の機会に送り直す */
+// この起動（ページ）の中で送れた ID。別のプレイを始めても送り直さない
+const sentThisPage = new Set();
+// 未ログインの最初の書き込みで仮アカウントができるので、1 つずつ順に送る（前の返事を待ってから次）
+let trophyChain = Promise.resolve();
+
+/**
+ * 取れたアチーブメントを送る（週のはじめ・エンディング・コレクションを買った瞬間）。
+ * 送ったものは s.trophies に覚えて、同じプレイで送り直さない。失敗したら次の機会に送り直す。
+ * 返り値は、今回送るものを送り終えたときに解決する Promise（テスト用。呼ぶ側は待たなくてよい）
+ */
 export function reportTrophies(s, r = null) {
   const bg = sdk();
-  if (!bg || typeof bg.unlockTrophy !== 'function') return;
+  if (!bg || typeof bg.unlockTrophy !== 'function') return trophyChain;
   const sent = (s.trophies ||= []);
   const retry = (id, e) => {
-    console.warn('[platform] trophy', id, e);
+    console.warn('[platform] achievement', id, e);
     const i = sent.indexOf(id);
     if (i >= 0) sent.splice(i, 1);
   };
   for (const id of earnedTrophies(s, r)) {
     if (sent.includes(id)) continue;
     sent.push(id);
-    try {
-      Promise.resolve(bg.unlockTrophy(id))
-        .then((x) => { if (!x || !x.ok) retry(id, x && x.error); })
-        .catch((e) => retry(id, e));
-    } catch (e) {
-      retry(id, e);
-    }
+    if (sentThisPage.has(id)) continue;
+    trophyChain = trophyChain
+      .then(() => bg.unlockTrophy(id))
+      .then((x) => { if (x && x.ok) sentThisPage.add(id); else retry(id, x && x.error); })
+      .catch((e) => retry(id, e));
   }
+  return trophyChain;
+}
+
+/** テスト用：この起動で送ったものを忘れる */
+export function resetTrophiesForTest() {
+  sentThisPage.clear();
+  trophyChain = Promise.resolve();
 }
 
 // ---------------------------------------------------------------- RTA（共通基盤 SPEC-001 6.18。レギュレーション 10buy-stage5）

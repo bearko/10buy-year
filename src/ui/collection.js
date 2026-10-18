@@ -4,6 +4,7 @@ import {
   buyPiece, collectionValue, completeSeries, DEPT_RANKS, deptRank, deptSpentYear, MUSEUM_COST, MUSEUM_STAGE, MUSEUM_UPKEEP,
   museumIncome, openMuseum, owned, PIECE_MAP, PIECES, pieceImage, RARITY_NAME, sellPiece, SERIES_BONUS,
 } from '../engine/collection.js';
+import { reportTrophies } from '../platform.js';
 import { playSe } from './audio.js';
 import { h, yenFmt } from './dom.js';
 import { confirmBox, openModal, toast } from './modal.js';
@@ -37,6 +38,7 @@ export function galleryModal(s, step, onChange) {
     const buy = (it) => {
       if (!buyPiece(s, it)) return toast('お金が足りない', 'bad');
       playSe('buy');
+      reportTrophies(s); // アチーブメント 10buy.collection（手放すと消えるので、買った瞬間にも送る）
       toast(`「${PIECE_MAP[it.ext].name}」をコレクションに加えた`, 'good');
       items.splice(items.indexOf(it), 1);
       api.refresh();
