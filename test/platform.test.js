@@ -1,7 +1,7 @@
 // bearko.games 共通基盤（総合スコア）に送る成績
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { earnedTrophies, reportScore, reportTrophies, rtaAbort, rtaPendingCheckpoints, rtaProgress, rtaStart, scoreMetrics } from '../src/platform.js';
+import { earnedTrophies, reportScore, reportTrophies, resetTrophiesForTest, rtaAbort, rtaPendingCheckpoints, rtaProgress, rtaStart, scoreMetrics } from '../src/platform.js';
 
 test('10 年遊び切ったら years は 10、途中で終わったら終えた年数', () => {
   assert.equal(scoreMetrics({ over: 'timeup', week: 480, difficulty: 'hard' }, 5e7).years, 10);
@@ -18,28 +18,43 @@ test('前の周からの継承（継承スキルと師匠）を記録する', ()
   assert.equal(m.mentor, true);
 });
 
-const base = { flags: {}, stats: { soldUnits: 0 }, stage: 1 };
-test('トロフィー：完済・1,000 個・ステージ 5 は遊んでいる途中で、クリアと S ランクはエンディングで', () => {
+const base = { flags: {}, stats: { soldUnits: 0 }, stage: 1, tutorial: 0 };
+test('アチーブメント：はじめは何もない。セーブに残る値から判定する（docs/17）', () => {
   assert.deepEqual(earnedTrophies(base), []);
-  assert.deepEqual(earnedTrophies({ flags: { debtFree: 120 }, stats: { soldUnits: 1000 }, stage: 5 }), ['10buy.debtfree', '10buy.sold1000', '10buy.stage5']);
+  assert.deepEqual(earnedTrophies({ ...base, tutorial: 999 }), ['10buy.tutorial'], 'チュートリアルを終えた');
+  assert.deepEqual(earnedTrophies({ ...base, flags: { tutorialDone: true } }), ['10buy.tutorial'], '以前のセーブのフラグでも');
+  assert.deepEqual(earnedTrophies({ ...base, stats: { soldUnits: 1 } }), ['10buy.firstsale']);
+  assert.deepEqual(earnedTrophies({ ...base, quests: { active: [], done: ['a'] } }), ['10buy.quest1']);
+  assert.deepEqual(earnedTrophies({ ...base, quests: { active: [], done: Array.from({ length: 10 }, (_, i) => `q${i}`) } }), ['10buy.quest1', '10buy.quest10']);
+  assert.deepEqual(earnedTrophies({ ...base, collection: [{ ext: 1 }] }), ['10buy.collection']);
+  assert.deepEqual(earnedTrophies({ ...base, stage: 2 }), ['10buy.stage2']);
+  assert.deepEqual(earnedTrophies({ ...base, stage: 3 }), ['10buy.stage2', '10buy.stage3']);
+  assert.deepEqual(earnedTrophies({ ...base, stage: 4 }), ['10buy.stage2', '10buy.stage3', '10buy.stage4']);
+  // 美術館を開いたあとでコレクションを手放していても、コレクションは買ったことがある
+  assert.deepEqual(earnedTrophies({ ...base, stage: 5, collection: [], museum: { opened: 300 } }), ['10buy.collection', '10buy.stage2', '10buy.stage3', '10buy.stage4', '10buy.stage5', '10buy.museum']);
+  assert.ok(!earnedTrophies({ ...base, stage: 5, stats: { soldUnits: 9999 } }).includes('10buy.visit'), '来訪は SDK が送る');
+});
+
+test('アチーブメント：完済・1,000 個・ステージ 5 は遊んでいる途中で、クリアと S ランクはエンディングで', () => {
+  assert.deepEqual(earnedTrophies({ flags: { debtFree: 120 }, stats: { soldUnits: 1000 }, stage: 5 }), ['10buy.firstsale', '10buy.stage2', '10buy.debtfree', '10buy.stage3', '10buy.stage4', '10buy.sold1000', '10buy.stage5']);
   assert.deepEqual(earnedTrophies({ ...base, over: 'timeup' }, { rank: 'S' }), ['10buy.clear', '10buy.rank_s']);
   assert.deepEqual(earnedTrophies({ ...base, over: 'exit' }, { rank: 'A' }), ['10buy.clear'], '事業売却での引退もクリア');
   assert.deepEqual(earnedTrophies({ ...base, over: 'bankrupt' }, { rank: 'G' }), [], '途中で終わったらクリアではない');
+  assert.deepEqual(earnedTrophies({ ...base, over: 'timeup' }), [], '最終査定がなければクリアは送らない');
 });
 
-test('トロフィーは同じプレイで 1 回だけ送り、失敗したら次の機会に送り直す', async () => {
+test('アチーブメントは同じプレイで 1 回だけ送り、失敗したら次の機会に送り直す', async () => {
+  resetTrophiesForTest();
   const calls = [];
   let ok = false;
   globalThis.window = { BearkoGames: { unlockTrophy: (id) => { calls.push(id); return Promise.resolve({ ok }); } } };
   try {
     const s = { ...base, flags: { debtFree: 10 } };
-    reportTrophies(s);
-    await new Promise((r) => setTimeout(r, 0));
+    await reportTrophies(s);
     assert.deepEqual(s.trophies, [], '失敗したので覚えない');
     ok = true;
     reportTrophies(s);
-    reportTrophies(s);
-    await new Promise((r) => setTimeout(r, 0));
+    await reportTrophies(s);
     assert.deepEqual(calls, ['10buy.debtfree', '10buy.debtfree']);
     assert.deepEqual(s.trophies, ['10buy.debtfree']);
   } finally {
@@ -47,7 +62,41 @@ test('トロフィーは同じプレイで 1 回だけ送り、失敗したら�
   }
 });
 
-test('SDK がなくてもトロフィーで例外を出さない', () => {
+test('アチーブメントは 1 つずつ順に送る（前の返事を待ってから次）', async () => {
+  resetTrophiesForTest();
+  const log = [];
+  let inFlight = 0;
+  globalThis.window = { BearkoGames: { unlockTrophy: (id) => {
+    inFlight++;
+    log.push([id, inFlight]);
+    return new Promise((res) => setTimeout(() => { inFlight--; res({ ok: true }); }, 2));
+  } } };
+  try {
+    const s = { ...base, stage: 3, stats: { soldUnits: 5 } };
+    await reportTrophies(s);
+    assert.deepEqual(log.map((x) => x[0]), ['10buy.firstsale', '10buy.stage2', '10buy.stage3']);
+    assert.ok(log.every((x) => x[1] === 1), '同時に 2 つ以上送らない');
+  } finally {
+    delete globalThis.window;
+  }
+});
+
+test('同じ起動で送れた ID は、別のプレイを始めても送り直さない', async () => {
+  resetTrophiesForTest();
+  const calls = [];
+  globalThis.window = { BearkoGames: { unlockTrophy: (id) => { calls.push(id); return Promise.resolve({ ok: true }); } } };
+  try {
+    await reportTrophies({ ...base, stats: { soldUnits: 1 } });
+    const next = { ...base, stats: { soldUnits: 1 }, stage: 2 };
+    await reportTrophies(next);
+    assert.deepEqual(calls, ['10buy.firstsale', '10buy.stage2']);
+    assert.deepEqual(next.trophies, ['10buy.firstsale', '10buy.stage2'], 'セーブには覚える');
+  } finally {
+    delete globalThis.window;
+  }
+});
+
+test('SDK がなくてもアチーブメントで例外を出さない', () => {
   assert.doesNotThrow(() => reportTrophies({ ...base, flags: { debtFree: 1 } }));
 });
 

@@ -832,7 +832,7 @@ async function loop() {
       await playSteps(startWeek(state));
       await tutorialStep();
       trackUnlocks();
-      reportTrophies(state); // bearko.games のトロフィー（完済・1,000 個・ステージ 5）
+      reportTrophies(state); // bearko.games のアチーブメント（セーブに残る値から。docs/17）
       rtaProgress(state); // RTA：上がったステージの区切り（SPEC-001 6.18）
       saveGame(state);
       if (state.over) break;
@@ -1317,7 +1317,7 @@ async function shareResult(r, chris) {
 }
 
 initFontScale();
-initPlatform(APP_VERSION); // bearko.games 共通基盤（総合スコア・トロフィー・RTA）。SDK がなければ何もしない
+initPlatform(APP_VERSION); // bearko.games 共通基盤（総合スコア・アチーブメント・RTA）。SDK がなければ何もしない
 initPixelArt(); // ドット絵を端末の画素の整数倍で出す
 initLayout(); // ステージの高さを、画面の高さと行動カードの段数に合わせる
 // 右のパネルの基礎能力を押したら、能力強化の画面を開く
