@@ -13,5 +13,3 @@ package.json
 package-lock.json
 bun.lock
 wrangler.jsonc
-vercel.json
-.vercelignore

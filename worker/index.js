@@ -1,5 +1,5 @@
 // Cloudflare Workers の入口。
-// /api/ranking と /api/telemetry は api/ のハンドラ（Vercel／Node の req・res 形式）に渡し、
+// /api/ranking と /api/telemetry は api/ のハンドラ（Node の req・res 形式）に渡し、
 // それ以外は静的ファイル（ASSETS）をそのまま返す。
 import { createHandler, storeFromEnv } from '../api/_ranking.js';
 import { createTelemetryHandler, d1TelemetryStore, telemetryStoreFromEnv } from '../api/_telemetry.js';

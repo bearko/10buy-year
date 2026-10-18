@@ -16,16 +16,13 @@ npm run dev          # = node tools/dev-server.mjs（python3 -m http.server で�
 # → http://localhost:8000 を開く
 ```
 
-### Vercel で公開する
+### 公開（Cloudflare Workers）
 
-ビルド不要の静的サイトとしてそのまま動きます（設定は `vercel.json`）。
-
-1. Vercel の「Add New… → Project」でこのリポジトリをインポートする
-2. Framework Preset は「Other」のまま（`vercel.json` で `framework: null`・ビルドなし・ルート配信を指定済み）
-3. Deploy を押す。以降は push するたびに自動でデプロイされ、ブランチごとにプレビューURLが発行される
-
-CLI の場合はリポジトリのルートで `npx vercel`（本番は `npx vercel --prod`）。
-`test/`・`tools/`・`.github/` は `.vercelignore` でデプロイ対象から外しています。
+- 本番：https://10-buy-year.bearko.games/ 。本番のブランチ（`claude/resale-game-mvp-mzm460`）にマージすると、Cloudflare Workers Builds が自動で公開する（設定は `wrangler.jsonc`）
+- 静的ファイルはそのまま配信し、`/api/ranking`（週替わりチャレンジのランキング）と `/api/telemetry`（プレイログ）だけ Worker（`worker/index.js`）が受ける
+- 保存先は Cloudflare D1 の `10buy-telemetry`（表は `migrations/`：`0001_telemetry.sql` がプレイログ、`0002_ranking.sql` がランキング）。表を足したら、本番の D1 にも同じ SQL を流す
+- デプロイしないファイルは `.assetsignore`（`test/`・`tools/`・`docs/` など）
+- 2026-10 に Vercel（https://10buy-year.vercel.app/）から移した。Vercel の設定とランキングの保存先（Upstash Redis）は使っていない
 
 ### 基本ルール
 

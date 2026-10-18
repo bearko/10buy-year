@@ -5,9 +5,9 @@
 ## しくみ
 
 ```
-ゲーム（ブラウザ）            サーバー（Vercel）                 手元
+ゲーム（ブラウザ）            サーバー（Cloudflare Workers）     手元
 engine/telemetry.js ─記録点─┐
-ui/telemetry.js  ─送信（束）─→ /api/telemetry ─→ Upstash Redis ─→ tools/analytics/fetch.mjs ─→ report.mjs ─→ dist/analytics.html
+ui/telemetry.js  ─送信（束）─→ /api/telemetry ─→ D1（10buy-telemetry） ─→ tools/analytics/fetch.mjs ─→ report.mjs ─→ dist/analytics.html
                                （日ごとのリスト・180日で消える）     （TELEMETRY_READ_TOKEN）
 ```
 
@@ -16,7 +16,7 @@ ui/telemetry.js  ─送信（束）─→ /api/telemetry ─→ Upstash Redis �
 | `src/engine/telemetry.js` | 記録点（何も import しない）。送り先がつながっていなければ何もしない |
 | `src/engine/playlog.js` | 月末の様子・ゲームの条件・エンディングを短い形にする（ブラウザとボットで共通） |
 | `src/ui/telemetry.js` | ブラウザ側：匿名ID・送信の待ち行列（localStorage）・送信・設定のON/OFF |
-| `api/telemetry.js` / `api/_telemetry.js` | 受け取り（形と大きさの確認・回数制限・保存）と読み出し（トークンつき） |
+| `worker/index.js` / `api/_telemetry.js` | 受け取り（形と大きさの確認・回数制限・保存）と読み出し（トークンつき） |
 | `tools/analytics/lib.mjs` | 集計（プレイごとにまとめて、各分析の数字にする） |
 | `tools/analytics/report.mjs` | 分析レポート（HTML）を作る |
 | `tools/analytics/fetch.mjs` | 本番の記録を日ごとに取ってくる |
@@ -49,13 +49,13 @@ ui/telemetry.js  ─送信（束）─→ /api/telemetry ─→ Upstash Redis �
 
 ## 公開のための設定（人の作業）
 
-保存先はオンラインランキングと同じ Upstash Redis（`docs/13_online_ranking.md`）。追加で：
+保存先は Cloudflare D1 の `10buy-telemetry`（表は `migrations/0001_telemetry.sql`。オンラインランキングと同じデータベース）。追加で：
 
-1. Vercel の環境変数に **`TELEMETRY_READ_TOKEN`**（長いランダムな文字列）を入れて、再デプロイする。読み出しに使う
+1. Cloudflare の Worker `10buy-year` のシークレットに **`TELEMETRY_READ_TOKEN`**（長いランダムな文字列）を入れる（Workers & Pages → 10buy-year → 設定 → 変数とシークレット）。読み出しに使う
 2. 手元で `TELEMETRY_READ_TOKEN=... npm run analytics:fetch -- 2026-10-01 2026-10-31` を実行すると、`analytics-data/日付.jsonl` に保存される（リポジトリには入れない）
 3. `npm run analytics:report` で `dist/analytics.html` ができる（`analytics-data/` の全ファイルを読む。ファイルを指定してもよい）
 
-容量の目安：1プレイを10年遊ぶと約500件・40KB前後。Upstash の無料枠（256MB）なら数千プレイぶんは十分入る。1つのIPから1時間に240回まで、1回64KB・400件まで。
+容量の目安：1プレイを10年遊ぶと約500件・40KB前後。D1 の無料枠（5GB）なら十分入る。1つのIPから1時間に240回まで、1回64KB・400件まで。
 
 ## 分析レポートの見方
 

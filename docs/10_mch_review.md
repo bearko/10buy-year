@@ -1,5 +1,7 @@
 # MCH運営への事前確認資料
 
+> **確認済み**（作者、2026-10-18 に記録）。以下は送った資料の記録。いまの公開先は https://10-buy-year.bearko.games/ （2026-10 に Vercel から移した）
+
 一般公開の前に、My Crypto Heroes（MCH Co., Ltd.）の運営に内容を確認してもらうための資料。
 [MCH デザインガイドライン](https://medium.com/mycryptoheroes/mch-design-guideline-ja-99ff0970ccdc)の禁止事項「ゲームイメージを損なう内容」「公序良俗に反する内容」に、転売という題材が当たらないかを見てもらうのが目的。
 

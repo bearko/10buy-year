@@ -1790,7 +1790,7 @@ test('コード・CSS・HTMLに書いたアセットのパスがすべて存在�
   }
 });
 
-import { createHandler, memoryStore, upstashStore } from '../api/_ranking.js';
+import { createHandler, memoryStore, upstashStore, d1Store, storeFromEnv } from '../api/_ranking.js';
 import { cleanName, openWeeks, validateEntry, weekKey, weeklySeed } from '../src/engine/weekly.js';
 
 // 素の Node の req/res に似せた最小のもの
@@ -1832,9 +1832,12 @@ test('オンラインランキング：ありえない登録をはじき、ラ�
   assert.equal(cleanName('<script>あいうえおかきくけこさしすせそ'), 'scriptあいうえおか');
 });
 
-test('オンラインランキング：登録・自己ベストだけ残る・上位の取得・回数制限', async () => {
+for (const [label, makeStore] of [
+  ['メモリ', async () => memoryStore()],
+  ['D1', async () => d1Store(await sqliteD1(), { random: () => 0, now: () => Date.parse('2026-10-07T12:00:00+09:00') })],
+]) test(`オンラインランキング（${label}）：登録・自己ベストだけ残る・上位の取得・回数制限`, async () => {
   const now = Date.parse('2026-10-07T12:00:00+09:00');
-  const store = memoryStore();
+  const store = await makeStore();
   const handler = createHandler(() => store, { now: () => now });
   const post = (body, ip) => call(handler, { method: 'POST', body: JSON.stringify(body), ip });
   const base = { week: '2026-W41', revenue: 90000000, endingId: 'pro' };
@@ -1852,6 +1855,17 @@ test('オンラインランキング：登録・自己ベストだけ残る・�
   for (let i = 0; i < 25; i++) await post({ ...base, player: 'dddddddd', name: 'D', netWorth: 1000 + i }, '9.9.9.9');
   assert.equal((await post({ ...base, player: 'dddddddd', name: 'D', netWorth: 1 }, '9.9.9.9')).status, 429);
   assert.equal((await call(createHandler(() => null))).status, 503, '保存先がつながっていなければ 503');
+});
+
+test('オンラインランキング：保存先は D1（TELEMETRY_DB）を先に使い、なければ Upstash、どちらもなければ null', async () => {
+  const db = await sqliteD1();
+  const d1 = storeFromEnv({ TELEMETRY_DB: db, KV_REST_API_URL: 'https://x.upstash.io', KV_REST_API_TOKEN: 't' });
+  assert.equal(await d1.submit({ week: '2026-W41', player: 'aaaaaaaa', name: 'A', netWorth: 100 }), true);
+  assert.equal(await d1.submit({ week: '2026-W41', player: 'aaaaaaaa', name: 'A', netWorth: 50 }), false, '下がった記録は書き換えない');
+  assert.deepEqual((await d1.top('2026-W41', 10)).map((e) => [e.name, e.netWorth]), [['A', 100]]);
+  assert.deepEqual(await d1.position('2026-W41', 'zzzzzzzz'), { position: null, total: 1, best: null });
+  assert.ok(storeFromEnv({ KV_REST_API_URL: 'https://x.upstash.io', KV_REST_API_TOKEN: 't' }));
+  assert.equal(storeFromEnv({}), null);
 });
 
 test('オンラインランキング：Upstash の REST API に送るコマンド', async () => {
@@ -2104,11 +2118,11 @@ import { d1TelemetryStore } from '../api/_telemetry.js';
 async function sqliteD1() {
   const { DatabaseSync } = await import('node:sqlite');
   const sqlite = new DatabaseSync(':memory:');
-  sqlite.exec(readFileSync(join(ROOT, 'migrations/0001_telemetry.sql'), 'utf8'));
+  for (const f of ['0001_telemetry.sql', '0002_ranking.sql']) sqlite.exec(readFileSync(join(ROOT, 'migrations', f), 'utf8'));
   const stmt = (sql, args = []) => ({
     bind: (...a) => stmt(sql, a),
     first: async () => sqlite.prepare(sql).get(...args) ?? null,
-    run: async () => (sqlite.prepare(sql).run(...args), { success: true }),
+    run: async () => ({ success: true, meta: { changes: Number(sqlite.prepare(sql).run(...args).changes) } }),
     all: async () => ({ results: sqlite.prepare(sql).all(...args) }),
   });
   return { prepare: (sql) => stmt(sql), batch: async (list) => Promise.all(list.map((s) => s.all())) };
