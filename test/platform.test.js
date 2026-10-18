@@ -1,7 +1,7 @@
 // bearko.games 共通基盤（総合スコア）に送る成績
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { earnedTrophies, reportScore, reportTrophies, scoreMetrics } from '../src/platform.js';
+import { earnedTrophies, reportScore, reportTrophies, rtaAbort, rtaPendingCheckpoints, rtaProgress, rtaStart, scoreMetrics } from '../src/platform.js';
 
 test('10 年遊び切ったら years は 10、途中で終わったら終えた年数', () => {
   assert.equal(scoreMetrics({ over: 'timeup', week: 480, difficulty: 'hard' }, 5e7).years, 10);
@@ -49,4 +49,57 @@ test('トロフィーは同じプレイで 1 回だけ送り、失敗したら�
 
 test('SDK がなくてもトロフィーで例外を出さない', () => {
   assert.doesNotThrow(() => reportTrophies({ ...base, flags: { debtFree: 1 } }));
+});
+
+test('RTA：上がったステージの区切りと、上がった週（SPEC-001 6.18）', () => {
+  assert.deepEqual(rtaPendingCheckpoints({ stage: 1, week: 5 }, 1), []);
+  assert.deepEqual(rtaPendingCheckpoints({ stage: 2, week: 20, stageWeeks: { 2: 19 } }, 1), [{ id: 'stage2', stage: 2, igtMs: 19 }]);
+  assert.deepEqual(rtaPendingCheckpoints({ stage: 2, week: 20, stageWeeks: { 2: 19 } }, 2), [], '送ったものは送らない');
+  // 2 つ上がっていたら順に。週の記録がなければいまの週
+  assert.deepEqual(rtaPendingCheckpoints({ stage: 5, week: 400, stageWeeks: { 4: 300 } }, 3).map((c) => [c.id, c.igtMs]), [['stage4', 300], ['clear', 400]]);
+});
+
+test('RTA：始めて、ステージが上がるたびに送り、ステージ 5 で終わる。別のプレイの state は送らない', async () => {
+  const calls = [];
+  globalThis.window = { BearkoGames: { rta: {
+    start: (o) => { calls.push(['start', o.regulation]); return Promise.resolve({ ok: true, runId: 'r' }); },
+    checkpoint: (id, o) => { calls.push([id, o.igtMs]); return Promise.resolve({ ok: true }); },
+    abort: () => { calls.push(['abort']); return Promise.resolve({ ok: true }); },
+  } } };
+  try {
+    const s = { stage: 1, week: 0, stageWeeks: {} };
+    assert.equal(await rtaStart(s), true);
+    rtaProgress(s);
+    s.stage = 2; s.stageWeeks[2] = 23; s.week = 24;
+    rtaProgress(s);
+    rtaProgress(s);
+    rtaProgress({ stage: 5, week: 9 }); // ほかのプレイ
+    s.stage = 3; s.stageWeeks[3] = 99;
+    s.stage = 5; s.stageWeeks[4] = 200; s.stageWeeks[5] = 320;
+    rtaProgress(s);
+    rtaAbort(); // 終わったあとの中断は送らない
+    await new Promise((r) => setTimeout(r, 10));
+    assert.deepEqual(calls, [['start', '10buy-stage5'], ['stage2', 23], ['stage3', 99], ['stage4', 200], ['clear', 320]]);
+
+    // ステージ 5 より前に終わったら中断
+    calls.length = 0;
+    const t = { stage: 1, week: 0 };
+    await rtaStart(t);
+    rtaAbort();
+    rtaProgress({ ...t, stage: 2 });
+    assert.deepEqual(calls, [['start', '10buy-stage5'], ['abort']]);
+  } finally {
+    delete globalThis.window;
+  }
+});
+
+test('RTA：SDK がない・始められないときは false で、ゲームは止めない', async () => {
+  assert.equal(await rtaStart({ stage: 1 }), false);
+  globalThis.window = { BearkoGames: { rta: { start: () => Promise.resolve({ ok: false, error: 'network' }) } } };
+  try {
+    assert.equal(await rtaStart({ stage: 1 }), false);
+    assert.doesNotThrow(() => rtaProgress({ stage: 2 }));
+  } finally {
+    delete globalThis.window;
+  }
 });

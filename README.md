@@ -33,6 +33,7 @@ npm run dev          # = node tools/dev-server.mjs（python3 -m http.server で�
 - 毎月末に最低3万円を返済（利息は年15%）。3か月続けて払えないとゲームオーバー。
 - 月の純利益などのKPIでキャリアステージが上がる（副業スタート → 副業安定 → 専業 → 法人化・拡大 → 事業化・多角化）。
 - 10年後の純資産がスコア。エンディングはキャリアで変わる。
+- bearko.games の共通基盤に参加している：総合スコア・トロフィー・RTA（タイトルの「⏱ RTA で挑む」。今週のチャレンジで、ステージ5に着いた週の少なさを競う）。詳しくは [docs/17_platform_score.md](docs/17_platform_score.md)
 
 English: open with `?lang=en` or press “Play in English” on the title screen.
 

@@ -897,4 +897,14 @@ export default {
   "最低返済": "Min. payment",
   "月{0}": "{0}/month",
   "年利": "APR",
+  // bearko.games 共通基盤（チャット・総合ランキング・アイコン・RTA）
+  "チャット": "Chat",
+  "bearko.games の SDK が読めたら開ける": "Available once the bearko.games SDK loads",
+  "bearko.games の総合ランキング ↗": "bearko.games overall ranking ↗",
+  "このランキングとは別の、bearko.games のタイトル共通のランキングです": "A ranking shared across bearko.games titles, separate from this one",
+  "アイコンを変える（bearko.games 全体で共通）": "Change icon (shared across bearko.games)",
+  "RTA の計測を始められなかった。ふつうのチャレンジとして遊べる": "Couldn't start the RTA timer. You can still play it as a normal challenge",
+  "セーブデータを消して、今週のチャレンジを RTA で始めますか？": "Delete your save and start this week's challenge as an RTA?",
+  "⏱ RTA で挑む": "⏱ Play as RTA",
+  "今週のチャレンジ・ステージ5に着いた週を競う": "This week's challenge · race to Stage 5 in the fewest weeks",
 };

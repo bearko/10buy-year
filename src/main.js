@@ -39,7 +39,7 @@ import { initPixelArt } from './ui/pixel.js';
 import { initLayout } from './ui/layout.js';
 import { initBackNav } from './ui/backnav.js';
 import { getLang, initLang, setLang, tr } from './i18n/index.js';
-import { initPlatform, isChatAvailable, openChat, reportScore, reportTrophies, scoreMetrics } from './platform.js';
+import { canRta, initPlatform, isChatAvailable, openChat, reportScore, reportTrophies, rtaAbort, rtaProgress, rtaStart, scoreMetrics } from './platform.js';
 import { listNowCovers, listNowPrompt } from './ui/listnow.js';
 import { autoVisible } from './engine/sourcing.js';
 import { mailbox, salesMails } from './ui/mail.js';
@@ -830,6 +830,7 @@ async function loop() {
       await tutorialStep();
       trackUnlocks();
       reportTrophies(state); // bearko.games のトロフィー（完済・1,000 個・ステージ 5）
+      rtaProgress(state); // RTA：上がったステージの区切り（SPEC-001 6.18）
       saveGame(state);
       if (state.over) break;
     }
@@ -865,6 +866,7 @@ async function loop() {
     holdRoom(true); // 売れた品は、発送の演出まで部屋に残す
     unlockSnap = snapUnlocks(); // ステージが上がる前の状態（週のあいだにスキルで開いた分は数えない）
     await playSteps(endWeek(state));
+    rtaProgress(state); // ステージは月末に上がる
     holdRoom(false);
     await tutorialStep();
     persist();
@@ -881,6 +883,8 @@ async function loop() {
     }
   }
   stopAuto();
+  rtaProgress(state);
+  rtaAbort(); // ステージ 5 より前に終わった（ゲームオーバー・事業売却）。着いていれば計測はもう終わっている
   clearSave();
   showEnding();
 }
@@ -935,7 +939,9 @@ function pickStyle() {
 }
 
 // weekly：週替わりチャレンジの週（オンラインランキングに登録できる）
-async function newGame({ daily = null, weekly = null } = {}) {
+// rta：今週のチャレンジを RTA（ステージ 5 に着いた週を競う。共通基盤 SPEC-001 6.18）で遊ぶ
+async function newGame({ daily = null, weekly = null, rta = false } = {}) {
+  rtaAbort();
   const challenge = !!(daily || weekly);
   const difficulty = challenge ? 'normal' : await pickDifficulty();
   if (!difficulty) return;
@@ -959,6 +965,7 @@ async function newGame({ daily = null, weekly = null } = {}) {
   startPlaylog(state, { resumed: false });
   showScreen('game-screen');
   refresh();
+  if (rta && weekly && !(await rtaStart(state, $('#hud')?.offsetHeight || 0))) toast('RTA の計測を始められなかった。ふつうのチャレンジとして遊べる');
   showChris('idle');
   await playSteps(await prologueSteps());
   await loop();
@@ -984,6 +991,7 @@ async function prologueSteps() {
 }
 
 function continueGame() {
+  rtaAbort(); // 計測はこのページの中だけ。つづきからは計測しない
   const loaded = loadGame();
   if (!loaded) return newGame();
   state = loaded;
@@ -998,6 +1006,7 @@ function restart() {
 }
 
 function toTitle() {
+  rtaAbort();
   saveGame(state);
   window.location.reload();
 }
@@ -1026,6 +1035,8 @@ function showTitle() {
         h('div', { class: 'title-row' },
           h('button', { class: 'btn', onclick: () => { if (!hasSave || window.confirm('セーブデータを消して、今週のチャレンジを始めますか？')) newGame({ weekly: weekKey() }); } }, '今週のチャレンジ', h('small', { class: 'btn-sub' }, `${weekRange()}・オンライン`)),
           h('button', { class: 'btn', onclick: () => { if (!hasSave || window.confirm('セーブデータを消して、今日のチャレンジを始めますか？')) newGame({ daily: todayKey() }); } }, '今日のチャレンジ', h('small', { class: 'btn-sub' }, dailyLabel(todayKey())))),
+        // RTA：今週のチャレンジで、ステージ 5 に着いた週を競う（bearko.games の RTA ランキング）
+        canRta() ? h('button', { class: 'btn', onclick: () => { if (!hasSave || window.confirm('セーブデータを消して、今週のチャレンジを RTA で始めますか？')) newGame({ weekly: weekKey(), rta: true }); } }, '⏱ RTA で挑む', h('small', { class: 'btn-sub' }, '今週のチャレンジ・ステージ5に着いた週を競う')) : null,
       ),
       // ランキング・実績・このゲームについて・言語・サウンドは、下に小さく
       h('div', { class: 'title-foot' },
