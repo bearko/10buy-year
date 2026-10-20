@@ -53,6 +53,7 @@ English: open with `?lang=en` or press “Play in English” on the title screen
 | [docs/05_career_and_kpi.md](docs/05_career_and_kpi.md) | 追加調査：転売屋の10年キャリアパスとKPI（素人〜玄人の見る目の違い）、ゲームでの実装 |
 | [docs/16_play_telemetry.md](docs/16_play_telemetry.md) | プレイログ（匿名のプレイ記録）：記録する項目、止め方、公開の設定、分析レポートの見方 |
 | [docs/18_onboarding.md](docs/18_onboarding.md) | 序盤の手ざわり：はじめての人が最初の1個を売るまでを短くした（難易度・プロローグ・矢印・出品画面） |
+| [docs/19_pc_layout.md](docs/19_pc_layout.md) | PC のレイアウトの設計案：操作の列と演出の列に分ける（右の共通チャットのドックはそのまま。作者の確認待ち） |
 
 ## ディレクトリ構成
 
