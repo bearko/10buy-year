@@ -1914,3 +1914,9 @@ body.stage-xs #side-btns .side-btn.quest, body.stage-xs #side-btns .side-btn.tre
 .platform-link { display: flex; flex-direction: column; gap: 2px; margin: 0 0 10px; text-align: center; }
 .platform-link a { color: var(--gold); font-weight: bold; font-size: calc(14px * var(--fs, 1)); }
 .platform-link small { color: var(--muted); font-size: calc(11px * var(--fs, 1)); }
+
+/* タイトル：はじめての人向けの小さい「難易度を選んで始める」（docs/18） */
+.title-buttons .btn.link-btn { min-width: 0; background: none; border: none; box-shadow: none; padding: 2px 8px; color: var(--muted); font-size: calc(12px * var(--fs, 1)); text-decoration: underline; }
+/* はじめての出品（docs/18）：出品ボタンと値付けだけ */
+.inv-simple .inv-opts, .inv-simple .inv-tools, .inv-simple .inv-quick, .inv-simple .inv-buy, .inv-simple .sel-dot { display: none; }
+.modal-footer .btn.tut-point { overflow: visible; }

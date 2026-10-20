@@ -114,8 +114,14 @@ export function inventoryModal(s, onChange) {
     const pf = PLATFORMS[market];
     const cap = listingCap(s);
     // チュートリアルの「出品しよう」の間は、最初に押す出品ボタンを指し示す
-    const tut = currentMission(s)?.id;
+    const mission = currentMission(s);
+    const tut = mission?.id;
     let pointed = false;
+    // はじめての出品は、出品ボタンと値付けだけを見せる（絞り込み・一括操作・即決買取は2回目から。docs/18）
+    body.classList.toggle('inv-simple', tut === 'list_home');
+    // 出品できたら（売れるのを待つあいだも）、次は「閉じる」を指す。閉じて行動を選ぶと週が進む
+    const closeBtn = body.closest('.modal')?.querySelector('.modal-footer .btn');
+    closeBtn?.classList.toggle('tut-point', (['list_home', 'list_bought'].includes(tut) && mission.done(s)) || tut === 'sell_home');
     const done = (msg, tone = 'good') => {
       toast(msg, tone);
       api.refresh();
@@ -435,7 +441,7 @@ export function inventoryModal(s, onChange) {
       const profitLbl = h('span', {});
       const qtyLbl = h('b', {});
       const listBtn = h('button', { class: 'btn primary inv-list', disabled: !x.canHere });
-      if (!pointed && !g.listing && x.canHere && ((tut === 'list_home' && g.home) || (tut === 'list_bought' && !g.home))) {
+      if (!pointed && !g.listing && x.canHere && !mission.done(s) && ((tut === 'list_home' && g.home) || (tut === 'list_bought' && !g.home))) {
         listBtn.classList.add('tut-point');
         pointed = true;
       }

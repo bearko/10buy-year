@@ -1,6 +1,7 @@
 // 序盤のチュートリアル。できることを絞り、
 // 「家の不用品を売る」→「探す」→「仕入れる」→「在庫を管理する」→「売り先を決める」→「売る」の順に体験させる。
 import { productOf, shippingCost } from '../data/products.js';
+import { backstory } from '../data/story.js';
 import { addExp, hasSkill, yen } from './effects.js';
 import { feeRate } from './inventory.js';
 import { gain, info, sfx, talk } from './steps.js';
@@ -38,7 +39,9 @@ export const MISSIONS = [
     hint: '「スキルツリー」→「押し入れの宝の山」を解放（コスト0）',
     node: 'src_home',
     done: (s) => hasSkill(s, 'src_home'),
-    reward: () => [
+    // はじめての人は短いプロローグで始めるので、省いた経緯をここで回想する（docs/18）
+    reward: (s) => [
+      ...(s.flags.backstoryShown ? [] : ((s.flags.backstoryShown = true), backstory())),
       talk('chris', 'うわ、枝が伸びた…！ これ全部、転売のスキルなの？', 'sparkle'),
       talk('mine', '経験点を使って、パネルを自分の手で解放していくの。でも焦らないで。まずは家の物を売って、売上を立てましょう。', 'pointer'),
     ],

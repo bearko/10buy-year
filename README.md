@@ -52,6 +52,7 @@ English: open with `?lang=en` or press “Play in English” on the title screen
 | [docs/04_pro_reseller_life.md](docs/04_pro_reseller_life.md) | 追加調査：専業転売屋の一日・週・月のリズム、商材別の苦労と戦略、あるある、ゲームへの落とし込み案 |
 | [docs/05_career_and_kpi.md](docs/05_career_and_kpi.md) | 追加調査：転売屋の10年キャリアパスとKPI（素人〜玄人の見る目の違い）、ゲームでの実装 |
 | [docs/16_play_telemetry.md](docs/16_play_telemetry.md) | プレイログ（匿名のプレイ記録）：記録する項目、止め方、公開の設定、分析レポートの見方 |
+| [docs/18_onboarding.md](docs/18_onboarding.md) | 序盤の手ざわり：はじめての人が最初の1個を売るまでを短くした（難易度・プロローグ・矢印・出品画面） |
 
 ## ディレクトリ構成
 
