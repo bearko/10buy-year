@@ -441,7 +441,7 @@ export function inventoryModal(s, onChange) {
       const profitLbl = h('span', {});
       const qtyLbl = h('b', {});
       const listBtn = h('button', { class: 'btn primary inv-list', disabled: !x.canHere });
-      if (!pointed && !g.listing && x.canHere && !mission.done(s) && ((tut === 'list_home' && g.home) || (tut === 'list_bought' && !g.home))) {
+      if (!pointed && !g.listing && x.canHere && ((tut === 'list_home' && g.home) || (tut === 'list_bought' && !g.home)) && !mission.done(s)) {
         listBtn.classList.add('tut-point');
         pointed = true;
       }
