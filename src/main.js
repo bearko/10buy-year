@@ -1,5 +1,5 @@
 // エントリーポイント。タイトル → プロローグ → 週ループ（10年）→ エンディング
-import { prologue } from './data/story.js';
+import { prologue, prologueShort } from './data/story.js';
 import { CAST } from './data/cast.js';
 import { productOf } from './data/products.js';
 import { availableCommands, availableNightCommands, COMMAND_MAP, commandPreview, GROUPS, performCommand, sickRisk, staminaCost } from './engine/commands.js';
@@ -447,6 +447,8 @@ function waitForCommand(mode) {
       setPreview({ ...p, exp: Object.fromEntries(Object.entries(c.exp).map(([k, v]) => [k, Math.round(v * mood)])) });
       refresh();
       const extra = [pioneerLine(state, c.id), satLine(state, c.id)].filter(Boolean);
+      // 案内中は、選んだだけでは進まないことを言う（矢印も残す。docs/18）
+      if (guide()?.cmd === c.id) extra.push('▶ もう一度押すと決定');
       setMessage(c.name, [c.desc, ...extra].join('\n'));
       draw();
     };
@@ -468,7 +470,7 @@ function waitForCommand(mode) {
       let pressed = false;
       let timer = null;
       const el = card({
-        class: `cmd ${sel ? 'sel' : ''} ${risk >= 0.3 ? 'danger' : risk > 0 ? 'risky' : ''}${point(!sel && guide()?.cmd === c.id)}`,
+        class: `cmd ${sel ? 'sel' : ''} ${risk >= 0.3 ? 'danger' : risk > 0 ? 'risky' : ''}${point(guide()?.cmd === c.id)}`,
         onclick: () => {
           if (busy) return;
           if (pressed) { pressed = false; return; }
@@ -943,10 +945,12 @@ function pickStyle() {
 
 // weekly：週替わりチャレンジの週（オンラインランキングに登録できる）
 // rta：今週のチャレンジを RTA（ステージ 5 に着いた週を競う。共通基盤 SPEC-001 6.18）で遊ぶ
-async function newGame({ daily = null, weekly = null, rta = false } = {}) {
+// choose：難易度を必ず選ばせる（タイトルの「難易度を選んで始める」）
+async function newGame({ daily = null, weekly = null, rta = false, choose = false } = {}) {
   rtaAbort();
   const challenge = !!(daily || weekly);
-  const difficulty = challenge ? 'normal' : await pickDifficulty();
+  // はじめての人には選ばせない（「ふつう」で始める。docs/18）。選びたい人はタイトルの小さいボタンから
+  const difficulty = challenge || (!choose && firstTimer()) ? 'normal' : await pickDifficulty();
   if (!difficulty) return;
   // チャレンジは同じ条件で競うので、引き継ぎ・型・師匠はなし
   const legacyIds = challenge ? [] : loadLegacy().filter((id) => SKILL_MAP[id]);
@@ -974,20 +978,32 @@ async function newGame({ daily = null, weekly = null, rta = false } = {}) {
   await loop();
 }
 
-// 一度見たプロローグは飛ばせる（会話だけを省き、目標の案内と師匠の知らせは残す）
+// はじめての人は短いプロローグ（借金を背負うまでの経緯は、スキルツリーを開いたときに回想する。docs/18）。
+// 一度見た人は飛ばせる（会話だけを省き、目標の案内と師匠の知らせは残す）
 const PROLOGUE_KEY = '10buy-year:prologueSeen';
-async function prologueSteps() {
-  const steps = prologue(state);
-  let seen = false;
+function prologueSeen() {
   try {
-    seen = window.localStorage.getItem(PROLOGUE_KEY) === '1';
+    return window.localStorage.getItem(PROLOGUE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+// このブラウザで初めて遊ぶ人（プロローグを見ていない・ランキングに記録がない）
+function firstTimer() {
+  return !prologueSeen() && !loadRanking().length;
+}
+async function prologueSteps() {
+  const seen = prologueSeen();
+  try {
     window.localStorage.setItem(PROLOGUE_KEY, '1');
   } catch {
     /* noop */
   }
-  if (!seen) return steps;
+  if (!seen) return prologueShort(state);
+  state.flags.backstoryShown = true; // 前に見ている。回想はもう出さない
   setBackground('danger');
   const k = await choose([{ label: 'スキップして始める' }, { label: 'プロローグを見る', sub: '借金を背負うまでの話' }], 'プロローグは前に見ている');
+  const steps = prologue(state);
   if (k === 1) return steps;
   setBackground('home');
   return steps.filter((st) => !['talk', 'bg', 'bgm'].includes(st.t));
@@ -1034,6 +1050,8 @@ function showTitle() {
       h('div', { class: 'title-buttons' },
         hasSave ? h('button', { class: 'btn primary big', onclick: () => continueGame() }, 'つづきから') : null,
         h('button', { class: `btn big ${hasSave ? '' : 'primary'}`, onclick: () => { if (!hasSave || window.confirm('セーブデータを消して最初から始めますか？')) newGame(); } }, 'はじめから'),
+        // はじめての人は「ふつう」で始まる。難易度を選びたい人はこちら（2回目からは「はじめから」でも選べる）
+        firstTimer() ? h('button', { class: 'btn link-btn', onclick: () => { if (!hasSave || window.confirm('セーブデータを消して最初から始めますか？')) newGame({ choose: true }); } }, '難易度を選んで始める') : null,
         // チャレンジは2つを横並び
         h('div', { class: 'title-row' },
           h('button', { class: 'btn', onclick: () => { if (!hasSave || window.confirm('セーブデータを消して、今週のチャレンジを始めますか？')) newGame({ weekly: weekKey() }); } }, '今週のチャレンジ', h('small', { class: 'btn-sub' }, `${weekRange()}・オンライン`)),
