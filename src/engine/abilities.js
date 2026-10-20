@@ -111,7 +111,8 @@ export function isOffRoute(s, skillId) {
 }
 
 // 解放コスト。金ノードはコツLvで安くなり、repeat はレベルごとに高くなり、専門外は高くなる
-export function skillCost(s, skillId) {
+// lv：段階強化のパネルで、いまのレベルの代わりに使うレベル（まとめて Lv+n の見積もり用）
+export function skillCost(s, skillId, lv = nodeLv(s, skillId)) {
   const sk = SKILL_MAP[skillId];
   if (sk.kind === 'record') return {};
   let rate = 1;
@@ -119,7 +120,7 @@ export function skillCost(s, skillId) {
     const hint = s.hints[skillId] || 0;
     rate = 1 - Math.min(0.6, hint * 0.12 + (hint > 0 ? 0.08 : 0));
   }
-  if (sk.kind === 'repeat') rate = 1 + nodeLv(s, skillId);
+  if (sk.kind === 'repeat') rate = 1 + lv;
   if (isOffRoute(s, skillId)) rate *= OFF_ROUTE_RATE;
   const cost = {};
   for (const [k, v] of Object.entries(sk.cost || {})) cost[k] = Math.ceil(v * rate);
@@ -232,3 +233,51 @@ export function monthlyNodeFees(s) {
 export function claimableNodes(s) {
   return TREE_NODES.filter((n) => nodeVisible(s, n.id) && nodeState(s, n.id) === 'available' && canAfford(s, skillCost(s, n.id)));
 }
+
+// ---- まとめて解放（スキルツリーの「安い順にまとめて解放」。MyCryptoWorkshop の「安い順にまとめて習得」にならう） ----
+// 入れないパネル：月額がかかる・TOKU が動く・魔道（自分で選んで歩む道）・不調
+export const bulkExcluded = (sk) => !!(sk.monthly || sk.tokuDelta || sk.route === 'dark' || sk.kind === 'red');
+const costSum = (cost) => Object.values(cost).reduce((a, v) => a + v, 0);
+
+/**
+ * いまの経験点でまとめて解放できる候補（安い順）。
+ *   skip：使わない経験点の種類（その種類がコストに入るパネルは除く）
+ *   mainOnly：目指すルート（パネルの多い上位 2 ルート）のパネルだけ。ルートが決まる前（パネル 4 個未満）は全部
+ */
+export function bulkCandidates(s, { skip = [], mainOnly = false } = {}) {
+  const total = Object.values(routeCounts(s)).reduce((a, n) => a + n, 0);
+  const mains = mainOnly && total >= 4 ? mainRoutes(s).slice(0, 2) : null;
+  return claimableNodes(s)
+    .filter((n) => !bulkExcluded(n) && (!mains || !n.route || mains.includes(n.route)))
+    .map((node) => ({ node, cost: skillCost(s, node.id) }))
+    .filter((c) => !Object.keys(c.cost).some((k) => skip.includes(k)))
+    .sort((a, b) => costSum(a.cost) - costSum(b.cost));
+}
+
+/** 安い順に、候補がなくなるまで解放する。解放したパネルの ID の並び（段階強化は同じ ID が続くこともある） */
+export function learnBulk(s, opts = {}) {
+  const out = [];
+  for (let guard = 0; guard < 300; guard++) {
+    const next = bulkCandidates(s, opts)[0];
+    if (!next || !learnSkill(s, next.node.id)) break;
+    out.push(next.node.id);
+  }
+  return out;
+}
+
+/** 段階強化のパネルを、いまの経験点で何レベル続けて上げられるか：{ n, cost }（n は 0 から） */
+export function repeatAffordable(s, skillId) {
+  const sk = SKILL_MAP[skillId];
+  if (sk.kind !== 'repeat' || nodeState(s, skillId) !== 'available') return { n: 0, cost: {} };
+  const total = {};
+  let n = 0;
+  for (let lv = nodeLv(s, skillId); lv < sk.max; lv++) {
+    const next = { ...total };
+    for (const [k, v] of Object.entries(skillCost(s, skillId, lv))) next[k] = (next[k] || 0) + v;
+    if (!canAfford(s, next)) break;
+    Object.assign(total, next);
+    n++;
+  }
+  return { n, cost: total };
+}
+

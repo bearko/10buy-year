@@ -478,6 +478,36 @@ body.auto #message::after { content: 'オート進行中'; position: absolute; t
 .ab-main .bar i { background: linear-gradient(90deg, #0EA5E9, #38BDF8); }
 .ab-btns { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; justify-content: flex-end; max-width: 150px; }
 @media (min-width: 900px) { .tree-sheet { max-height: 34dvh; } }
+/* パネルの詳細（マウスを乗せたとき・タップしたとき） */
+.tnode-tip { position: absolute; z-index: 6; width: 280px; max-width: calc(100% - 16px); padding: 10px 12px; border: 1px solid var(--t-strong); border-radius: 10px; background: rgba(20, 24, 31, 0.97); box-shadow: 0 8px 24px #000a; color: var(--t-ink); font-size: calc(12px * var(--fs, 1)); line-height: 1.5; pointer-events: none; }
+.tnode-tip[hidden] { display: none; }
+.tt-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.tt-nm { font-size: calc(15px * var(--fs, 1)); }
+.tt-lv { color: var(--t-ink2); font-family: 'Orbitron', monospace; font-size: calc(11px * var(--fs, 1)); white-space: nowrap; }
+.tt-meta { display: flex; flex-wrap: wrap; gap: 4px 8px; margin: 2px 0 4px; color: var(--t-ink3); font-size: calc(11px * var(--fs, 1)); }
+.tt-ds { margin: 0 0 6px; color: var(--t-ink); }
+.tt-cost { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 4px; }
+.tt-cost .cost-chip.ok { color: var(--t-ok); }
+.tt-cost .cost-chip.ng { color: var(--t-ng); }
+.tt-note { margin: 0 0 4px; color: var(--warn); font-size: calc(11px * var(--fs, 1)); }
+.tt-st { margin: 0; font-weight: bold; font-size: calc(12px * var(--fs, 1)); }
+.tt-st.ok { color: var(--t-ok); }
+.tt-st.ng { color: var(--t-ng); }
+/* いま解放できるパネルと「安い順にまとめて解放」（MyCryptoWorkshop にならう） */
+.tb-bulk { margin-bottom: 10px; padding: 8px 10px; border: 1px solid #22C55E55; border-radius: 10px; background: #22C55E0d; }
+.tb-bulk-h { display: flex; justify-content: space-between; align-items: baseline; color: var(--t-ok); font-weight: bold; font-size: calc(13px * var(--fs, 1)); margin-bottom: 6px; }
+.tb-bulk-h small { color: var(--t-ink3); font-weight: normal; }
+.tb-bulk-list { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 6px; }
+.tb-bulk-item { flex: none; display: flex; flex-direction: column; align-items: center; gap: 2px; width: 104px; padding: 6px 4px; border: 1px solid var(--c); border-radius: 8px; background: var(--t-surface); color: var(--t-ink); font: inherit; font-size: calc(11px * var(--fs, 1)); cursor: pointer; }
+.tb-bulk-item img { width: 30px; height: 30px; object-fit: contain; image-rendering: pixelated; }
+.tb-bulk-nm { text-align: center; line-height: 1.25; }
+.tb-bulk-item .cost-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; font-size: calc(10px * var(--fs, 1)); }
+.tb-bulk-opts { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin-bottom: 6px; font-size: calc(12px * var(--fs, 1)); color: var(--t-ink2); }
+.tb-bulk-x { display: inline-flex; align-items: center; gap: 3px; cursor: pointer; }
+.tb-bulk-x .pn { color: var(--c); }
+.tb-bulk-go { min-height: 42px; margin-top: 0; }
+.tb-bulk-note { margin: 4px 0 0; color: var(--t-ink3); font-size: calc(11px * var(--fs, 1)); }
+.tree-btn.tb-bulk-lv { margin-top: 6px; }
 
 /* ---------- 仕入れ画面（EC サイト風） ---------- */
 .shop { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; max-width: 520px; margin: 0 auto; background: #f5f5f5; color: #222; font-family: 'Zen Kaku Gothic New', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', system-ui, sans-serif; box-shadow: 0 0 0 100vmax #000a; }

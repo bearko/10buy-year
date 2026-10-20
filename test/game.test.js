@@ -13,7 +13,7 @@ import { createGame } from '../src/engine/state.js';
 import { abilityCost, autoRaise, raiseAbility } from '../src/engine/abilities.js';
 import { buy, cardAvailable, hardCapacity, listUnits, sellToBuyer, spaceUsed } from '../src/engine/inventory.js';
 import { availableCommands, performCommand } from '../src/engine/commands.js';
-import { learnSkill, nodeState, nodeTeaser, nodeVisible, OFF_ROUTE_RATE, skillCost } from '../src/engine/abilities.js';
+import { bulkCandidates, learnBulk, learnSkill, nodeLv, nodeState, nodeTeaser, nodeVisible, OFF_ROUTE_RATE, repeatAffordable, skillCost } from '../src/engine/abilities.js';
 import { ROUTES, ROUTE_MAP, SKILLS as TREE_SKILLS, TREE_NODES, nodePos } from '../src/data/skills.js';
 import { perk, routeLevel } from '../src/engine/perks.js';
 import { titleOf } from '../src/engine/ending.js';
@@ -218,6 +218,42 @@ function openTree(s, { abilities = 99 } = {}) {
   s.stats.soldUnits = 99;
   s.stats.purchases = 99;
 }
+
+test('スキルツリー：安い順にまとめて解放（使わない経験点・月額・魔道は入れない）', () => {
+  const s = createGame(11);
+  openTree(s);
+  s.skills.push('src_store');
+  s.exp = { info: 400, act: 400, tech: 400, social: 400, mind: 400 };
+  const first = bulkCandidates(s);
+  assert.ok(first.length > 0);
+  const sum = (c) => Object.values(c.cost).reduce((a, v) => a + v, 0);
+  for (let i = 1; i < first.length; i++) assert.ok(sum(first[i - 1]) <= sum(first[i]), '安い順');
+  // 行動の経験点を使わない設定なら、行動がコストに入るパネルは候補に出ない
+  assert.ok(bulkCandidates(s, { skip: ['act'] }).every((c) => !c.cost.act));
+  const before = { ...s.exp };
+  const ids = learnBulk(s);
+  assert.ok(ids.length >= 2, `まとめて解放できた：${ids.join(',')}`);
+  assert.ok(ids.every((id) => !SKILL_MAP[id].monthly && !SKILL_MAP[id].tokuDelta && SKILL_MAP[id].route !== 'dark'));
+  assert.ok(Object.keys(before).some((k) => s.exp[k] < before[k]), '経験点を使った');
+  assert.equal(bulkCandidates(s).length, 0, '候補がなくなるまで');
+});
+
+test('スキルツリー：段階強化はまとめて Lv+n（いまの経験点で上げられるだけ）', () => {
+  const s = createGame(11);
+  openTree(s);
+  s.skills.push('src_store');
+  s.exp = { info: 0, act: 0, tech: 0, social: 0, mind: 0 };
+  assert.equal(repeatAffordable(s, 'st_goods').n, 0);
+  // Lv1・Lv2 の分だけ（Lv1 は基本コスト、Lv2 は 2 倍）
+  const c1 = skillCost(s, 'st_goods', 0);
+  const c2 = skillCost(s, 'st_goods', 1);
+  for (const k of Object.keys(c1)) s.exp[k] = c1[k] + c2[k];
+  const r = repeatAffordable(s, 'st_goods');
+  assert.equal(r.n, 2);
+  for (let i = 0; i < r.n; i++) assert.ok(learnSkill(s, 'st_goods'));
+  assert.equal(nodeLv(s, 'st_goods'), 2);
+  assert.ok(Object.values(s.exp).every((v) => v === 0), 'ちょうど使い切る');
+});
 
 test('スキルツリー：親・ステージ・コツが揃わないと解放できない', () => {
   const s = createGame(11);

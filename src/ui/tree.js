@@ -1,7 +1,7 @@
 // 転売屋スキルツリー画面。中心から7つのルートが放射状に伸びる。ドラッグで移動、ホイール／ピンチで拡大縮小。
 import { CAPSTONE_NEED, ROUTES, ROUTE_MAP, ROUTE_LEVELS, SKILL_MAP, SKILLS, TREE_NODES, nodePos } from '../data/skills.js';
 import {
-  canAfford, EXP_NAME, EXP_TYPES, isOffRoute, learnSkill, nodeBlockers, nodeLv, nodeState, nodeTeaser, nodeVisible, claimableNodes, recordValue, skillCost,
+  bulkCandidates, canAfford, EXP_NAME, EXP_TYPES, isOffRoute, learnBulk, learnSkill, nodeBlockers, nodeLv, nodeState, nodeTeaser, nodeVisible, claimableNodes, recordValue, repeatAffordable, skillCost,
 } from '../engine/abilities.js';
 import { mainRoutes, routeCounts, routeLevel, routePerkText } from '../engine/perks.js';
 import { openAbilities } from './abilities.js';
@@ -27,6 +27,24 @@ const svg = (tag, attrs = {}) => {
 const owns = (s, id) => s.skills.includes(id) || nodeLv(s, id) > 0;
 const shown = (s, id) => nodeVisible(s, id) || nodeTeaser(s, id);
 const costText = (cost) => Object.entries(cost).map(([k, v]) => h('span', { class: `cost-chip x ${k}` }, `${EXP_NAME[k]} ${v}`));
+
+// まとめて解放の設定（この端末に覚える）：使わない経験点の種類と、目指すルートだけにするか
+const BULK_KEY = '10buy-year:treeBulk';
+function loadBulk() {
+  try {
+    const v = JSON.parse(window.localStorage.getItem(BULK_KEY) || '{}');
+    return { skip: Array.isArray(v.skip) ? v.skip : [], mainOnly: v.mainOnly !== false };
+  } catch {
+    return { skip: [], mainOnly: true };
+  }
+}
+function saveBulk(v) {
+  try {
+    window.localStorage.setItem(BULK_KEY, JSON.stringify(v));
+  } catch {
+    /* noop */
+  }
+}
 
 function levelText(s, sk) {
   if (sk.kind === 'root') return '';
@@ -58,8 +76,9 @@ export function openTree(s, onChange, { focus = null } = {}) {
     const nodeLayer = h('div', { class: 'tree-nodes' });
     const sheet = h('footer', { class: 'tree-sheet' });
     const expSide = h('div', { class: 'tree-expside' }); // 経験点（トップ画面と同じく右側に縦に並べる）
+    const tip = h('div', { class: 'tnode-tip', role: 'tooltip', hidden: true }); // パネルの詳細（マウスを乗せる・タップ）
     world.append(links, nodeLayer);
-    viewport.append(world, expSide);
+    viewport.append(world, expSide, tip);
     root.append(head, routeBar, viewport, sheet);
     $('#modal-root').append(root);
     blockChat();   // 全体チャット（共通基盤 SPEC-004）：スキルツリーの最中は隠す
@@ -212,6 +231,8 @@ export function openTree(s, onChange, { focus = null } = {}) {
 
     function renderNodes(fresh, burst = false) {
       clear(nodeLayer);
+      const keep = tipFor;
+      if (keep) requestAnimationFrame(() => { if (tipFor === keep) showTip(keep); }); // 描き直したら、出ていた詳細を新しいパネルの位置に
       const center = px(nodePos(SKILL_MAP.src_home));
       for (const sk of TREE_NODES) {
         if (!shown(s, sk.id)) continue;
@@ -288,6 +309,22 @@ export function openTree(s, onChange, { focus = null } = {}) {
           onclick: () => unlock(sk),
         }, free ? '条件達成！ 解放する' : sk.kind === 'repeat' && nodeLv(s, sk.id) > 0 ? '強化する' : '解放する', free ? null : h('span', { class: 'cost-row' }, ...costText(cost)));
       } else action = h('button', { class: 'tree-btn', disabled: true }, 'まだ解放できない');
+      // 段階強化：いまの経験点で続けて上げられるだけ（MyCryptoWorkshop の「まとめて Lv+n」）
+      const more = sk.kind === 'repeat' ? repeatAffordable(s, sk.id) : { n: 0 };
+      const moreBtn = more.n >= 2 ? h('button', {
+        class: 'tree-btn sub tb-bulk-lv',
+        onclick: () => {
+          const lvBefore = routeLevel(s, sk.route);
+          let n = 0;
+          while (n < more.n && learnSkill(s, sk.id)) n++;
+          if (!n) return;
+          playSe('unlock');
+          toast(`「${sk.name}」を Lv${nodeLv(s, sk.id)} に！`, 'good');
+          if (sk.route && routeLevel(s, sk.route) > lvBefore) toast(`${ROUTE_MAP[sk.route].name}の熟練度が Lv${routeLevel(s, sk.route)} に！`, 'good');
+          renderAll(new Map([[sk.id, 0]]));
+          onChange?.();
+        },
+      }, `まとめて Lv+${more.n}`, h('span', { class: 'cost-row' }, ...costText(more.cost))) : null;
       add(
         h('div', { class: 'sheet-top' },
           h('div', {},
@@ -308,6 +345,7 @@ export function openTree(s, onChange, { focus = null } = {}) {
         st === 'available' && !afford ? h('p', { class: 'sheet-block' }, `経験点が足りない：${Object.entries(cost).filter(([k, v]) => (s.exp[k] || 0) < v).map(([k, v]) => `${EXP_NAME[k]} あと${v - (s.exp[k] || 0)}`).join('／')}`) : null,
         off && st === 'available' ? h('p', { class: 'sheet-note' }, '専門外：いま伸ばしている上位2ルート以外なので、コストが25%高い') : null,
         action,
+        moreBtn,
       );
     }
 
@@ -319,6 +357,7 @@ export function openTree(s, onChange, { focus = null } = {}) {
         .sort((a, b) => b.v - a.v)[0];
       const main = mainRoutes(s)[0];
       add(
+        renderBulk(),
         claimable.length
           ? h('button', { class: 'sheet-go ok', onclick: () => select(claimable[0].id, true) }, `▶ 解放できます：${claimable[0].name}${claimable.length > 1 ? ` ほか${claimable.length - 1}` : ''}（タップで移動）`)
           : nextRecord
@@ -337,6 +376,119 @@ export function openTree(s, onChange, { focus = null } = {}) {
         ),
       );
     }
+
+    // いま解放できるパネル（安い順）と「安い順にまとめて解放」。余った経験点を一度に使う
+    function renderBulk() {
+      const opts = loadBulk();
+      const cands = bulkCandidates(s, opts);
+      if (!claimableNodes(s).length) return null;
+      const set = (patch) => {
+        saveBulk({ ...opts, ...patch });
+        renderSheet();
+      };
+      const bulk = () => {
+        const before = new Set(TREE_NODES.filter((n) => shown(s, n.id)).map((n) => n.id));
+        const lvBefore = Object.fromEntries(ROUTES.map((r) => [r.id, routeLevel(s, r.id)]));
+        const ids = learnBulk(s, opts);
+        if (!ids.length) return toast('まとめて解放できるパネルがない', 'bad');
+        playSe('unlock');
+        const names = [...new Set(ids)].map((id) => SKILL_MAP[id].name);
+        toast(`${ids.length}個まとめて解放！ ${names.slice(0, 3).join('・')}${names.length > 3 ? ` ほか${names.length - 3}` : ''}`, 'good');
+        for (const r of ROUTES) if (routeLevel(s, r.id) > lvBefore[r.id]) toast(`${r.name}の熟練度が Lv${routeLevel(s, r.id)} に！`, 'good');
+        const fresh = new Map();
+        let i = 0;
+        for (const id of ids) if (!fresh.has(id)) fresh.set(id, i++);
+        for (const n of TREE_NODES) if (shown(s, n.id) && !before.has(n.id) && !fresh.has(n.id)) fresh.set(n.id, i++);
+        selected = null;
+        renderAll(fresh);
+        onChange?.();
+      };
+      return h('div', { class: 'tb-bulk' },
+        h('div', { class: 'tb-bulk-h' }, `いま解放できるパネル（${cands.length}）`, h('small', {}, '安い順')),
+        cands.length
+          ? h('div', { class: 'tb-bulk-list' }, ...cands.slice(0, 8).map(({ node: n, cost }) => h('button', {
+            class: 'tb-bulk-item',
+            style: { '--c': n.route ? ROUTE_MAP[n.route].color : '#F5C542' },
+            onclick: () => select(n.id, true),
+          }, h('img', { src: n.icon, alt: '' }), h('span', { class: 'tb-bulk-nm' }, n.name, n.kind === 'repeat' ? h('small', {}, ` Lv${nodeLv(s, n.id) + 1}`) : null), h('span', { class: 'cost-row' }, ...costText(cost)))))
+          : h('p', { class: 'sheet-note' }, '下の設定に合うパネルがない（使う経験点・ルートを広げると出てくる）'),
+        h('div', { class: 'tb-bulk-opts' },
+          h('small', {}, 'まとめて使う：'),
+          ...EXP_TYPES.map((e) => h('label', { class: `tb-bulk-x x ${e.id}` },
+            h('input', { type: 'checkbox', checked: !opts.skip.includes(e.id), onchange: (ev) => set({ skip: ev.target.checked ? opts.skip.filter((k) => k !== e.id) : [...opts.skip, e.id] }) }),
+            h('span', { class: 'pn' }, e.name))),
+          h('label', { class: 'tb-bulk-x' }, h('input', { type: 'checkbox', checked: opts.mainOnly, onchange: (ev) => set({ mainOnly: ev.target.checked }) }), h('span', {}, '目指すルート（上位2つ）だけ')),
+        ),
+        h('button', { class: 'tree-btn gold tb-bulk-go', disabled: !cands.length, onclick: bulk }, '安い順にまとめて解放'),
+        h('p', { class: 'tb-bulk-note' }, '月額のかかるパネル・TOKU が動くパネル・魔道は入れない（1つずつ選んで解放する）'),
+      );
+    }
+
+    // ---- パネルの詳細（マウスを乗せたとき・タップしたとき）----
+    function tipBody(sk) {
+      if (!nodeVisible(s, sk.id)) {
+        const parent = SKILL_MAP[sk.parent];
+        return [h('b', { class: 'tt-nm' }, '？？？'), h('p', { class: 'tt-ds' }, `「${parent.name}」を解放すると、この先が見える。`)];
+      }
+      const st = nodeState(s, sk.id);
+      const route = sk.route ? ROUTE_MAP[sk.route] : null;
+      const hiddenGold = sk.kind === 'gold' && !owns(s, sk.id) && !(s.hints[sk.id] > 0);
+      const cost = skillCost(s, sk.id);
+      const blockers = nodeBlockers(s, sk.id);
+      let status;
+      if (st === 'owned') status = h('p', { class: 'tt-st ok' }, sk.kind === 'repeat' ? '最大レベル' : '解放済み');
+      else if (st === 'available' && canAfford(s, cost)) status = h('p', { class: 'tt-st ok' }, sk.kind === 'record' ? '条件達成！ 解放できる' : '解放できる（ダブルクリック・ダブルタップでそのまま解放）');
+      else if (st === 'available') status = h('p', { class: 'tt-st ng' }, `経験点が足りない：${Object.entries(cost).filter(([k, v]) => (s.exp[k] || 0) < v).map(([k, v]) => `${EXP_NAME[k]} あと${v - (s.exp[k] || 0)}`).join('／')}`);
+      else status = blockers.length ? h('p', { class: 'tt-st ng' }, blockers.slice(0, 2).join('／')) : null;
+      return [
+        h('div', { class: 'tt-top' },
+          h('b', { class: 'tt-nm' }, hiddenGold ? '？？？' : sk.name),
+          h('span', { class: 'tt-lv' }, sk.kind === 'repeat' ? `Lv ${nodeLv(s, sk.id)} / ${sk.max}` : levelText(s, sk) || '')),
+        h('div', { class: 'tt-meta' },
+          route ? h('span', { class: 'route-tag', style: { '--c': route.color } }, route.name) : null,
+          h('span', {}, KIND_LABEL[sk.kind] || ''),
+          sk.monthly ? h('span', { class: 'warn-t' }, `月額 ${sk.monthly.toLocaleString()}円`) : null),
+        h('p', { class: 'tt-ds' }, hiddenGold ? '偉人とのイベントで「コツ」を教わると、この奥義が現れる。' : sk.desc),
+        st !== 'owned' && Object.keys(cost).length ? h('div', { class: 'tt-cost' }, ...Object.entries(cost).map(([k, v]) => h('span', { class: `cost-chip x ${k} ${(s.exp[k] || 0) >= v ? 'ok' : 'ng'}` }, `${EXP_NAME[k]} ${v}`))) : null,
+        st !== 'owned' && isOffRoute(s, sk.id) ? h('p', { class: 'tt-note' }, '専門外：コストが25%高い') : null,
+        status,
+      ].filter(Boolean);
+    }
+    let tipFor = null;
+    let tipTimer = null;
+    function showTip(id, { autoHide = false } = {}) {
+      const el = nodeLayer.querySelector(`.tnode[data-id="${id}"]`);
+      if (!el) return hideTip();
+      tipFor = id;
+      clear(tip).append(...tipBody(SKILL_MAP[id]));
+      tip.hidden = false;
+      const r = el.getBoundingClientRect();
+      const vr = viewport.getBoundingClientRect();
+      const w = tip.offsetWidth;
+      const hgt = tip.offsetHeight;
+      const left = Math.max(8, Math.min(vr.width - w - 8, r.left - vr.left + r.width / 2 - w / 2));
+      // 上に入らなければ下に出す
+      const above = r.top - vr.top - hgt - 10;
+      tip.style.left = `${left}px`;
+      tip.style.top = `${above >= 8 ? above : Math.min(vr.height - hgt - 8, r.bottom - vr.top + 10)}px`;
+      clearTimeout(tipTimer);
+      if (autoHide) tipTimer = setTimeout(hideTip, 5000);
+    }
+    function hideTip() {
+      tipFor = null;
+      tip.hidden = true;
+      clearTimeout(tipTimer);
+    }
+    nodeLayer.addEventListener('pointerover', (e) => {
+      if (e.pointerType !== 'mouse' || drag?.moved > 6) return;
+      const el = e.target.closest('.tnode');
+      if (el && el.dataset.id !== tipFor) showTip(el.dataset.id);
+    });
+    nodeLayer.addEventListener('pointerout', (e) => {
+      if (e.pointerType !== 'mouse') return;
+      const el = e.target.closest('.tnode');
+      if (el && !el.contains(e.relatedTarget)) hideTip();
+    });
 
     function renderRed() {
       const reds = SKILLS.filter((x) => x.kind === 'red' && s.skills.includes(x.id));
@@ -427,7 +579,8 @@ export function openTree(s, onChange, { focus = null } = {}) {
     viewport.addEventListener('pointerdown', (e) => {
       pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
       viewport.setPointerCapture(e.pointerId);
-      if (pointers.size === 1) drag = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y, moved: 0, target: e.target.closest('.tnode') };
+      if (pointers.size === 1) drag = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y, moved: 0, target: e.target.closest('.tnode'), type: e.pointerType };
+      if (e.pointerType !== 'mouse') hideTip();
       if (pointers.size === 2) {
         const [a, b] = [...pointers.values()];
         pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), scale: view.scale, cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2, vx: view.x, vy: view.y };
@@ -445,6 +598,7 @@ export function openTree(s, onChange, { focus = null } = {}) {
         view.x = drag.vx + e.clientX - drag.x;
         view.y = drag.vy + e.clientY - drag.y;
         drag.moved = Math.max(drag.moved, Math.hypot(e.clientX - drag.x, e.clientY - drag.y));
+        if (drag.moved > 6) hideTip();
         applyView();
       }
     });
@@ -463,7 +617,13 @@ export function openTree(s, onChange, { focus = null } = {}) {
       unlock(sk);
     };
     const up = (e) => {
-      if (drag && drag.moved < 6 && drag.target) tapNode(drag.target.dataset.id);
+      if (drag && drag.moved < 6 && drag.target) {
+        const id = drag.target.dataset.id;
+        const touch = drag.type !== 'mouse';
+        tapNode(id);
+        // 指で触る端末では、タップしたパネルの詳細をその場に出す（マウスは乗せたときに出ている）
+        if (touch && root.isConnected) requestAnimationFrame(() => showTip(id, { autoHide: true }));
+      }
       pointers.delete(e.pointerId);
       if (pointers.size < 2) pinch = null;
       if (!pointers.size) drag = null;
@@ -473,6 +633,7 @@ export function openTree(s, onChange, { focus = null } = {}) {
     viewport.addEventListener('wheel', (e) => {
       e.preventDefault();
       const next = Math.min(1.6, Math.max(0.4, view.scale * (e.deltaY < 0 ? 1.1 : 0.9)));
+      hideTip();
       zoomAt(next, e.clientX, e.clientY);
     }, { passive: false });
 
