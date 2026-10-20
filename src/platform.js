@@ -57,16 +57,56 @@ export function initPlatform(version) {
   try {
     // 全体チャット（共通基盤 SPEC-004）：右下の 💬 は出さず、横のボタンの列の「チャット」から窓を開く（SDK 1.6.1 の button: false）
     Promise.resolve(bg.init({ game: '10buy', version, chat: { button: false, position: 'bottom-right' } }))
-      .then(() => applyChatVisible())
+      .then(() => {
+        applyChatVisible();
+        // ドックを畳んだ・広げたら、ゲームの 2 列の幅を合わせ直す（ui/layout.js が受け取る）
+        if (bg.chat && typeof bg.chat.onToggle === 'function') bg.chat.onToggle(chatLayoutChanged);
+        chatLayoutChanged();
+      })
       .catch((e) => console.warn('[platform] init', e));
   } catch (e) {
     console.warn('[platform] init', e);
   }
 }
 
-// ---------------------------------------------------------------- 全体チャット（共通基盤 SPEC-004。SDK 1.6.1 から）
-// 窓は SDK が描く。ここでは「開ける」「出す・隠す」だけ。スキルツリーとモーダルの最中は隠す（開いていた窓も閉じる）
+// ---------------------------------------------------------------- 全体チャット（共通基盤 SPEC-004・SPEC-005。SDK 1.6.1 から）
+// 窓は SDK が描く。ここでは「開ける」「出す・隠す」だけ。
+// スマホのシートと間の幅の窓は、スキルツリーとモーダルの最中は隠す（開いていた窓も閉じる）。
+// PC の右側のドック（SDK 1.7.0）は、どの画面でも出したまま（ゲームの画面はドックの左に収める。docs/19）
 let chatWanted = true;
+
+/** いまの形が PC の右側のドックか */
+export function isChatDock() {
+  const bg = sdk();
+  try {
+    return !!(bg && bg.chat && typeof bg.chat.layout === 'function' && bg.chat.layout() === 'dock');
+  } catch {
+    return false;
+  }
+}
+
+/** ドックが広がっているか（畳んでいれば false） */
+export function isChatDockOpen() {
+  const bg = sdk();
+  try {
+    return isChatDock() && typeof bg.chat.isOpen === 'function' && !!bg.chat.isOpen();
+  } catch {
+    return false;
+  }
+}
+
+/** ドックを畳む・広げる（フッターの「チャット」）。ドックでなければ窓を開く */
+export function toggleChat() {
+  const bg = sdk();
+  if (!isChatDock() || typeof bg.chat.collapse !== 'function') return openChat();
+  try { bg.chat.collapse(isChatDockOpen()); } catch (e) { console.warn('[platform] chat', e); }
+  chatLayoutChanged();
+}
+
+// ドックの形・開け閉めが変わったことを、画面の割りふり（ui/layout.js）とボタンに知らせる
+function chatLayoutChanged() {
+  if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function' && typeof Event === 'function') window.dispatchEvent(new Event('bg-chat-layout'));
+}
 
 /** 横のボタンに「チャット」を出せるか（SDK が読めて、窓を開ける版のとき） */
 export function isChatAvailable() {
@@ -84,7 +124,12 @@ export function openChat() {
 function applyChatVisible() {
   const bg = sdk();
   if (!bg || !bg.chat || typeof bg.chat.setVisible !== 'function') return;
-  try { bg.chat.setVisible(chatWanted); } catch (e) { console.warn('[platform] chat', e); }
+  try { bg.chat.setVisible(chatWanted || isChatDock()); } catch (e) { console.warn('[platform] chat', e); }
+}
+
+/** 画面の幅が変わってドックになった・やめたときに、出す・隠すを合わせ直す（ui/layout.js） */
+export function syncChatVisible() {
+  applyChatVisible();
 }
 
 /** 窓を出せる（true）／隠す（false。開いていれば閉じる）。SDK がない・古いときは覚えておいて、読めたときにそろえる */
@@ -105,7 +150,7 @@ export function openAvatarPicker() {
   return true;
 }
 
-// モーダルやスキルツリーは重なって開くので、数えて 0 に戻ったときだけ出す
+// モーダルやスキルツリーは重なって開くので、数えて 0 に戻ったときだけ出す（ドックのときは隠さない：applyChatVisible）
 let chatBlockers = 0;
 export function blockChat() { chatBlockers++; setChatVisible(false); }
 export function unblockChat() { chatBlockers = Math.max(0, chatBlockers - 1); if (chatBlockers === 0) setChatVisible(true); }

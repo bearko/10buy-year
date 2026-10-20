@@ -36,10 +36,10 @@ import { logModal, pushLog } from './ui/log.js';
 import { offersModal } from './ui/shop.js';
 import { initFontScale } from './ui/a11y.js';
 import { initPixelArt } from './ui/pixel.js';
-import { initLayout } from './ui/layout.js';
+import { initLayout, isPc } from './ui/layout.js';
 import { initBackNav } from './ui/backnav.js';
 import { getLang, initLang, setLang, tr } from './i18n/index.js';
-import { canRta, initPlatform, isChatAvailable, openChat, reportScore, reportTrophies, rtaAbort, rtaProgress, rtaStart, scoreMetrics } from './platform.js';
+import { canRta, initPlatform, isChatAvailable, isChatDockOpen, toggleChat, reportScore, reportTrophies, rtaAbort, rtaProgress, rtaStart, scoreMetrics } from './platform.js';
 import { listNowCovers, listNowPrompt } from './ui/listnow.js';
 import { autoVisible } from './engine/sourcing.js';
 import { mailbox, salesMails } from './ui/mail.js';
@@ -110,6 +110,13 @@ window.addEventListener('keydown', (e) => {
     if (b && !b.disabled) {
       e.preventDefault();
       b.click();
+    }
+  } else if (isPc() && !busy && /^[qwer]$/i.test(e.key)) {
+    // PC の行動のタブ：Q・W・E・R（仕入れ・出品・外出・休む）
+    const tab = document.querySelectorAll('#commands .cmd-tab')['qwer'.indexOf(e.key.toLowerCase())];
+    if (tab && !tab.disabled) {
+      e.preventDefault();
+      tab.click();
     }
   } else if ((e.key === 'Escape' || e.key === 'Backspace') && !busy) {
     const back = document.querySelector('#commands .cmd-back');
@@ -386,10 +393,46 @@ function nextCommand(mode) {
 
 const cmdMode = (on) => document.body.classList.toggle('cmd-mode', on);
 
-// 行動を選んでいないとき（演出中・週の切り替わり）も、4つの分類カードを並べておく
+// PC の行動のタブ（docs/19）：週のはじめは「仕入れ」。同じ週の中では、最後に開いたタブのまま
+let pcTab = 'buy';
+let pcTabWeek = -1;
+function pcTabNow() {
+  if (state.week !== pcTabWeek) {
+    pcTabWeek = state.week;
+    pcTab = state.sick > 0 ? 'rest' : 'buy';
+  }
+  return pcTab;
+}
+
+// タブの行。onPick がなければ、押せない飾り（演出中）
+function cmdTabs(active, { onPick = null, pointAt = null, seen = null } = {}) {
+  const cmds = availableCommands(state);
+  return h('div', { class: 'cmd-tabs', role: 'tablist' }, ...GROUPS.map((g, i) => {
+    const list = cmds.filter((c) => c.group === g.id);
+    const off = !list.length && g.id !== 'sell';
+    const fresh = seen && list.some((c) => !seen.includes(c.id));
+    return h('button', {
+      class: `cmd-tab ${g.id === active ? 'on' : ''} ${off ? 'off' : ''}${pointAt === g.id ? ' tut-point' : ''}`,
+      role: 'tab',
+      'aria-selected': String(g.id === active),
+      tabindex: onPick ? 0 : -1,
+      onclick: () => { if (onPick && !off) onPick(g.id); },
+    }, h('img', { src: g.icon, alt: '' }), h('span', {}, g.name), list.length > 1 ? h('span', { class: 'n' }, list.length) : null, h('span', { class: 'k' }, 'QWER'[i]),
+    fresh ? h('span', { class: 'new-tag' }, 'NEW') : list.some((c) => c.id === 'auction') ? h('span', { class: 'grp-event' }, 'オークション開催') : null);
+  }));
+}
+
+// 行動を選んでいないとき（演出中・週の切り替わり）も、4つの分類カードを並べておく（PC はタブと、その中の行動）
 function drawIdleCommands() {
   const nav = clear($('#commands'));
   if (!state) return;
+  if (isPc()) {
+    nav.classList.remove('groups');
+    const tab = pcTabNow();
+    nav.append(h('div', { class: 'cmd-header' }, h('span', {}, '今週')), cmdTabs(tab));
+    for (const c of availableCommands(state).filter((x) => x.group === tab)) nav.append(h('button', { class: 'cmd', tabindex: -1 }, h('img', { class: 'cmd-ic', src: c.icon, alt: '' }), h('b', {}, c.name)));
+    return;
+  }
   nav.classList.add('groups');
   nav.append(h('div', { class: 'cmd-header' }, h('span', {}, '今週')));
   for (const g of GROUPS) nav.append(h('button', { class: 'cmd grp', tabindex: -1 }, h('img', { class: 'cmd-ic', src: g.icon, alt: '' }), h('b', {}, g.name)));
@@ -489,15 +532,18 @@ function waitForCommand(mode) {
     function draw() {
       loadCmds();
       clear(nav);
+      // PC はいつもタブの中（分類の一覧はない）。スマホは分類のカード → 押すと中身
+      const pc = isPc() && !night;
+      if (pc && !group) group = pcTabNow();
       nav.classList.toggle('groups', !group && !night);
       const count = state.actionsPerWeek > 1 && !night ? ` ${state.actionsPerWeek - state.actionsLeft + 1}/${state.actionsPerWeek}` : '';
       const head = h('div', { class: 'cmd-header' });
-      if (group) {
+      if (group && !pc) {
         head.append(h('button', { class: `cmd-back${point(guide()?.group && guide().group !== group)}`, onclick: () => { if (busy) return; group = null; unpreview(); idleMessage(); draw(); } }, `◀ ${GROUPS.find((g) => g.id === group).name}`));
       } else {
         head.append(h('span', {}, night ? '夜' : `今週${count}`));
       }
-      if (!night && !group && hasSkill(state, 'routine')) {
+      if (!night && (!group || pc) && hasSkill(state, 'routine')) {
         head.append(h('button', {
           class: 'cmd-auto',
           title: '仕入れ→出品→売却→値下げのサイクルを回す',
@@ -516,9 +562,24 @@ function waitForCommand(mode) {
         }, '⟳ ルーティン'));
       }
       nav.append(head);
+      if (pc) {
+        const g = guide();
+        nav.append(cmdTabs(group, {
+          seen: state.seenCmds,
+          pointAt: g?.group && g.group !== group ? g.group : null,
+          onPick: (id) => {
+            if (busy || id === group) return;
+            group = id;
+            pcTab = id;
+            unpreview();
+            idleMessage();
+            draw();
+          },
+        }));
+      }
       // 出品できる在庫と出品枠のあきがあれば、カードの上に帯で知らせる（売れるのは週末。止めずに知らせるだけ）
       const idle = idleListing(state);
-      if (idle.n > 0 && !group && !guide() && state.settings.warnIdleListing !== false) {
+      if (idle.n > 0 && (!group || pc) && !guide() && state.settings.warnIdleListing !== false) {
         nav.append(h('button', {
           class: 'cmd-idle',
           onclick: async () => {
@@ -590,7 +651,10 @@ function waitForCommand(mode) {
     };
     draw();
     // 体調不良のときは「休む」だけ
-    if (state.sick > 0) select(COMMAND_MAP.rest);
+    if (state.sick > 0) {
+      if (isPc() && !night) group = pcTab = 'rest';
+      select(COMMAND_MAP.rest);
+    }
   });
 }
 
@@ -688,8 +752,8 @@ function renderTabs() {
     },
     { id: 'ab', label: '能力強化', open: () => openAbilities(state, refresh), lock: !treeOpen(state) && '最初の売上のあとに開ける', badge: abilityBadge() },
     { id: 'log', label: 'ログ', open: () => logModal(state) },
-    // 全体チャット（共通基盤 SPEC-004）：SDK の窓をこのボタンから開く。SDK が読めていないあいだは出さない
-    { id: 'chat', label: 'チャット', open: () => openChat(), lock: !isChatAvailable() && 'bearko.games の SDK が読めたら開ける' },
+    // 全体チャット（共通基盤 SPEC-004・SPEC-005）：SDK の窓をこのボタンから開く。PC の右側のドックなら畳む・広げる。SDK が読めていないあいだは出さない
+    { id: 'chat', label: 'チャット', cls: isChatDockOpen() ? 'on' : '', open: () => toggleChat(), lock: !isChatAvailable() && 'bearko.games の SDK が読めたら開ける' },
   ];
   const pointSide = tutorialGuide()?.side;
   const menuFresh = MENU_UI.some((id) => uiFresh(id));
@@ -698,7 +762,7 @@ function renderTabs() {
     if (t.lock) continue;
     const fresh = uiFresh(t.id) || (t.id === 'menu' && menuFresh);
     nav.append(h('button', {
-      class: `side-btn ${t.id} ${fresh ? 'fresh' : ''} ${pointSide === t.id ? 'tut-point' : ''}`,
+      class: `side-btn ${t.id} ${t.cls || ''} ${fresh ? 'fresh' : ''} ${pointSide === t.id ? 'tut-point' : ''}`,
       onclick: () => {
         if (busy) return;
         uiSeen(t.id);
@@ -1337,7 +1401,18 @@ async function shareResult(r, chris) {
 initFontScale();
 initPlatform(APP_VERSION); // bearko.games 共通基盤（総合スコア・アチーブメント・RTA）。SDK がなければ何もしない
 initPixelArt(); // ドット絵を端末の画素の整数倍で出す
-initLayout(); // ステージの高さを、画面の高さと行動カードの段数に合わせる
+initLayout(); // ステージの高さを、画面の高さと行動カードの段数に合わせる（PC は 2 列。docs/19）
+// PC とスマホの並べ方が切り替わったら、行動（タブ ↔ 分類のカード）とボタンを描き直す
+window.addEventListener('layout-mode', () => {
+  if (!state) return;
+  if (redrawCommands && !busy) redrawCommands();
+  else if (!redrawCommands) drawIdleCommands();
+  renderTabs();
+});
+// チャットのドックを畳んだ・広げた（フッターの「チャット」の点灯）
+window.addEventListener('bg-chat-layout', () => {
+  if (state) renderTabs();
+});
 // 右のパネルの基礎能力を押したら、能力強化の画面を開く
 setParamsOpen(() => {
   if (busy || !state) return;

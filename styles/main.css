@@ -103,6 +103,10 @@ h1 small { display: block; font-size: calc(16px * var(--fs, 1)); text-shadow: no
 /* ---------- ステージ ---------- */
 /* 縦長のスマホでは、ステージを画面の高さに合わせて大きくし（選択肢が出ても高さは変えない）、行動カードを画面の下（親指の届く場所）に置く */
 #game-screen:not([hidden]) { display: flex; flex-direction: column; min-height: 100dvh; }
+/* 演出の列・操作の列の入れ物（index.html）。スマホでは入れ物をなくして、いまの順に縦に並べる（PC は末尾の body.pc） */
+.col-stage, .col-ops { display: contents; }
+#hud { order: 0; } #stage { order: 1; } #message { order: 2; } #commands { order: 3; }
+#ops-foot { display: none; }
 #stage { position: relative; flex: none; height: clamp(204px, calc(34dvh + 34px), 340px); overflow: hidden; background: #000; } /* 実際の高さは ui/layout.js が測って決める */
 #stage-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: brightness(0.62); }
 #news-ticker { position: absolute; top: 0; left: 0; right: 0; padding: 4px 8px; background: #000b; font-size: calc(12px * var(--fs, 1)); z-index: 2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1920,3 +1924,74 @@ body.stage-xs #side-btns .side-btn.quest, body.stage-xs #side-btns .side-btn.tre
 /* はじめての出品（docs/18）：出品ボタンと値付けだけ */
 .inv-simple .inv-opts, .inv-simple .inv-tools, .inv-simple .inv-quick, .inv-simple .inv-buy, .inv-simple .sel-dot { display: none; }
 .modal-footer .btn.tut-point { overflow: visible; }
+
+/* ---------- PC：操作の列と演出の列（docs/19。ui/layout.js が body.pc と --dock などを決める） ----------
+   左：演出の列（舞台・メッセージ欄）、右：操作の列（上の情報・能力・行動のタブ・ボタン）。右端の全体チャットのドック（SDK）の左に収める */
+/* 右端にチャットのドックがあるとき（1 列でも）：ゲームはドックの左に収める。ドックは SDK がいちばん上に描く */
+body.chat-dock #app { margin-left: max(0px, calc((100% - var(--dock, 0px) - 520px) / 2)); margin-right: auto; }
+body.chat-dock .modal-backdrop, body.chat-dock .confirm-backdrop, body.chat-dock .goal-pop, body.chat-dock .mailbox, body.chat-dock .qscene, body.chat-dock .celebrate, body.chat-dock .tree-screen { right: var(--dock, 0px); }
+body.chat-dock .shop { right: var(--dock, 0px); }
+body.chat-dock .toast-stack { left: calc((100% - var(--dock, 0px)) / 2); }
+body.pc #app { max-width: none; margin: 0; width: calc(100% - var(--dock, 0px)); }
+body.pc #title-screen, body.pc #ending-screen { max-width: 520px; margin: 0 auto; }
+body.pc #game-screen:not([hidden]) { flex-direction: row; justify-content: center; gap: 16px; height: 100dvh; min-height: 0; padding: 12px 16px; overflow: hidden; }
+body.pc .col-stage { display: flex; flex-direction: column; gap: 8px; flex: 1 1 auto; min-width: 0; max-width: 760px; }
+body.pc .col-ops { display: flex; flex-direction: column; gap: 8px; flex: 0 0 clamp(440px, 45%, 520px); min-width: 0; min-height: 0; }
+body.pc #hud { position: static; border: 2px solid var(--line); border-radius: var(--radius); }
+body.pc #stage { flex: 1 1 auto; min-height: 0; border: 2px solid var(--line); border-radius: var(--radius); }
+body.pc #side { display: none; }
+/* 演出の列の文字：スマホに合わせた大きさから、PC の距離で読みやすい大きさに */
+body.pc #news-ticker { padding: 7px 14px; font-size: calc(15px * var(--fs, 1)); }
+body.pc #message { flex: none; margin: 0; min-height: 184px; padding: 12px 18px 16px; }
+body.pc #speaker { font-size: calc(17px * var(--fs, 1)); min-height: 26px; }
+body.pc #text { font-size: calc(19px * var(--fs, 1)); line-height: 1.65; min-height: 64px; }
+body.pc #next-mark { right: 14px; bottom: 6px; font-size: calc(15px * var(--fs, 1)); }
+/* 人物：舞台が大きいので、スマホの頭打ち（最大 230px）を上げる。ドットは fitPixel が整数倍にそろえる */
+body.pc #sprite-left { left: 10%; height: min(56%, 360px); }
+body.pc #sprite-right { height: min(46%, 300px); }
+body.pc #sprite-right.hero { height: min(42%, 270px); }
+body.pc #sprite-right.enemy { height: min(44%, 280px); }
+body.pc #sprite-right.orig.mine { height: min(52%, 340px); }
+body.pc #sprite-right.orig.maycri { height: min(28%, 180px); }
+/* 能力：ヘッダーの下に、5 つを列で */
+body.pc #params { display: grid; grid-template-columns: auto repeat(5, minmax(0, 1fr)); gap: 6px; padding: 8px 10px; line-height: 1.3; background: #0b1020; border: 2px solid var(--line); border-radius: var(--radius); }
+body.pc .pr-tabs { grid-template-columns: 1fr; align-content: center; gap: 4px; margin: 0; }
+body.pc .pr-tabs button { padding: 4px 8px; font-size: calc(12px * var(--fs, 1)); }
+body.pc #params .pr { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 5px 0; border: 1px solid #ffffff14; border-radius: 8px; background: #ffffff08; text-align: center; font-size: calc(12px * var(--fs, 1)); }
+body.pc #params .pr .pn { font-size: calc(12px * var(--fs, 1)); }
+body.pc #params .pr.ab .pn { color: var(--muted); }
+body.pc #params .pr.ab .rk { font-size: calc(15px * var(--fs, 1)); }
+body.pc #params .pr b { font: 700 calc(18px * var(--fs, 1)) / 1 'Orbitron', sans-serif; text-align: center; }
+body.pc #params .pr i { min-height: 1.1em; font-size: calc(10px * var(--fs, 1)); }
+/* 行動：4 つのタブと、選んだタブの中身 */
+body.pc #commands { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 0 2px 4px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.cmd-tabs { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-bottom: 2px solid #c8cff5; margin-bottom: 4px; }
+.cmd-tab { position: relative; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 4px 8px; font: inherit; font-weight: bold; font-size: calc(15px * var(--fs, 1)); color: var(--muted); background: transparent; border: 2px solid transparent; border-bottom: 0; border-radius: 10px 10px 0 0; cursor: pointer; white-space: nowrap; }
+.cmd-tab:hover { color: var(--text); }
+.cmd-tab img { width: 22px; height: 22px; object-fit: contain; image-rendering: pixelated; }
+.cmd-tab.on { color: var(--text); background: var(--panel); border-color: #c8cff5; margin-bottom: -2px; }
+.cmd-tab.off { opacity: 0.4; cursor: default; }
+.cmd-tab .k { font: 10px 'Orbitron', sans-serif; color: var(--muted); }
+.cmd-tab .new-tag, .cmd-tab .grp-event { position: absolute; top: -6px; right: 2px; }
+.cmd-tab .n { font-size: calc(10px * var(--fs, 1)); color: var(--muted); font-weight: normal; }
+body.pc #commands .cmd-header { grid-column: 1 / -1; }
+/* 選択肢：PC では操作の列（タブの中身の場所）に大きく出す */
+body.pc #choices { flex: 0 1 auto; min-height: 0; overflow-y: auto; margin: 0; padding: 2px; gap: 8px; } /* 選択肢が多いときは、この欄の中でスクロール（フッターを押し出さない） */
+body.pc #choices .choice { padding: 12px 16px; font-size: calc(16px * var(--fs, 1)); }
+body.pc #choices button { padding-left: 24px; }
+body.pc .col-ops:has(#choices:not(:empty)) #commands { display: none; }
+/* ボタン群：操作の列のフッターに、幅いっぱいで 1 行。演出の最中も消さない */
+body.pc #ops-foot { order: 4; display: block; margin-top: auto; padding-top: 8px; border-top: 1px solid var(--line); } /* いつも操作の列の下 */
+body.pc #side-btns, body.pc.busy.gain-flash #side-btns { display: flex; gap: 6px; }
+body.pc #side-btns .side-btn { flex: 1 1 0; min-width: 0; padding: 10px 0; font-size: calc(12px * var(--fs, 1)); letter-spacing: 0; white-space: nowrap; overflow: visible; }
+body.pc #side-btns .side-btn.quest, body.pc #side-btns .side-btn.tree { flex-grow: 1.5; padding: 10px 2px; font-size: calc(12px * var(--fs, 1)); }
+/* チャット：ドックが広がっているあいだは点灯（押すと畳む） */
+.side-btn.chat.on { border-color: #a78bfa; background: #2b2558e6; color: #ece7ff; }
+body.pc.busy #side-btns { opacity: 0.55; }
+/* 画面に重ねるもの：開く画面は操作の列の上だけ、お祝いは演出の列の上、全画面のものはドックの左まで */
+body.pc .modal-backdrop, body.pc .confirm-backdrop, body.pc .goal-pop, body.pc .mailbox, body.pc .qscene { left: var(--ov-l, 0px); right: var(--ov-r, var(--dock, 0px)); }
+body.pc .shop { left: var(--ov-l, 0px); right: var(--ov-r, var(--dock, 0px)); box-shadow: none; }
+body.pc .celebrate { left: var(--st-l, 0px); right: var(--st-r, var(--dock, 0px)); }
+body.pc .tree-screen { right: var(--dock, 0px); }
+body.pc .toast-stack { left: calc((var(--ov-l, 0px) + 100% - var(--ov-r, 0px)) / 2); }
+
