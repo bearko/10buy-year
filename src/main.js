@@ -307,7 +307,26 @@ async function playSteps(steps) {
 }
 
 // 行動・画面を閉じたあと：チュートリアルの進み具合と、ミッションの達成を確かめる
-const tutorialStep = () => playSteps([...checkTutorial(state), ...checkQuests(state)]);
+// 最初の売上（ミッション「売れるのを待とう」）のあとに、まだ出品していない物があれば出品を促す
+// （最初の出品で 1 つだけ出して、残りを出しそびれるとチュートリアルが進まなくなるため）
+const tutorialStep = async () => {
+  const before = currentMission(state)?.id;
+  await playSteps([...checkTutorial(state), ...checkQuests(state)]);
+  if (before === 'sell_home' && currentMission(state)?.id !== 'sell_home') await promptIdleListing();
+};
+async function promptIdleListing() {
+  const idle = idleListing(state);
+  if (!idle.n) return;
+  const r = await confirmBox({
+    title: 'まだ出品していない物がある',
+    lines: [`未出品 ${idle.unlisted}点・出品枠のあき ${idle.free}`, '出品しておけば、来週また売れるかもしれない。'],
+    okLabel: '在庫を出品する',
+    cancelLabel: 'あとで',
+  });
+  if (!r.ok) return;
+  await inventoryModal(state, refresh);
+  refresh();
+}
 
 // 経験点の獲得は、ステージ右の経験点パネルを光らせて見せる
 async function flashGain(exp) {
@@ -405,14 +424,14 @@ function pcTabNow() {
 }
 
 // タブの行。onPick がなければ、押せない飾り（演出中）
-function cmdTabs(active, { onPick = null, pointAt = null, seen = null } = {}) {
+function cmdTabs(active, { onPick = null, pointAt = null, seen = null, locked = () => false } = {}) {
   const cmds = availableCommands(state);
   return h('div', { class: 'cmd-tabs', role: 'tablist' }, ...GROUPS.map((g, i) => {
     const list = cmds.filter((c) => c.group === g.id);
     const off = !list.length && g.id !== 'sell';
     const fresh = seen && list.some((c) => !seen.includes(c.id));
     return h('button', {
-      class: `cmd-tab ${g.id === active ? 'on' : ''} ${off ? 'off' : ''}${pointAt === g.id ? ' tut-point' : ''}`,
+      class: `cmd-tab ${g.id === active ? 'on' : ''} ${off ? 'off' : ''}${pointAt === g.id ? ' tut-point' : ''}${g.id !== active && locked(g.id) ? ' tut-lock' : ''}`,
       role: 'tab',
       'aria-selected': String(g.id === active),
       tabindex: onPick ? 0 : -1,
@@ -470,6 +489,11 @@ function waitForCommand(mode) {
       setMessage('', night ? '夜。もうひと仕事？' : state.sick > 0 ? '体調が悪い…休むか、病院へ行こう。' : '今週は何をしよう？');
     };
     const point = (on) => (on ? ' tut-point' : '');
+    // チュートリアル中は、矢印が指す分類・行動だけを押せる（ほかを押して週が進み、チュートリアルが止まらないように）
+    // 「休む」だけはいつでも押せる（体力が尽きて体調を崩さないように）
+    const lockGroup = (id) => { const g = guide(); return !!g && id !== 'rest' && (!!g.side || (!!g.group && g.group !== id)); };
+    const lockCmd = (id, grp) => { const g = guide(); return !!g && id !== 'rest' && (!!g.side || (!!g.group && g.group !== grp) || (!!g.cmd && g.cmd !== id)); };
+    const lockTap = () => toast(guide()?.side ? '右の光っているボタンを押してね' : '矢印のボタンを押してね');
     const unpreview = () => {
       selected = null;
       setPreview(null);
@@ -512,10 +536,13 @@ function waitForCommand(mode) {
       const quick = oneTap() && !guide() && risk === 0;
       let pressed = false;
       let timer = null;
+      const locked = !night && lockCmd(c.id, c.group);
       const el = card({
-        class: `cmd ${sel ? 'sel' : ''} ${risk >= 0.3 ? 'danger' : risk > 0 ? 'risky' : ''}${point(guide()?.cmd === c.id)}`,
+        class: `cmd ${sel ? 'sel' : ''} ${risk >= 0.3 ? 'danger' : risk > 0 ? 'risky' : ''}${point(guide()?.cmd === c.id)}${locked ? ' tut-lock' : ''}`,
+        'aria-disabled': locked ? 'true' : null,
         onclick: () => {
           if (busy) return;
+          if (locked) return lockTap();
           if (pressed) { pressed = false; return; }
           if (quick) pickCmd(c.id);
           else select(c);
@@ -534,7 +561,7 @@ function waitForCommand(mode) {
       clear(nav);
       // PC はいつもタブの中（分類の一覧はない）。スマホは分類のカード → 押すと中身
       const pc = isPc() && !night;
-      if (pc && !group) group = pcTabNow();
+      if (pc && !group) group = guide()?.group || pcTabNow(); // チュートリアル中は矢印の分類を開いておく
       nav.classList.toggle('groups', !group && !night);
       const count = state.actionsPerWeek > 1 && !night ? ` ${state.actionsPerWeek - state.actionsLeft + 1}/${state.actionsPerWeek}` : '';
       const head = h('div', { class: 'cmd-header' });
@@ -567,8 +594,10 @@ function waitForCommand(mode) {
         nav.append(cmdTabs(group, {
           seen: state.seenCmds,
           pointAt: g?.group && g.group !== group ? g.group : null,
+          locked: lockGroup,
           onPick: (id) => {
             if (busy || id === group) return;
+            if (lockGroup(id)) return lockTap();
             group = id;
             pcTab = id;
             unpreview();
@@ -600,10 +629,13 @@ function waitForCommand(mode) {
       }
       if (group) {
         if (group === 'sell') {
+          const locked = lockCmd('list', 'sell');
           nav.append(card({
-            class: `cmd free${point(guide()?.cmd === 'list')}`,
+            class: `cmd free${point(guide()?.cmd === 'list')}${locked ? ' tut-lock' : ''}`,
+            'aria-disabled': locked ? 'true' : null,
             onclick: async () => {
               if (busy) return;
+              if (locked) return lockTap();
               await inventoryModal(state, refresh);
               await tutorialStep();
               resumeCommands?.();
@@ -620,10 +652,13 @@ function waitForCommand(mode) {
       for (const g of GROUPS) {
         const list = cmds.filter((c) => c.group === g.id);
         const sel = list.length === 1 && selected === list[0].id;
+        const locked = lockGroup(g.id);
         nav.append(card({
-          class: `cmd grp ${list.length ? '' : 'off'} ${sel ? 'sel' : ''}${point(!sel && guide()?.group === g.id)}`,
+          class: `cmd grp ${list.length ? '' : 'off'} ${sel ? 'sel' : ''}${point(!sel && guide()?.group === g.id)}${locked ? ' tut-lock' : ''}`,
+          'aria-disabled': locked ? 'true' : null,
           onclick: () => {
             if (busy || (!list.length && g.id !== 'sell')) return;
+            if (locked) return lockTap();
             if (g.id === 'rest') return select(list[0]);
             group = g.id;
             unpreview();
@@ -639,6 +674,8 @@ function waitForCommand(mode) {
     hidePartner();
     setBackground('home');
     playBgm('pve');
+    // PC はタブを先に決めておく（案内の言葉が「〇〇を開いて」にならないように）
+    if (isPc() && !night && !group) group = guide()?.group || pcTabNow();
     idleMessage();
     cmdMode(true);
     redrawCommands = draw;
@@ -663,6 +700,10 @@ function tutorialGuide(group = null) {
   const m = !tutorialDone(state) && currentMission(state);
   if (!m) return null;
   const wait = '行動を1つ選ぶと1週間が進んで、週末に売れたかどうかがメールで届くわ。';
+  // 売れるのを待つあいだに、出品していない物があれば先に出品へ（出しそびれたまま進まなくならないように）
+  if (['sell_home', 'sell_more', 'sell_bought'].includes(m.id) && idleListing(state).n > 0) {
+    return { group: 'sell', cmd: 'list', say: group === 'sell' ? '「在庫を出品」で、まだ出品していない物も出しておきましょう。出品は週が進まないわ。' : 'まだ出品していない物があるわ。「出品」を開いて、先に出しておきましょう。' };
+  }
   switch (m.id) {
     case 'list_home':
     case 'list_bought':

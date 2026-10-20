@@ -4,7 +4,7 @@ import { productImage, productOf, shipFor, shippingCost } from '../data/products
 import { weekLabel, yearOf } from '../engine/calendar.js';
 import { flag, hasSkill } from '../engine/effects.js';
 import {
-  abroadMult, activeUnits, buybackQuote, capacity, feeRate, groupInventory, platformMult, platformOpen, hardCapacity, listedUnits, listingCap, listUnits, platformFee, platformsFor, PLATFORMS, sellToBuyer, unlistUnits, overCapacity, roomUsed, incomingSpace,
+  abroadMult, activeUnits, buybackQuote, capacity, feeRate, groupInventory, idleListing, platformMult, platformOpen, hardCapacity, listedUnits, listingCap, listUnits, platformFee, platformsFor, PLATFORMS, sellToBuyer, unlistUnits, overCapacity, roomUsed, incomingSpace,
 } from '../engine/inventory.js';
 import { sizeLabel, sizeMult } from '../engine/shoes.js';
 import { CLAIM_BUYERS, claimable, regOf, TAKEDOWN_RATE, unsellable } from '../engine/regulated.js';
@@ -121,7 +121,9 @@ export function inventoryModal(s, onChange) {
     body.classList.toggle('inv-simple', tut === 'list_home');
     // 出品できたら（売れるのを待つあいだも）、次は「閉じる」を指す。閉じて行動を選ぶと週が進む
     const closeBtn = body.closest('.modal')?.querySelector('.modal-footer .btn');
-    closeBtn?.classList.toggle('tut-point', (['list_home', 'list_bought'].includes(tut) && mission.done(s)) || tut === 'sell_home');
+    // 売れるのを待つあいだも、まだ出品していない物があれば、先にその「出品」を指す（main.js の tutorialGuide と同じ）
+    const tutIdle = ['sell_home', 'sell_more', 'sell_bought'].includes(tut) && idleListing(s).n > 0;
+    closeBtn?.classList.toggle('tut-point', (['list_home', 'list_bought'].includes(tut) && mission.done(s)) || (tut === 'sell_home' && !tutIdle));
     const done = (msg, tone = 'good') => {
       toast(msg, tone);
       api.refresh();
@@ -441,7 +443,7 @@ export function inventoryModal(s, onChange) {
       const profitLbl = h('span', {});
       const qtyLbl = h('b', {});
       const listBtn = h('button', { class: 'btn primary inv-list', disabled: !x.canHere });
-      if (!pointed && !g.listing && x.canHere && ((tut === 'list_home' && g.home) || (tut === 'list_bought' && !g.home)) && !mission.done(s)) {
+      if (!pointed && !g.listing && x.canHere && !x.blocked && (tutIdle || (((tut === 'list_home' && g.home) || (tut === 'list_bought' && !g.home)) && !mission.done(s)))) {
         listBtn.classList.add('tut-point');
         pointed = true;
       }
