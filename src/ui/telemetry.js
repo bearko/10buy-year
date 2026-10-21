@@ -40,6 +40,14 @@ let current = null; // いま遊んでいるゲーム（タイトル画面では
 let timer = null;
 let sending = false;
 
+// 作者・テスターの端末（bearko.games の管理画面で決める。共通基盤 SPEC-009 3.2）は送らない。SDK が読めなければ false
+const testerDevice = () => {
+  try {
+    return !!window.BearkoGames?.isTester?.();
+  } catch {
+    return false;
+  }
+};
 const devHost = () => /^(localhost|127\.|0\.0\.0\.0|\[::1\]|192\.168\.|10\.)/.test(window.location.hostname) || window.location.protocol !== 'https:';
 export const telemetryDefault = () => !devHost() && !window.navigator.webdriver;
 export function telemetryEnabled() {
@@ -93,6 +101,12 @@ export function flush(beacon = false) {
   clearTimeout(timer);
   timer = null;
   if (!queue.length || !telemetryEnabled() || (sending && !beacon)) return;
+  if (testerDevice()) {
+    // 溜めたぶんも捨てる（最初の送信は早くても 1 分後か 40 件目なので、そのころには SDK の初期化が済んでいる）
+    queue = [];
+    ls.set(QUEUE_KEY, '[]');
+    return;
+  }
   const batch = queue.slice(0, BATCH);
   const body = JSON.stringify({ v: PLAYLOG_VERSION, pid, sid, dev: device(), lang: getLang(), ev: batch });
   const done = () => {
