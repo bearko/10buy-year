@@ -1,7 +1,8 @@
 // bearko.games 共通基盤（総合スコア）に送る成績
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { earnedTrophies, reportScore, reportTrophies, resetTrophiesForTest, rtaAbort, rtaPendingCheckpoints, rtaProgress, rtaStart, scoreMetrics } from '../src/platform.js';
+import { earnedTrophies, reportScore, reportTrophies, reportTutorial, resetTrophiesForTest, rtaAbort, rtaPendingCheckpoints, rtaProgress, rtaStart, scoreMetrics, tutorialSteps } from '../src/platform.js';
+import { MISSIONS } from '../src/engine/tutorial.js';
 
 test('10 年遊び切ったら years は 10、途中で終わったら終えた年数', () => {
   assert.equal(scoreMetrics({ over: 'timeup', week: 480, difficulty: 'hard' }, 5e7).years, 10);
@@ -151,4 +152,27 @@ test('RTA：SDK がない・始められないときは false で、ゲームは
   } finally {
     delete globalThis.window;
   }
+});
+
+test('チュートリアルの段（共通基盤 SPEC-010）：新しいゲームだけ、始めた → 済ませたミッション → done の順に 1 回ずつ', () => {
+  assert.deepEqual(tutorialSteps({ tutorial: 3 }), [], '前からのセーブ（tutSent がない）は送らない');
+  assert.deepEqual(tutorialSteps({ tutorial: 0, tutSent: -1 }), [{ step: 0, id: 'start' }]);
+  assert.deepEqual(tutorialSteps({ tutorial: 2, tutSent: 0 }), [{ step: 1, id: MISSIONS[0].id }, { step: 2, id: MISSIONS[1].id }]);
+  const end = tutorialSteps({ tutorial: MISSIONS.length, tutSent: MISSIONS.length - 1 });
+  assert.deepEqual(end.map((x) => x.id), [MISSIONS[MISSIONS.length - 1].id, 'done']);
+  for (const m of MISSIONS) assert.match(m.id, /^[a-z0-9_-]{1,40}$/, '共通基盤が受け付ける名前');
+  const calls = [];
+  globalThis.window = { BearkoGames: { tutorialStep: (step, id) => { calls.push([step, id]); return Promise.resolve({ ok: true }); } } };
+  try {
+    const s = { tutorial: 0, tutSent: -1 };
+    reportTutorial(s);
+    s.tutorial = 1;
+    reportTutorial(s);
+    reportTutorial(s);
+    assert.deepEqual(calls, [[0, 'start'], [1, MISSIONS[0].id]]);
+    assert.equal(s.tutSent, 1);
+  } finally {
+    delete globalThis.window;
+  }
+  reportTutorial({ tutorial: 1, tutSent: -1 }); // SDK がなくても例外を出さない
 });

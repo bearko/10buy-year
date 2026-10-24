@@ -2,7 +2,7 @@
 // SDK（https://bearko.games/sdk/v1.js）が読めない・通信に失敗しても何もしない。ゲームの進行は止めない。
 import { YEAR_WEEKS, TOTAL_YEARS } from './engine/calendar.js';
 import { questsDone } from './engine/quests.js';
-import { tutorialDone } from './engine/tutorial.js';
+import { MISSIONS, tutorialDone } from './engine/tutorial.js';
 
 const sdk = () => (typeof window !== 'undefined' ? window.BearkoGames : undefined);
 
@@ -197,6 +197,33 @@ export function reportTrophies(s, r = null) {
       .catch((e) => retry(id, e));
   }
   return trophyChain;
+}
+
+/**
+ * チュートリアルの段（共通基盤 SPEC-010 5 章。管理画面の「チュートリアル」に漏斗で出る）。
+ * 0 が「始めた」、i が i 番目のミッションを済ませた、最後に 'done'。純関数（test/platform.test.js）。
+ * 新しく始めたゲームだけ送る（newGame で s.tutSent = -1。前からのセーブには付いていないので、始めた時刻のない段は送らない）
+ */
+export function tutorialSteps(s) {
+  if (typeof s.tutSent !== 'number') return [];
+  const upto = tutorialDone(s) ? MISSIONS.length + 1 : s.tutorial;
+  const out = [];
+  for (let i = s.tutSent + 1; i <= upto; i++) out.push({ step: i, id: i === 0 ? 'start' : i > MISSIONS.length ? 'done' : MISSIONS[i - 1].id });
+  return out;
+}
+
+/** 着いた段を送る（ゲームを始めたとき・チュートリアルが進んだとき）。送った段は s.tutSent に覚える（セーブに残る） */
+export function reportTutorial(s) {
+  const bg = sdk();
+  if (!bg || typeof bg.tutorialStep !== 'function') return;
+  for (const st of tutorialSteps(s)) {
+    try {
+      Promise.resolve(bg.tutorialStep(st.step, st.id)).catch((e) => console.warn('[platform] tutorial', e));
+    } catch (e) {
+      console.warn('[platform] tutorial', e);
+    }
+    s.tutSent = st.step;
+  }
 }
 
 /** テスト用：この起動で送ったものを忘れる */
