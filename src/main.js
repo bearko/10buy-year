@@ -39,7 +39,7 @@ import { initPixelArt } from './ui/pixel.js';
 import { initLayout, isPc } from './ui/layout.js';
 import { initBackNav } from './ui/backnav.js';
 import { getLang, initLang, setLang, tr } from './i18n/index.js';
-import { canRta, initPlatform, isChatAvailable, isChatDockOpen, toggleChat, reportScore, reportTrophies, rtaAbort, rtaProgress, rtaStart, scoreMetrics } from './platform.js';
+import { canRta, initPlatform, isChatAvailable, isChatDockOpen, toggleChat, reportScore, reportTrophies, reportTutorial, rtaAbort, rtaProgress, rtaStart, scoreMetrics } from './platform.js';
 import { listNowCovers, listNowPrompt } from './ui/listnow.js';
 import { autoVisible } from './engine/sourcing.js';
 import { mailbox, salesMails } from './ui/mail.js';
@@ -312,6 +312,7 @@ async function playSteps(steps) {
 const tutorialStep = async () => {
   const before = currentMission(state)?.id;
   await playSteps([...checkTutorial(state), ...checkQuests(state)]);
+  reportTutorial(state);
   if (before === 'sell_home' && currentMission(state)?.id !== 'sell_home') await promptIdleListing();
 };
 async function promptIdleListing() {
@@ -1075,6 +1076,8 @@ async function newGame({ daily = null, weekly = null, rta = false, choose = fals
   }
   clearSave();
   startPlaylog(state, { resumed: false });
+  state.tutSent = -1; // 共通基盤にチュートリアルの段を送る（「始めた」から。前からのセーブには付かない）
+  reportTutorial(state);
   showScreen('game-screen');
   refresh();
   if (rta && weekly && !(await rtaStart(state, $('#hud')?.offsetHeight || 0))) toast('RTA の計測を始められなかった。ふつうのチャレンジとして遊べる');
