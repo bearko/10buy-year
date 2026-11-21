@@ -93,7 +93,8 @@ export const canVibrate = () => typeof navigator.vibrate === 'function';
 
 export function playBgm(name) {
   bgmName = name;
-  if (!settings.on) {
+  if (!settings.on || pageHidden()) {
+    // 裏に回っているあいだは流さない（戻ったときに onShow が続きから流す）
     bgm?.pause();
     return;
   }
@@ -110,7 +111,7 @@ export function playBgm(name) {
     fade(old, old.volume, 0, 500, () => old.pause());
     bgm.volume = 0;
     const next = bgm;
-    setTimeout(() => { if (bgm === next) { next.play().catch(() => {}); fade(next, 0, target, 600); } }, 450);
+    setTimeout(() => { if (bgm === next && !pageHidden()) { next.play().catch(() => {}); fade(next, 0, target, 600); } }, 450);
     return;
   }
   old?.pause();
@@ -122,9 +123,28 @@ export function playSe(name) {
   // 売れた・仕入れた・ランクアップのときは、短く振動（音がOFFでも）
   if (name === 'sale' || name === 'buy') buzz(30);
   else if (name === 'stageup' || name === 'levelup') buzz([40, 60, 40]);
-  if (!settings.on || !SE[name]) return;
+  if (!settings.on || !SE[name] || pageHidden()) return;
   const a = (cache[name] ||= new Audio(`assets/audio/se/${SE[name]}`));
   a.currentTime = 0;
   a.volume = SE_BASE * vol.se;
   a.play().catch(() => {});
+}
+
+// 画面が隠れたら（ほかのアプリやタブへ移った・画面を消した・ブラウザを閉じた）BGM を止め、
+// 戻ってきたら、音が ON のときだけ続きから流す。ブラウザやアプリの外枠は、裏に回ったことを
+// ページの音までは伝えてくれない（HTML の Audio は鳴り続ける）ので、ここで自分で止める
+function pageHidden() {
+  return typeof document !== 'undefined' && document.visibilityState === 'hidden';
+}
+function onHide() {
+  bgm?.pause();
+}
+function onShow() {
+  if (settings.on && bgmName) playBgm(bgmName);
+}
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => (pageHidden() ? onHide() : onShow()));
+  window.addEventListener('pagehide', onHide);
+  // 戻る・進むで同じページに戻ってきたとき（bfcache）は visibilitychange が来ないことがある
+  window.addEventListener('pageshow', (e) => { if (e.persisted && !pageHidden()) onShow(); });
 }
