@@ -1,0 +1,207 @@
+// キャリアステージ。副業スタート → 副業安定 → 専業 → 法人化・拡大 → 事業化・多角化
+import { addMood, setFlag, yen } from './effects.js';
+import { monthNet, recentMonths, sumNet } from './kpi.js';
+import { celebrate, choice, goal, info, sfx, talk } from './steps.js';
+import { netWorth, rankOf } from './ending.js';
+import { monthEndForecast } from './finance.js';
+import { visionGoal } from './visions.js';
+import { track } from './telemetry.js';
+
+export const STAGES = [
+  { id: 1, name: '副業スタート', period: '0〜1年目', goal: '家の不用品を売って、仕入れ→販売の流れをつかむ', next: '月の純利益5万円を2か月連続' },
+  { id: 2, name: '副業安定', period: '1〜3年目', goal: 'ジャンルと販路を広げ、専業にできるか見極める', next: '直近3か月の純利益の合計90万円（赤字の月なし）で専業化の判断' },
+  { id: 3, name: '専業', period: '3〜5年目', goal: 'バイトを辞めて専業に。外注とツールで仕組み化を始める', next: '直近12か月の純利益（売上ではない）800万円で法人化の判断' },
+  { id: 4, name: '法人化・拡大', period: '5〜8年目', goal: '会社にして外注・倉庫・問屋仕入れで規模を広げる', next: '直近12か月の純利益1,800万円＋外注3種（出品・発送・仕入れ）で仕組み化' },
+  { id: 5, name: '事業化・多角化', period: '8〜10年目', goal: 'せどりを通過点に、自社ブランド・買取・発信へ', next: '—' },
+];
+export const stageOf = (s) => STAGES[s.stage - 1];
+
+export const LIVING_COST = 180000; // 専業後の生活費（国保・年金込み）
+export const CORP_SOCIAL = 60000; // 法人化後の社会保険料（会社負担分込み）
+export const CORP_SETUP = 250000;
+
+// 次のステージへの進み具合（画面表示用）。判定は checkPromotion と同じ数字を使う
+export function stageProgress(s) {
+  const last = (n) => recentMonths(s, n);
+  if (s.stage === 1) {
+    const m = last(2);
+    return { label: '直近2か月の純利益（各月5万円以上）', items: m.map((x) => ({ v: x.net, target: 50000 })), months: m.length, need: 2 };
+  }
+  if (s.stage === 2) {
+    const m = last(3);
+    return { label: '直近3か月の純利益の合計（90万円・赤字の月なし）', value: sumNet(m), target: 900000, months: m.length, need: 3 };
+  }
+  if (s.stage === 3) {
+    const m = last(12);
+    return { label: '直近12か月の純利益の合計', value: sumNet(m), target: 8000000, months: m.length, need: 12 };
+  }
+  if (s.stage === 4) {
+    const m = last(12);
+    return { label: '直近12か月の純利益の合計（＋外注3種）', value: sumNet(m), target: 18000000, months: m.length, need: 12 };
+  }
+  return null;
+}
+
+// 専業化の判断：直近3か月の合計90万円、かつ赤字の月がない
+export const FULLTIME_TARGET = 900000;
+const fulltimeOk = (m) => m.length === 3 && sumNet(m) >= FULLTIME_TARGET && m.every((x) => x.net >= 0);
+
+// HUD と目標のポップアップに出す「いまの目標」。今月（途中）に月末の固定費・事業収入を足した見込みで進み具合を出す
+export function goalOf(s) {
+  const cur = monthNet(s.cur) + monthEndForecast(s);
+  const prev = (n) => recentMonths(s, n);
+  if (s.stage === 1) {
+    const last = prev(1)[0];
+    const streak = last && last.net >= 50000 ? 1 : 0;
+    return { stage: 1, title: '月の純利益 5万円を2か月連続', short: '月の純利益', value: cur, target: 50000, note: `連続 ${streak}/2か月`, mine: 'まずは月5万円。家の物と店舗せどりで、毎月コツコツ積み上げましょう。' };
+  }
+  if (s.stage === 2) {
+    const red = prev(2).some((m) => m.net < 0) || cur < 0;
+    const wait = (s.flags.fulltimeRetry || 0) - s.week;
+    const note = red ? '赤字の月があると判断できない' : wait > 0 ? `専業の判断は${wait}週後から` : '赤字の月なしで専業の判断';
+    return { stage: 2, title: '3か月で純利益 90万円（赤字の月なし）', short: '3か月の純利益', value: sumNet(prev(2)) + cur, target: FULLTIME_TARGET, note, warn: red, mine: '3か月で90万円、赤字の月を出さずに稼げたら、バイトを辞めて専業になれるわ。' };
+  }
+  if (s.stage === 3) {
+    return { stage: 3, title: '12か月で純利益 800万円', short: '12か月の純利益', value: sumNet(prev(11)) + cur, target: 8000000, note: '法人化の判断', mine: '1年で800万円残せたら、会社にする話が出てくるわ。' };
+  }
+  if (s.stage === 4) {
+    const out = ['out_list', 'out_ship', 'out_buy'].filter((id) => s.skills.includes(id)).length;
+    return { stage: 4, title: '12か月で純利益 1,800万円＋外注3種', short: '12か月の純利益', value: sumNet(prev(11)) + cur, target: 18000000, note: `外注 ${out}/3`, mine: '外注で仕組みを作って、自分が動かなくても回る会社にしましょう。' };
+  }
+  // 志を決めていれば、志の次の目標を出す
+  const vg = visionGoal(s);
+  if (vg) return { stage: 5, ...vg };
+  const nw = netWorth(s);
+  const next = [50000000, 20000000, 8000000].reverse().find((m) => m > nw) || 100000000;
+  return { stage: 5, title: `最終査定までに純資産 ${Math.round(next / 10000).toLocaleString()}万円`, short: '純資産', value: nw, target: next, note: `いまのランク ${rankOf(nw).rank}`, mine: '最後は純資産で査定されるわ。10年の集大成よ。' };
+}
+
+// 月末に呼ぶ。昇格イベントがあれば steps を返す
+export function checkPromotion(s) {
+  const last = (n) => recentMonths(s, n);
+  if (s.stage === 1) {
+    const m = last(2);
+    if (m.length === 2 && m.every((x) => x.net >= 50000)) return promote(s, 2);
+  }
+  if (s.stage === 2 && s.week >= (s.flags.fulltimeRetry || 0)) {
+    // 「月30万円を安定して3か月」：直近3か月の合計90万円以上、かつ赤字の月がない
+    const m = last(3);
+    if (fulltimeOk(m)) return fulltimeChoice(s);
+    if (m.length === 3 && sumNet(m) >= FULLTIME_TARGET) {
+      const red = m.filter((x) => x.net < 0).map((x) => `${x.month}月`).join('・');
+      return [talk('mine', `3か月の合計は${yen(sumNet(m))}。でも${red}が赤字だったから、まだ「安定している」とは言えないわ。赤字の月を出さずに3か月で90万円よ。`, 'arms')];
+    }
+  }
+  if (s.stage === 3 && s.week >= (s.flags.corpRetry || 0)) {
+    const m = last(12);
+    if (m.length >= 12 && sumNet(m) >= 8000000) return corpChoice(s);
+  }
+  if (s.stage === 4) {
+    const m = last(12);
+    const systemized = ['out_list', 'out_ship', 'out_buy'].every((id) => s.skills.includes(id));
+    if (m.length >= 12 && sumNet(m) >= 18000000 && systemized) return promote(s, 5);
+  }
+  return [];
+}
+
+function setStage(s, to) {
+  s.stage = to;
+  (s.stageWeeks ||= {})[to] = s.week;
+  track(s, 'stage', { to });
+}
+
+function promote(s, to) {
+  setStage(s, to);
+  const st = STAGES[to - 1];
+  const lines = {
+    2: [
+      talk('mine', '2か月続けて月5万円の利益。もう「お小遣い稼ぎ」じゃないわね。', 'smile'),
+      talk('chris', '副業としてはけっこう回ってきた気がする！', 'guts'),
+      talk('mine', 'ここからは「何を」「どこで」売るかを絞る段階よ。回転率と利益率も見るようにしましょう。', 'pointer'),
+    ],
+    5: [
+      talk('nobunaga', '市を取ったな。次は天下よ。せどりは貴様の通過点にすぎぬ。'),
+      talk('chris', '自分が動かなくても回る仕組みができた…。次は、自分たちの商品を作る番だ。', 'sparkle'),
+    ],
+  }[to];
+  return [celebrate(`ステージ${to} 到達！`), sfx('stageup'), ...lines, info(`ステージ${to}：${st.name}`, [st.goal, 'スキルツリーで新しいパネルを解放できるようになった'], 'good'), goal()];
+}
+
+function fulltimeChoice(s) {
+  return [
+    talk('mine', '3か月続けて、月30万円前後の利益が安定して出てる。専業の目安とされるラインよ。', 'pointer'),
+    talk('mine', `バイトを辞めて専業になる？ 時間は2倍使えるけど、生活費（月${yen(LIVING_COST)}）も全部転売で稼ぐことになるわ。`, 'arms'),
+    choice([
+      {
+        label: '専業になる',
+        sub: '行動が週2回に／生活費が毎月かかる',
+        run: () => {
+          setStage(s, 3);
+          s.fulltime = true;
+          s.actionsPerWeek = 2;
+          setFlag(s, 'fulltimeWeek', s.week);
+          return [
+            celebrate('ステージ3 専業へ！'),
+            sfx('stageup'),
+            talk('chris', '店長、今までありがとうございました…！ 今日から僕は専業せどらーだ！', 'cheer'),
+            talk('mine', '自由だけど不自由な毎日の始まりね。体を壊さないように。', 'wink'),
+            info('ステージ3：専業', ['行動が週2回になった（バイトは選べない）', `毎月末に生活費 ${yen(LIVING_COST)}`, 'スキルツリーで外注のパネルを解放できるようになった'], 'good'),
+            goal(),
+          ];
+        },
+      },
+      {
+        label: 'まだ副業のままでいい',
+        run: () => {
+          s.flags.fulltimeRetry = s.week + 12;
+          return [talk('chris', 'もう少し安定してからにしよう。会社を辞めた瞬間に売上が落ちる話、よく聞くし…。', 'arms')];
+        },
+      },
+    ]),
+  ];
+}
+
+function corpChoice(s) {
+  return [
+    talk('ryoma', '1年で純利益800万も残しとるなら、会社にしたほうがええぜよ！ 税金も、信用も、人を雇うのも、会社のほうが話が早い。'),
+    talk('mine', `設立費用に${yen(CORP_SETUP)}、社会保険で毎月${yen(CORP_SOCIAL)}かかるけど、税率は下がるわ。`, 'pointer'),
+    choice([
+      {
+        label: `法人化する（${yen(CORP_SETUP)}）`,
+        run: () => {
+          if (s.cash < CORP_SETUP) return [talk('chris', '設立費用が足りない…。', 'sad')];
+          s.cash -= CORP_SETUP;
+          s.stats.expenses += CORP_SETUP;
+          setStage(s, 4);
+          s.corp = true;
+          addMood(s, 1);
+          return [
+            celebrate('ステージ4 法人化！'),
+            sfx('stageup'),
+            talk('chris', '合同会社クリス物販、設立！ 名刺の肩書きが「代表社員」だって。', 'cheer'),
+            info('ステージ4：法人化・拡大', ['税金が法人税（簡易計算で25%）に', `毎月の社会保険 ${yen(CORP_SOCIAL)}`, 'スキルツリーで問屋取引・外注仕入れ・物流倉庫を解放できるようになった'], 'good'),
+            goal(),
+          ];
+        },
+      },
+      {
+        label: 'まだ個人でいい',
+        run: () => {
+          s.flags.corpRetry = s.week + 24;
+          return [talk('ryoma', 'そうか。気が変わったらいつでも言うぜよ。')];
+        },
+      },
+    ]),
+  ];
+}
+
+// 年の始まり：年齢の壁（6年目以降、体力の最大値が下がっていく）
+export function yearStart(s, year) {
+  const steps = [];
+  if (year >= 6) {
+    s.maxStamina = Math.max(60, s.maxStamina - 4);
+    s.stamina = Math.min(s.stamina, s.maxStamina);
+    steps.push(info('年齢の壁', [`${year}年目。体力の最大値が${s.maxStamina}に下がった`, '自分で動く量を減らす「仕組み化」が効いてくる'], 'bad'));
+  }
+  return steps;
+}

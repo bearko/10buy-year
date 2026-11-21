@@ -1,0 +1,116 @@
+# 10 buy year！
+
+仮想通貨で溶かし、友達にまで借金をしたクリスが、**押し入れの本を1冊売るところから**始める、10年間の転売キャリア育成シミュレーションです。
+週ごとに行動を選び、経験点で能力と「転売屋スキルツリー」を伸ばし、偉人たちからコツを教わりながら、副業 → 専業 → 法人 → 事業家へとキャリアを進めます。ステージが上がるほど、見るべき経営指標（KPI）も変わっていきます。
+
+My Crypto Heroes（マイクリ）のヒーロー・エクステンション・エネミーを使った二次創作ゲームです。
+
+> 転売を奨励するゲームではありません。転売という商いを真剣にやってみることで、その仕組み・楽しさ・しんどさ・危うさを体験する社会風刺ゲームです。
+
+## 遊び方
+
+ビルドは不要です。静的ファイルをそのままサーバーで配信してください（ES Modules を使うため `file://` では動きません）。
+
+```bash
+npm run dev          # = node tools/dev-server.mjs（python3 -m http.server でも遊べる。オンラインランキングだけ使えない）
+# → http://localhost:8000 を開く
+```
+
+### 公開（Cloudflare Workers）
+
+- 本番：https://10-buy-year.bearko.games/ 。本番のブランチ（`claude/resale-game-mvp-mzm460`）にマージすると、Cloudflare Workers Builds が自動で公開する（設定は `wrangler.jsonc`）
+- 静的ファイルはそのまま配信し、`/api/ranking`（週替わりチャレンジのランキング）と `/api/telemetry`（プレイログ）だけ Worker（`worker/index.js`）が受ける
+- 保存先は Cloudflare D1 の `10buy-telemetry`（表は `migrations/`：`0001_telemetry.sql` がプレイログ、`0002_ranking.sql` がランキング）。表を足したら、本番の D1 にも同じ SQL を流す
+- デプロイしないファイルは `.assetsignore`（`test/`・`tools/`・`docs/` など）
+- 2026-10 に Vercel（https://10buy-year.vercel.app/）から移した。Vercel の設定とランキングの保存先（Upstash Redis）は使っていない
+
+### 基本ルール
+
+- 1ターン = 1週間。1年は48週、10年（480週）で1周。
+- 最初にできるのは「家の不用品を売る」ことだけ。チュートリアルに沿って、探す → 仕入れる → 在庫を管理する → 売り先を決める → 売る、を体験すると、スキルツリーが開く。
+- 毎週、行動を選ぶ（店舗せどり・電脳せどり・抽選・行列・出品作業・バイト・休む…）。ステージ2からは夜の作業、専業になると昼の行動が週2回。
+- 在庫は「在庫」タブから出品。週末に売れたかどうかが判定され、売上金は翌週に入金。売れない物は買取業者ですぐ現金化できる（安い）。
+- 毎月末に最低3万円を返済（利息は年15%）。3か月続けて払えないとゲームオーバー。
+- 月の純利益などのKPIでキャリアステージが上がる（副業スタート → 副業安定 → 専業 → 法人化・拡大 → 事業化・多角化）。
+- 10年後の純資産がスコア。エンディングはキャリアで変わる。
+- bearko.games の共通基盤に参加している：総合スコア・アチーブメント・RTA（タイトルの「⏱ RTA で挑む」。今週のチャレンジで、ステージ5に着いた週の少なさを競う）。詳しくは [docs/17_platform_score.md](docs/17_platform_score.md)
+
+English: open with `?lang=en` or press “Play in English” on the title screen.
+
+## ドキュメント
+
+攻略ガイドブック：[`guide/index.html`](guide/index.html)（公開版は `/guide/`）。ゲームの流れ・仕入れと販売・スキルツリー全パネル・全エンディングの条件・実績・商品図鑑など。
+
+| ファイル | 内容 |
+| --- | --- |
+| [docs/01_research.md](docs/01_research.md) | 転売活動の調査（サイクル、仕入れ・販路、ジャンル、やりがい、落とし穴、法律、小ネタ、世論） |
+| [docs/02_game_design.md](docs/02_game_design.md) | 企画書（ストーリー、10年のキャリアステージ、チュートリアル、スキルツリー、KPI、ルール、経済モデル、商品、キャラ、イベント、トーン） |
+| [docs/06_counterfeit_checks.md](docs/06_counterfeit_checks.md) | せどりの偽物見極めポイントと、仕入れ画面（フリマ・通販・店舗風）への落とし込み |
+| [docs/07_next_spec.md](docs/07_next_spec.md) | 次の改修の仕様（プレイフィードバック：目標欄と演出、ルーティン、会話ログ、資格、自分の店、TOKUと魔道ルートなど） |
+| [docs/03_roadmap.md](docs/03_roadmap.md) | 開発ロードマップ（MVP v1・v2 → α → β → 1.0 → 公開後） |
+| [CHANGELOG.md](CHANGELOG.md) | 更新履歴（v1.0.0 から） |
+| [docs/04_pro_reseller_life.md](docs/04_pro_reseller_life.md) | 追加調査：専業転売屋の一日・週・月のリズム、商材別の苦労と戦略、あるある、ゲームへの落とし込み案 |
+| [docs/05_career_and_kpi.md](docs/05_career_and_kpi.md) | 追加調査：転売屋の10年キャリアパスとKPI（素人〜玄人の見る目の違い）、ゲームでの実装 |
+| [docs/16_play_telemetry.md](docs/16_play_telemetry.md) | プレイログ（匿名のプレイ記録）：記録する項目、止め方、公開の設定、分析レポートの見方 |
+| [docs/18_onboarding.md](docs/18_onboarding.md) | 序盤の手ざわり：はじめての人が最初の1個を売るまでを短くした（難易度・プロローグ・矢印・出品画面） |
+| [docs/19_pc_layout.md](docs/19_pc_layout.md) | PC のレイアウト：演出の列（左）と操作の列（右）、行動のタブ、全体チャットのドックをどの画面でも出す |
+
+## ディレクトリ構成
+
+```
+index.html            エントリーポイント
+styles/main.css       スタイル（スマホ縦画面優先）
+src/
+  main.js             タイトル・週ループ・エンディング
+  engine/             ゲームロジック（DOM非依存）
+    state.js          新規ゲームの初期状態
+    turn.js           週のはじめ／週末の処理
+    commands.js       行動コマンド・抽選
+    market.js         相場シミュレーション
+    offers.js         仕入れ候補の生成
+    inventory.js      購入・在庫・出品
+    sales.js          販売・発送・トラブル判定
+    finance.js        月末の締め・返済・カード・利息・税金
+    abilities.js      経験点・基礎能力・スキルツリー
+    career.js         キャリアステージと昇格
+    kpi.js            月次の記録とKPI
+    tutorial.js       序盤のチュートリアル
+    automation.js     外注・価格改定ツール・自動仕入れ
+    events.js         イベントの抽選
+    ending.js         最終査定・エンディング
+    rng.js            シード付き乱数
+  data/               商品・スキルツリー・キャラ・イベント・トラブル・プロローグ
+  ui/                 描画（ステージ、HUD、モーダル、各画面）
+assets/               マイクリのアセット（tools/import_assets.py で生成）
+tools/                アセット取り込みスクリプトと一覧
+  guide/              攻略ガイドの生成（build.mjs）と1ファイル版の書き出し（bundle.mjs）
+guide/                攻略ガイドブック（index.html は生成物。img/ はスクリーンショット）
+test/                 テストと自動プレイbot
+docs/                 調査・企画・ロードマップ
+```
+
+## 開発
+
+```bash
+npm test             # データ整合性・ルール・チュートリアル・ツリー・ステージ・10年完走のテスト
+npm run balance      # 自動プレイ20回の統計（ステージ到達時期・最終資産）
+npm run assets       # ../mycryptoheroes からアセットを取り込み直す
+npm run guide        # 攻略ガイド（guide/index.html）をゲームのデータから作り直す
+npm run analytics:sim -- 40      # プレイログの模擬データ（ボット40プレイ）→ analytics-data/sim.jsonl
+npm run analytics:report         # プレイログの分析レポート → dist/analytics.html
+```
+
+攻略ガイドの数字（行動・スキルツリー・エンディング・実績・商品など）は `src/` のデータから直接作っています。ルールを変えたら `npm run guide` で作り直してください。画像を埋めこんだ1ファイル版は `node tools/guide/bundle.mjs`（`dist/` に出力。リポジトリには入れない）。
+
+新しい商品・イベント・スキルツリーのノードは `src/data/` にデータを追加するだけで増やせます。ゲーム内のテキストに実在のゲームタイトル名は使わないでください（テストで検出します）。画像を増やしたときは `tools/assets.json` に ID を追加して `npm run assets` を実行してください（キャラ・商品・アイコンは可逆の WebP に変換されます。Pillow が必要）。
+
+ホーム画面のアイコン（`assets/app/`）は `python3 tools/app_icon.py` で、クリスのドット絵の顔を切り出して作ります（Pillow が必要）。シェア用のOGP画像（`assets/og.jpg`、1200×630）は `tools/og.html` をブラウザで 1200×630 で開いてスクリーンショットを撮り、JPEG で保存したものです。ゲーム内の名前に実在のサービス・ブランド名を使わないでください（テストで検出します）。法律・手数料の数字は年1回見直します（[`docs/12_law_review.md`](docs/12_law_review.md)）。
+
+## クレジットと権利
+
+- ヒーロー・エクステンション・エネミー画像、背景、BGM・SE：My Crypto Heroes（MCH Co., Ltd.）。[MCH デザインガイドライン](https://medium.com/mycryptoheroes/mch-design-guideline-ja-99ff0970ccdc)に基づく非営利の二次創作として使用しています。背景は MCH Co., Ltd. の許諾範囲で管理されている素材です。
+- クリスくん／マインちゃん：ドット絵 こじもこ
+- マイクリくん：原画 こはるさん／ドット絵 こじもこさん
+- 作中のプラットフォーム（プンシー＝OpenSea、ミィーム＝miime のパロディ、アマクリ）、商品、出来事はすべてフィクションです。法律・手数料の数値はゲーム用に簡略化しています。
+
+一般公開の前に、転売という題材についてマイクリ運営へ確認することを推奨しています（[ロードマップ](docs/03_roadmap.md)参照）。
